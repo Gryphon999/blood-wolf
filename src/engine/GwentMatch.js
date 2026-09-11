@@ -96,6 +96,14 @@ function resolveRound(match) {
   startNextRound(match, result);
 }
 
+export function hasLegalMove(match) {
+  if (match.winner !== null) {
+    return false;
+  }
+  const player = match.players[match.current];
+  return !player.passed && player.hand.length > 0;
+}
+
 export function pass(match) {
   if (match.winner !== null) {
     throw new Error('Match is over');
