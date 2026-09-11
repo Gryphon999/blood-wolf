@@ -1,5 +1,5 @@
 import { createCard } from './Card.js';
-import { createBoard, addUnit, totalPower } from './Board.js';
+import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -20,6 +20,7 @@ export function createMatch(deckA, deckB, handSize = 10) {
     roundStarter: 0,
     winner: null,
     lastRound: null,
+    weather: new Set(),
   };
 }
 
@@ -28,6 +29,51 @@ function passTurn(match) {
   if (!match.players[opponent].passed) {
     match.current = opponent;
   }
+}
+
+const WEATHER_ROW = {
+  weather_frost: 'melee',
+  weather_fog: 'ranged',
+  weather_rain: 'siege',
+};
+
+function applyEffect(match, effect, row) {
+  if (effect in WEATHER_ROW) {
+    match.weather.add(WEATHER_ROW[effect]);
+    return;
+  }
+  if (effect === 'clear') {
+    match.weather.clear();
+    return;
+  }
+  if (effect === 'horn') {
+    if (!ROWS.includes(row)) {
+      throw new Error(`Unknown row: ${row}`);
+    }
+    match.players[match.current].board.horns.add(row);
+    return;
+  }
+  if (effect === 'sign_damage') {
+    if (!ROWS.includes(row)) {
+      throw new Error(`Unknown row: ${row}`);
+    }
+    const opponentBoard = match.players[1 - match.current].board;
+    for (const card of opponentBoard[row]) {
+      if (card.def.type !== 'hero') {
+        card.power = Math.max(1, card.power - 2);
+      }
+    }
+    return;
+  }
+  throw new Error(`Unknown effect: ${effect}`);
+}
+
+function applyCard(match, card, row) {
+  if (card.def.type === 'special') {
+    applyEffect(match, card.def.effect, row);
+    return;
+  }
+  addUnit(match.players[match.current].board, row, card);
 }
 
 export function playCard(match, cardIndex, row) {
@@ -43,7 +89,7 @@ export function playCard(match, cardIndex, row) {
     throw new Error(`No card at index ${cardIndex}`);
   }
   player.hand.splice(cardIndex, 1);
-  addUnit(player.board, row, card);
+  applyCard(match, card, row);
   passTurn(match);
 }
 
@@ -57,6 +103,7 @@ function startNextRound(match, lastResult) {
     ? 1 - match.roundStarter
     : 1 - lastResult; // the loser starts the next round
   match.current = match.roundStarter;
+  match.weather.clear();
 }
 
 function finishMatch(match) {
@@ -72,8 +119,8 @@ function finishMatch(match) {
 
 function resolveRound(match) {
   const [p0, p1] = match.players;
-  const power0 = totalPower(p0.board);
-  const power1 = totalPower(p1.board);
+  const power0 = totalPower(p0.board, match.weather);
+  const power1 = totalPower(p1.board, match.weather);
 
   let result;
   if (power0 > power1) {

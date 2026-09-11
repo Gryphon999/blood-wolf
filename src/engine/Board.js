@@ -1,7 +1,7 @@
 export const ROWS = ['melee', 'ranged', 'siege'];
 
 export function createBoard() {
-  return { melee: [], ranged: [], siege: [] };
+  return { melee: [], ranged: [], siege: [], horns: new Set() };
 }
 
 export function addUnit(board, row, card) {
@@ -11,10 +11,27 @@ export function addUnit(board, row, card) {
   board[row].push(card);
 }
 
-export function rowPower(board, row) {
-  return board[row].reduce((sum, card) => sum + card.power, 0);
+export function effectivePower(card, row, board, weather) {
+  if (card.def.type === 'hero') {
+    return card.power;
+  }
+  let power = card.power;
+  if (weather.has(row)) {
+    power = 1;
+  }
+  if (board.horns.has(row)) {
+    power = power * 2;
+  }
+  return power;
 }
 
-export function totalPower(board) {
-  return ROWS.reduce((sum, row) => sum + rowPower(board, row), 0);
+export function rowPower(board, row, weather = new Set()) {
+  return board[row].reduce(
+    (sum, card) => sum + effectivePower(card, row, board, weather),
+    0,
+  );
+}
+
+export function totalPower(board, weather = new Set()) {
+  return ROWS.reduce((sum, row) => sum + rowPower(board, row, weather), 0);
 }

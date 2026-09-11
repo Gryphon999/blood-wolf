@@ -215,3 +215,112 @@ describe('edge cases', () => {
     expect(match.players[0].roundsWon).toBe(1);
   });
 });
+
+describe('commander horn in a match', () => {
+  it('doubles non-heroes in the caster row and ignores heroes', () => {
+    const u = { id: 'u', type: 'unit', row: 'melee', power: 4 };
+    const hero = { id: 'h', type: 'hero', row: 'melee', power: 5 };
+    const horn = { id: 'hr', type: 'special', effect: 'horn', row: 'melee', power: 0 };
+    const f = () => ({ id: 'f', type: 'unit', row: 'melee', power: 1 });
+    const match = createMatch([u, hero, horn], [f(), f(), f()], 3);
+    playCard(match, 0, 'melee'); // p0 u(4)
+    playCard(match, 0, 'melee'); // p1 filler
+    playCard(match, 0, 'melee'); // p0 hero(5)
+    playCard(match, 0, 'melee'); // p1 filler
+    playCard(match, 0, 'melee'); // p0 horn -> doubles p0 melee
+    expect(totalPower(match.players[0].board, match.weather)).toBe(13); // 4*2 + 5
+  });
+});
+
+describe('heroes and weather in a match', () => {
+  it('a hero keeps its power under weather', () => {
+    const hero = { id: 'h', type: 'hero', row: 'melee', power: 7 };
+    const frost = { id: 'f', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const filler = { id: 'x', type: 'unit', row: 'melee', power: 3 };
+    const match = createMatch([hero, filler], [frost, filler], 2);
+    playCard(match, 0, 'melee'); // p0 plays hero(7)
+    playCard(match, 0, 'melee'); // p1 plays frost -> weather on melee
+    expect(totalPower(match.players[0].board, match.weather)).toBe(7);
+  });
+
+  it('weather drops a normal row to 1 per unit and a clear card removes it', () => {
+    const strong = { id: 's', type: 'unit', row: 'melee', power: 6 };
+    const frost = { id: 'f', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const clear = { id: 'c', type: 'special', effect: 'clear', row: 'melee', power: 0 };
+    const match = createMatch([strong, strong], [frost, clear], 2);
+    playCard(match, 0, 'melee'); // p0 strong(6)
+    playCard(match, 0, 'melee'); // p1 frost -> weather melee
+    expect(totalPower(match.players[0].board, match.weather)).toBe(1);
+    pass(match);                 // p0 passes -> turn to p1
+    playCard(match, 0, 'melee'); // p1 plays clear (p0 passed, so p1 keeps the turn)
+    expect(match.weather.size).toBe(0);
+    expect(totalPower(match.players[0].board, match.weather)).toBe(6);
+  });
+
+  it('weather is cleared when a new round starts', () => {
+    const frost = { id: 'f', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const u = () => ({ id: 'u', type: 'unit', row: 'melee', power: 2 });
+    const match = createMatch([frost, u()], [u(), u()], 2);
+    playCard(match, 0, 'melee'); // p0 frost -> weather melee
+    playCard(match, 0, 'melee'); // p1 u(2)
+    pass(match);
+    pass(match);                 // round resolves -> next round starts
+    expect(match.weather.size).toBe(0);
+  });
+});
+
+describe('sign damage in a match', () => {
+  it('reduces non-hero enemy units in the target row by 2, heroes immune', () => {
+    const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
+    const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
+    const big = { id: 'b', type: 'unit', row: 'melee', power: 5 };
+    const hero = { id: 'h', type: 'hero', row: 'melee', power: 4 };
+    const extra = { id: 'e', type: 'unit', row: 'siege', power: 1 };
+    const match = createMatch([f(), f(), sign], [big, hero, extra], 3);
+    playCard(match, 0, 'ranged'); // p0 filler
+    playCard(match, 0, 'melee');  // p1 big
+    playCard(match, 0, 'ranged'); // p0 filler
+    playCard(match, 0, 'melee');  // p1 hero
+    playCard(match, 0, 'melee');  // p0 casts sign at p1's melee
+    expect(match.players[1].board.melee[0].power).toBe(3); // big 5 -> 3
+    expect(match.players[1].board.melee[1].power).toBe(4); // hero immune
+  });
+
+  it('floors damaged power at 1', () => {
+    const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
+    const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
+    const weak = { id: 'w', type: 'unit', row: 'melee', power: 2 };
+    const extra = { id: 'e', type: 'unit', row: 'siege', power: 1 };
+    const match = createMatch([f(), sign], [weak, extra], 2);
+    playCard(match, 0, 'ranged'); // p0 filler
+    playCard(match, 0, 'melee');  // p1 weak
+    playCard(match, 0, 'melee');  // p0 sign
+    expect(match.players[1].board.melee[0].power).toBe(1); // 2 - 2 = 0 -> floor 1
+  });
+});
+
+describe('effects layer — extra coverage', () => {
+  it('clear removes ALL active weather rows, not just one', () => {
+    const frost = { id: 'fr', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const fog = { id: 'fg', type: 'special', effect: 'weather_fog', row: 'ranged', power: 0 };
+    const clear = { id: 'cl', type: 'special', effect: 'clear', row: 'melee', power: 0 };
+    const f = () => ({ id: 'x', type: 'unit', row: 'melee', power: 1 });
+    const match = createMatch([frost, fog, clear], [f(), f(), f()], 3);
+    playCard(match, 0, 'melee');  // p0 frost -> weather melee
+    playCard(match, 0, 'melee');  // p1 filler
+    playCard(match, 0, 'ranged'); // p0 fog -> weather ranged
+    playCard(match, 0, 'melee');  // p1 filler
+    expect(match.weather.size).toBe(2);
+    playCard(match, 0, 'melee');  // p0 clear -> all weather gone
+    expect(match.weather.size).toBe(0);
+  });
+
+  it('weather reduces the opponent board too', () => {
+    const frost = { id: 'fr', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const strong = () => ({ id: 's', type: 'unit', row: 'melee', power: 6 });
+    const match = createMatch([frost, strong()], [strong(), strong()], 2);
+    playCard(match, 0, 'melee'); // p0 frost -> weather melee
+    playCard(match, 0, 'melee'); // p1 strong(6)
+    expect(totalPower(match.players[1].board, match.weather)).toBe(1); // opponent 6 -> 1
+  });
+});
