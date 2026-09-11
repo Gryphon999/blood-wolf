@@ -46,6 +46,10 @@ function applyEffect(match, effect, row) {
     match.weather.clear();
     return;
   }
+  if (effect === 'horn') {
+    match.players[match.current].board.horns.add(row);
+    return;
+  }
   throw new Error(`Unknown effect: ${effect}`);
 }
 

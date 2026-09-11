@@ -216,6 +216,22 @@ describe('edge cases', () => {
   });
 });
 
+describe('commander horn in a match', () => {
+  it('doubles non-heroes in the caster row and ignores heroes', () => {
+    const u = { id: 'u', type: 'unit', row: 'melee', power: 4 };
+    const hero = { id: 'h', type: 'hero', row: 'melee', power: 5 };
+    const horn = { id: 'hr', type: 'special', effect: 'horn', row: 'melee', power: 0 };
+    const f = () => ({ id: 'f', type: 'unit', row: 'melee', power: 1 });
+    const match = createMatch([u, hero, horn], [f(), f(), f()], 3);
+    playCard(match, 0, 'melee'); // p0 u(4)
+    playCard(match, 0, 'melee'); // p1 filler
+    playCard(match, 0, 'melee'); // p0 hero(5)
+    playCard(match, 0, 'melee'); // p1 filler
+    playCard(match, 0, 'melee'); // p0 horn -> doubles p0 melee
+    expect(totalPower(match.players[0].board, match.weather)).toBe(13); // 4*2 + 5
+  });
+});
+
 describe('heroes and weather in a match', () => {
   it('a hero keeps its power under weather', () => {
     const hero = { id: 'h', type: 'hero', row: 'melee', power: 7 };
