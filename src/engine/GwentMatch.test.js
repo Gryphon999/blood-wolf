@@ -298,3 +298,29 @@ describe('sign damage in a match', () => {
     expect(match.players[1].board.melee[0].power).toBe(1); // 2 - 2 = 0 -> floor 1
   });
 });
+
+describe('effects layer — extra coverage', () => {
+  it('clear removes ALL active weather rows, not just one', () => {
+    const frost = { id: 'fr', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const fog = { id: 'fg', type: 'special', effect: 'weather_fog', row: 'ranged', power: 0 };
+    const clear = { id: 'cl', type: 'special', effect: 'clear', row: 'melee', power: 0 };
+    const f = () => ({ id: 'x', type: 'unit', row: 'melee', power: 1 });
+    const match = createMatch([frost, fog, clear], [f(), f(), f()], 3);
+    playCard(match, 0, 'melee');  // p0 frost -> weather melee
+    playCard(match, 0, 'melee');  // p1 filler
+    playCard(match, 0, 'ranged'); // p0 fog -> weather ranged
+    playCard(match, 0, 'melee');  // p1 filler
+    expect(match.weather.size).toBe(2);
+    playCard(match, 0, 'melee');  // p0 clear -> all weather gone
+    expect(match.weather.size).toBe(0);
+  });
+
+  it('weather reduces the opponent board too', () => {
+    const frost = { id: 'fr', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const strong = () => ({ id: 's', type: 'unit', row: 'melee', power: 6 });
+    const match = createMatch([frost, strong()], [strong(), strong()], 2);
+    playCard(match, 0, 'melee'); // p0 frost -> weather melee
+    playCard(match, 0, 'melee'); // p1 strong(6)
+    expect(totalPower(match.players[1].board, match.weather)).toBe(1); // opponent 6 -> 1
+  });
+});

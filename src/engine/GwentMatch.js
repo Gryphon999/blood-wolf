@@ -1,5 +1,5 @@
 import { createCard } from './Card.js';
-import { createBoard, addUnit, totalPower } from './Board.js';
+import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -47,10 +47,16 @@ function applyEffect(match, effect, row) {
     return;
   }
   if (effect === 'horn') {
+    if (!ROWS.includes(row)) {
+      throw new Error(`Unknown row: ${row}`);
+    }
     match.players[match.current].board.horns.add(row);
     return;
   }
   if (effect === 'sign_damage') {
+    if (!ROWS.includes(row)) {
+      throw new Error(`Unknown row: ${row}`);
+    }
     const opponentBoard = match.players[1 - match.current].board;
     for (const card of opponentBoard[row]) {
       if (card.def.type !== 'hero') {
