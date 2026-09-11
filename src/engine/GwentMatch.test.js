@@ -268,3 +268,33 @@ describe('heroes and weather in a match', () => {
     expect(match.weather.size).toBe(0);
   });
 });
+
+describe('sign damage in a match', () => {
+  it('reduces non-hero enemy units in the target row by 2, heroes immune', () => {
+    const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
+    const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
+    const big = { id: 'b', type: 'unit', row: 'melee', power: 5 };
+    const hero = { id: 'h', type: 'hero', row: 'melee', power: 4 };
+    const extra = { id: 'e', type: 'unit', row: 'siege', power: 1 };
+    const match = createMatch([f(), f(), sign], [big, hero, extra], 3);
+    playCard(match, 0, 'ranged'); // p0 filler
+    playCard(match, 0, 'melee');  // p1 big
+    playCard(match, 0, 'ranged'); // p0 filler
+    playCard(match, 0, 'melee');  // p1 hero
+    playCard(match, 0, 'melee');  // p0 casts sign at p1's melee
+    expect(match.players[1].board.melee[0].power).toBe(3); // big 5 -> 3
+    expect(match.players[1].board.melee[1].power).toBe(4); // hero immune
+  });
+
+  it('floors damaged power at 1', () => {
+    const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
+    const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
+    const weak = { id: 'w', type: 'unit', row: 'melee', power: 2 };
+    const extra = { id: 'e', type: 'unit', row: 'siege', power: 1 };
+    const match = createMatch([f(), sign], [weak, extra], 2);
+    playCard(match, 0, 'ranged'); // p0 filler
+    playCard(match, 0, 'melee');  // p1 weak
+    playCard(match, 0, 'melee');  // p0 sign
+    expect(match.players[1].board.melee[0].power).toBe(1); // 2 - 2 = 0 -> floor 1
+  });
+});

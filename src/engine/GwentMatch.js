@@ -50,6 +50,15 @@ function applyEffect(match, effect, row) {
     match.players[match.current].board.horns.add(row);
     return;
   }
+  if (effect === 'sign_damage') {
+    const opponentBoard = match.players[1 - match.current].board;
+    for (const card of opponentBoard[row]) {
+      if (card.def.type !== 'hero') {
+        card.power = Math.max(1, card.power - 2);
+      }
+    }
+    return;
+  }
   throw new Error(`Unknown effect: ${effect}`);
 }
 
