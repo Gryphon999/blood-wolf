@@ -215,3 +215,40 @@ describe('edge cases', () => {
     expect(match.players[0].roundsWon).toBe(1);
   });
 });
+
+describe('heroes and weather in a match', () => {
+  it('a hero keeps its power under weather', () => {
+    const hero = { id: 'h', type: 'hero', row: 'melee', power: 7 };
+    const frost = { id: 'f', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const filler = { id: 'x', type: 'unit', row: 'melee', power: 3 };
+    const match = createMatch([hero, filler], [frost, filler], 2);
+    playCard(match, 0, 'melee'); // p0 plays hero(7)
+    playCard(match, 0, 'melee'); // p1 plays frost -> weather on melee
+    expect(totalPower(match.players[0].board, match.weather)).toBe(7);
+  });
+
+  it('weather drops a normal row to 1 per unit and a clear card removes it', () => {
+    const strong = { id: 's', type: 'unit', row: 'melee', power: 6 };
+    const frost = { id: 'f', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const clear = { id: 'c', type: 'special', effect: 'clear', row: 'melee', power: 0 };
+    const match = createMatch([strong, strong], [frost, clear], 2);
+    playCard(match, 0, 'melee'); // p0 strong(6)
+    playCard(match, 0, 'melee'); // p1 frost -> weather melee
+    expect(totalPower(match.players[0].board, match.weather)).toBe(1);
+    pass(match);                 // p0 passes -> turn to p1
+    playCard(match, 0, 'melee'); // p1 plays clear (p0 passed, so p1 keeps the turn)
+    expect(match.weather.size).toBe(0);
+    expect(totalPower(match.players[0].board, match.weather)).toBe(6);
+  });
+
+  it('weather is cleared when a new round starts', () => {
+    const frost = { id: 'f', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const u = () => ({ id: 'u', type: 'unit', row: 'melee', power: 2 });
+    const match = createMatch([frost, u()], [u(), u()], 2);
+    playCard(match, 0, 'melee'); // p0 frost -> weather melee
+    playCard(match, 0, 'melee'); // p1 u(2)
+    pass(match);
+    pass(match);                 // round resolves -> next round starts
+    expect(match.weather.size).toBe(0);
+  });
+});
