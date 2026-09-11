@@ -2,8 +2,9 @@ export const SCREEN = { width: 1280, height: 720 };
 export const ROW_NAMES = ['melee', 'ranged', 'siege'];
 export const CARD_W = 84;
 export const CARD_H = 116;
-export const ROW_HEIGHT = 84;
-export const HAND_Y = 680;
+export const ROW_HEIGHT = 76;
+export const HAND_Y = 648;
+export const BOARD_CENTER_Y = 300;
 
 const ROW_INDEX = { melee: 0, ranged: 1, siege: 2 };
 
@@ -13,7 +14,7 @@ export function rowY(side, rowName) {
     throw new Error(`Unknown row: ${rowName}`);
   }
   const offset = ROW_HEIGHT * (i + 1);
-  return side === 'player' ? SCREEN.height / 2 + offset : SCREEN.height / 2 - offset;
+  return side === 'player' ? BOARD_CENTER_Y + offset : BOARD_CENTER_Y - offset;
 }
 
 export function handCardX(index, count, gap = 8) {
