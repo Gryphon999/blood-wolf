@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createBoard, addUnit, rowPower, totalPower, ROWS } from './Board.js';
+import { createBoard, addUnit, rowPower, totalPower, ROWS, effectivePower } from './Board.js';
 import { createCard } from './Card.js';
 
 describe('Board', () => {
@@ -28,5 +28,49 @@ describe('Board', () => {
     const board = createBoard();
     expect(() => addUnit(board, 'sky', createCard({ id: 'x', row: 'sky', power: 1 })))
       .toThrow('Unknown row: sky');
+  });
+});
+
+describe('effectivePower', () => {
+  it('returns base power with no weather or horn', () => {
+    const board = createBoard();
+    const card = createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 });
+    expect(effectivePower(card, 'melee', board, new Set())).toBe(5);
+  });
+
+  it('weather sets a non-hero to 1', () => {
+    const board = createBoard();
+    const card = createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 });
+    expect(effectivePower(card, 'melee', board, new Set(['melee']))).toBe(1);
+  });
+
+  it('horn doubles a non-hero', () => {
+    const board = createBoard();
+    board.horns.add('melee');
+    const card = createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 });
+    expect(effectivePower(card, 'melee', board, new Set())).toBe(10);
+  });
+
+  it('weather then horn yields 2', () => {
+    const board = createBoard();
+    board.horns.add('melee');
+    const card = createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 });
+    expect(effectivePower(card, 'melee', board, new Set(['melee']))).toBe(2);
+  });
+
+  it('a hero ignores weather and horn', () => {
+    const board = createBoard();
+    board.horns.add('melee');
+    const hero = createCard({ id: 'h', type: 'hero', row: 'melee', power: 7 });
+    expect(effectivePower(hero, 'melee', board, new Set(['melee']))).toBe(7);
+  });
+});
+
+describe('rowPower with auras', () => {
+  it('applies weather across the whole row', () => {
+    const board = createBoard();
+    addUnit(board, 'melee', createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 }));
+    addUnit(board, 'melee', createCard({ id: 'b', type: 'unit', row: 'melee', power: 3 }));
+    expect(rowPower(board, 'melee', new Set(['melee']))).toBe(2); // 1 + 1
   });
 });
