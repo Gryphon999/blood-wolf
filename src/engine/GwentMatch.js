@@ -59,6 +59,17 @@ function startNextRound(match, lastResult) {
   match.current = match.roundStarter;
 }
 
+function finishMatch(match) {
+  const [p0, p1] = match.players;
+  if (p0.roundsWon >= 2 && p1.roundsWon >= 2) {
+    match.winner = 'draw';
+  } else if (p0.roundsWon >= 2) {
+    match.winner = 0;
+  } else {
+    match.winner = 1;
+  }
+}
+
 function resolveRound(match) {
   const [p0, p1] = match.players;
   const power0 = totalPower(p0.board);
@@ -79,7 +90,8 @@ function resolveRound(match) {
   match.lastRound = result;
 
   if (p0.roundsWon >= 2 || p1.roundsWon >= 2) {
-    return; // match-end handling is added in Task 6
+    finishMatch(match);
+    return;
   }
   startNextRound(match, result);
 }

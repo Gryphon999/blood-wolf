@@ -80,3 +80,42 @@ describe('pass and round resolution', () => {
     expect(match.lastRound).toBe('draw');
   });
 });
+
+describe('match end', () => {
+  it('declares the player who wins two rounds the winner', () => {
+    // handSize 2 so each player has a card for both rounds
+    const match = createMatch(
+      [unit('a', 5), unit('a2', 5)],
+      [unit('b', 1), unit('b2', 1)],
+      2,
+    );
+    // round 1: p0 5 vs p1 1 -> p0 wins
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match);
+    // round 2: p1 starts. p1 1 vs p0 5 -> p0 wins again
+    playCard(match, 0, 'melee'); // p1
+    playCard(match, 0, 'melee'); // p0
+    pass(match);                 // p1 passes
+    pass(match);                 // p0 passes -> resolve, p0 hits 2 wins
+    expect(match.winner).toBe(0);
+  });
+
+  it('refuses further moves once the match is over', () => {
+    const match = createMatch(
+      [unit('a', 5), unit('a2', 5)],
+      [unit('b', 1), unit('b2', 1)],
+      2,
+    );
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match);
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match);
+    expect(() => pass(match)).toThrow('Match is over');
+  });
+});
