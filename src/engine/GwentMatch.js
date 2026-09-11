@@ -1,0 +1,118 @@
+import { createCard } from './Card.js';
+import { createBoard, addUnit, totalPower } from './Board.js';
+
+function makePlayer(deck, handSize) {
+  const cards = deck.map(createCard);
+  return {
+    deck: cards.slice(handSize),
+    hand: cards.slice(0, handSize),
+    board: createBoard(),
+    passed: false,
+    roundsWon: 0,
+  };
+}
+
+export function createMatch(deckA, deckB, handSize = 10) {
+  return {
+    players: [makePlayer(deckA, handSize), makePlayer(deckB, handSize)],
+    current: 0,
+    round: 1,
+    roundStarter: 0,
+    winner: null,
+    lastRound: null,
+  };
+}
+
+function passTurn(match) {
+  const opponent = 1 - match.current;
+  if (!match.players[opponent].passed) {
+    match.current = opponent;
+  }
+}
+
+export function playCard(match, cardIndex, row) {
+  if (match.winner !== null) {
+    throw new Error('Match is over');
+  }
+  const player = match.players[match.current];
+  if (player.passed) {
+    throw new Error('Player has already passed this round');
+  }
+  const card = player.hand[cardIndex];
+  if (!card) {
+    throw new Error(`No card at index ${cardIndex}`);
+  }
+  player.hand.splice(cardIndex, 1);
+  addUnit(player.board, row, card);
+  passTurn(match);
+}
+
+function startNextRound(match, lastResult) {
+  for (const player of match.players) {
+    player.board = createBoard();
+    player.passed = false;
+  }
+  match.round++;
+  match.roundStarter = lastResult === 'draw'
+    ? 1 - match.roundStarter
+    : 1 - lastResult; // the loser starts the next round
+  match.current = match.roundStarter;
+}
+
+function finishMatch(match) {
+  const [p0, p1] = match.players;
+  if (p0.roundsWon >= 2 && p1.roundsWon >= 2) {
+    match.winner = 'draw';
+  } else if (p0.roundsWon >= 2) {
+    match.winner = 0;
+  } else {
+    match.winner = 1;
+  }
+}
+
+function resolveRound(match) {
+  const [p0, p1] = match.players;
+  const power0 = totalPower(p0.board);
+  const power1 = totalPower(p1.board);
+
+  let result;
+  if (power0 > power1) {
+    p0.roundsWon++;
+    result = 0;
+  } else if (power1 > power0) {
+    p1.roundsWon++;
+    result = 1;
+  } else {
+    p0.roundsWon++;
+    p1.roundsWon++;
+    result = 'draw';
+  }
+  match.lastRound = result;
+
+  if (p0.roundsWon >= 2 || p1.roundsWon >= 2) {
+    finishMatch(match);
+    return;
+  }
+  startNextRound(match, result);
+}
+
+export function hasLegalMove(match) {
+  if (match.winner !== null) {
+    return false;
+  }
+  const player = match.players[match.current];
+  return !player.passed && player.hand.length > 0;
+}
+
+export function pass(match) {
+  if (match.winner !== null) {
+    throw new Error('Match is over');
+  }
+  const player = match.players[match.current];
+  player.passed = true;
+  if (match.players[1 - match.current].passed) {
+    resolveRound(match);
+  } else {
+    match.current = 1 - match.current;
+  }
+}
