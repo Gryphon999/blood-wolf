@@ -18,3 +18,16 @@ describe('playMatch', () => {
     expect([0, 1, 'draw']).toContain(match.winner);
   });
 });
+
+describe('playMatch with special cards', () => {
+  it('terminates with a decided match when decks contain specials', () => {
+    const u = (id, p) => ({ id, type: 'unit', row: 'melee', power: p });
+    const frost = { id: 'frost', type: 'special', effect: 'weather_frost', row: 'melee', power: 0 };
+    const horn = { id: 'horn', type: 'special', effect: 'horn', row: 'melee', power: 0 };
+    const sign = { id: 'sign', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
+    const deckA = [u('a1', 6), u('a2', 6), frost, horn];
+    const deckB = [u('b1', 4), u('b2', 4), sign, u('b3', 4)];
+    const match = playMatch(deckA, deckB, 4);
+    expect([0, 1, 'draw']).toContain(match.winner);
+  });
+});
