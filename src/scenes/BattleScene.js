@@ -4,7 +4,9 @@ import { chooseMove } from '../engine/ai/OpponentAI.js';
 import { rowPower } from '../engine/Board.js';
 import { createCardView } from '../ui/CardView.js';
 import { SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, CARD_W, BOARD_CENTER_Y } from '../ui/layout.js';
-import { PLAYER_DECK, AI_DECK } from '../data/starterDecks.js';
+import { AI_DECK } from '../data/starterDecks.js';
+import { getProfile, persist } from '../economy/session.js';
+import { buildDeckCards, addGold } from '../economy/profile.js';
 
 const NO_TARGET_EFFECTS = ['weather_frost', 'weather_fog', 'weather_rain', 'clear'];
 
@@ -14,8 +16,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create() {
-    this.match = createMatch(PLAYER_DECK, AI_DECK, 10);
+    const playerDeck = buildDeckCards(getProfile());
+    this.match = createMatch(playerDeck, AI_DECK, 10);
     this.selectedIndex = null;
+    this.rewardGranted = false;
+    this.reward = 0;
     this.root = this.add.container(0, 0);
     this.render();
   }
@@ -30,6 +35,15 @@ export class BattleScene extends Phaser.Scene {
     this.root.removeAll(true);
     const m = this.match;
     const [player, opp] = m.players;
+
+    if (m.winner !== null && !this.rewardGranted) {
+      this.rewardGranted = true;
+      if (m.winner === 0) {
+        addGold(getProfile(), 50);
+        persist();
+        this.reward = 50;
+      }
+    }
 
     this.addText(20, 14, `Соперник — карт: ${opp.hand.length}   раунды: ${pips(opp.roundsWon)}`, '#d8c9a8');
     const status = m.winner !== null ? '' : m.current === 0 ? 'Твой ход' : 'Ход ИИ…';
@@ -171,6 +185,14 @@ export class BattleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('MenuScene'));
     this.root.add(back);
+
+    if (this.reward > 0) {
+      this.root.add(
+        this.add
+          .text(SCREEN.width / 2, SCREEN.height / 2 + 24, `+${this.reward} золота`, { fontSize: '26px', color: '#ffd479' })
+          .setOrigin(0.5),
+      );
+    }
   }
 }
 
