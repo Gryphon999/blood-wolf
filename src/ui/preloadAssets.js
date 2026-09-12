@@ -1,7 +1,13 @@
 export function preloadCardAssets(scene) {
-  scene.load.image('knight', '/assets/cards/knight.jpg');
-  scene.load.image('archer', '/assets/cards/archer.jpg');
-  scene.load.image('medic', '/assets/cards/medic.jpg');
+  const cards = [
+    'knight', 'archer', 'merc', 'catapult', 'champion',
+    'warhorn', 'frost',
+    'ghoul', 'harpy', 'troll', 'beast',
+    'medic',
+  ];
+  for (const key of cards) {
+    scene.load.image(key, `/assets/cards/${key}.jpg`);
+  }
 }
 
 export function preloadBattleAssets(scene) {
