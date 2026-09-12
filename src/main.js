@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MenuScene } from './scenes/MenuScene.js';
 import { BattleScene } from './scenes/BattleScene.js';
 import { SCREEN } from './ui/layout.js';
 
@@ -9,5 +10,5 @@ new Phaser.Game({
   height: SCREEN.height,
   backgroundColor: '#14100c',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [BattleScene],
+  scene: [MenuScene, BattleScene],
 });
