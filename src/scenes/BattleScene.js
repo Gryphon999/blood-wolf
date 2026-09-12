@@ -6,7 +6,8 @@ import { createCardView } from '../ui/CardView.js';
 import { SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, CARD_W, BOARD_CENTER_Y } from '../ui/layout.js';
 import { AI_DECK } from '../data/starterDecks.js';
 import { getProfile, persist } from '../economy/session.js';
-import { buildDeckCards, addGold } from '../economy/profile.js';
+import { buildDeckCards, addGold, clearNode, grantCard } from '../economy/profile.js';
+import { getCard } from '../data/cardCatalog.js';
 
 const NO_TARGET_EFFECTS = ['weather_frost', 'weather_fog', 'weather_rain', 'clear'];
 
@@ -15,12 +16,19 @@ export class BattleScene extends Phaser.Scene {
     super('BattleScene');
   }
 
-  create() {
+  create(data) {
+    this.storyIndex = data?.storyIndex ?? null;
+    this.rewardGold = data?.rewardGold ?? 0;
+    this.rewardCardId = data?.rewardCardId ?? null;
+    this.returnScene = this.storyIndex !== null ? 'StoryScene' : 'MenuScene';
+    const enemyDeck = data?.enemyDeck ?? AI_DECK;
+
     const playerDeck = buildDeckCards(getProfile());
-    this.match = createMatch(playerDeck, AI_DECK, 10);
+    this.match = createMatch(playerDeck, enemyDeck, 10);
     this.selectedIndex = null;
     this.rewardGranted = false;
     this.reward = 0;
+    this.rewardCardName = null;
     this.root = this.add.container(0, 0);
     this.render();
   }
@@ -39,9 +47,20 @@ export class BattleScene extends Phaser.Scene {
     if (m.winner !== null && !this.rewardGranted) {
       this.rewardGranted = true;
       if (m.winner === 0) {
-        addGold(getProfile(), 50);
+        const profile = getProfile();
+        if (this.storyIndex === null) {
+          addGold(profile, 50);
+          this.reward = 50;
+        } else {
+          clearNode(profile, this.storyIndex);
+          addGold(profile, this.rewardGold);
+          this.reward = this.rewardGold;
+          if (this.rewardCardId) {
+            grantCard(profile, this.rewardCardId);
+            this.rewardCardName = getCard(this.rewardCardId).name;
+          }
+        }
         persist();
-        this.reward = 50;
       }
     }
 
@@ -49,8 +68,8 @@ export class BattleScene extends Phaser.Scene {
     const status = m.winner !== null ? '' : m.current === 0 ? 'Твой ход' : 'Ход ИИ…';
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
 
-    const menuBtn = this.addText(SCREEN.width - 110, 14, '‹ В меню', '#9fbfff').setInteractive({ useHandCursor: true });
-    menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    const menuBtn = this.addText(SCREEN.width - 110, 14, '‹ Назад', '#9fbfff').setInteractive({ useHandCursor: true });
+    menuBtn.on('pointerdown', () => this.scene.start(this.returnScene));
 
     for (const rowName of ROW_NAMES) {
       this.renderRow(opp, 'opponent', rowName);
@@ -183,13 +202,20 @@ export class BattleScene extends Phaser.Scene {
       .text(SCREEN.width / 2, SCREEN.height / 2 + 60, '‹ В меню', { fontSize: '24px', color: '#9fbfff' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => this.scene.start('MenuScene'));
+    back.on('pointerdown', () => this.scene.start(this.returnScene));
     this.root.add(back);
 
     if (this.reward > 0) {
       this.root.add(
         this.add
           .text(SCREEN.width / 2, SCREEN.height / 2 + 24, `+${this.reward} золота`, { fontSize: '26px', color: '#ffd479' })
+          .setOrigin(0.5),
+      );
+    }
+    if (this.rewardCardName) {
+      this.root.add(
+        this.add
+          .text(SCREEN.width / 2, SCREEN.height / 2 + 54, `Новая карта: ${this.rewardCardName}`, { fontSize: '22px', color: '#9fe3d0' })
           .setOrigin(0.5),
       );
     }

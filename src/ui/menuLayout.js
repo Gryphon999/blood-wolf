@@ -1,6 +1,6 @@
 import { SCREEN } from './layout.js';
 
-export const MENU_ITEMS = ['Бой', 'Колода', 'Магазин', 'Рейтинг'];
+export const MENU_ITEMS = ['Бой', 'Сюжет', 'Колода', 'Магазин', 'Рейтинг'];
 export const BUTTON_W = 260;
 export const BUTTON_H = 56;
 export const MENU_CENTER_X = SCREEN.width / 2;

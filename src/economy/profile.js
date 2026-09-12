@@ -14,7 +14,31 @@ export function createProfile() {
     collection,
     deck: PLAYER_DECK.map((card) => card.id),
     faction: 'humans',
+    story: { cleared: 0 },
   };
+}
+
+export function isNodeUnlocked(profile, index) {
+  return index <= (profile.story?.cleared ?? 0);
+}
+
+export function isNodeCleared(profile, index) {
+  return index < (profile.story?.cleared ?? 0);
+}
+
+export function clearNode(profile, index) {
+  if (!profile.story) profile.story = { cleared: 0 };
+  if (index === profile.story.cleared) {
+    profile.story.cleared = index + 1;
+  }
+  return profile;
+}
+
+export function grantCard(profile, id) {
+  if (!profile.collection[id]) {
+    profile.collection[id] = { count: 1, level: 1 };
+  }
+  return profile;
 }
 
 export function addGold(profile, amount) {
