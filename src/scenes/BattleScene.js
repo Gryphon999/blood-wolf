@@ -35,6 +35,9 @@ export class BattleScene extends Phaser.Scene {
     const status = m.winner !== null ? '' : m.current === 0 ? 'Твой ход' : 'Ход ИИ…';
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
 
+    const menuBtn = this.addText(SCREEN.width - 110, 14, '‹ В меню', '#9fbfff').setInteractive({ useHandCursor: true });
+    menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+
     for (const rowName of ROW_NAMES) {
       this.renderRow(opp, 'opponent', rowName);
       this.renderRow(player, 'player', rowName);
@@ -162,6 +165,12 @@ export class BattleScene extends Phaser.Scene {
     this.root.add(
       this.add.text(SCREEN.width / 2, SCREEN.height / 2, text, { fontSize: '48px', color: '#ffd479' }).setOrigin(0.5),
     );
+    const back = this.add
+      .text(SCREEN.width / 2, SCREEN.height / 2 + 60, '‹ В меню', { fontSize: '24px', color: '#9fbfff' })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    back.on('pointerdown', () => this.scene.start('MenuScene'));
+    this.root.add(back);
   }
 }
 
