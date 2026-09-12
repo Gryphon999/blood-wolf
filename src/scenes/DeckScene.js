@@ -5,10 +5,15 @@ import { canUpgrade, upgradeCard, upgradeCost, toggleDeckCard, isDeckValid } fro
 import { getCard } from '../data/cardCatalog.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
+import { preloadCardAssets } from '../ui/preloadAssets.js';
 
 export class DeckScene extends Phaser.Scene {
   constructor() {
     super('DeckScene');
+  }
+
+  preload() {
+    preloadCardAssets(this);
   }
 
   create() {

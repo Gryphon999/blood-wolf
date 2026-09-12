@@ -1,15 +1,15 @@
 // Original dark-fantasy content (no third-party IP).
-const card = (id, name, type, row, power, effect = null, rarity = 'common') => ({
-  id, name, faction: 'humans', type, row, power, effect, rarity, cost: 0, art: null,
+const card = (id, name, type, row, power, effect = null, rarity = 'common', art = null) => ({
+  id, name, faction: 'humans', type, row, power, effect, rarity, cost: 0, art,
 });
 
 export const PLAYER_DECK = [
   card('merc_a', 'Наёмник', 'unit', 'melee', 4),
   card('merc_b', 'Наёмник', 'unit', 'melee', 4),
   card('merc_c', 'Наёмник', 'unit', 'melee', 4),
-  card('knight', 'Рыцарь', 'unit', 'melee', 6),
-  card('archer_a', 'Лучник', 'unit', 'ranged', 3),
-  card('archer_b', 'Лучник', 'unit', 'ranged', 3),
+  card('knight', 'Рыцарь', 'unit', 'melee', 6, null, 'common', 'knight'),
+  card('archer_a', 'Лучник', 'unit', 'ranged', 3, null, 'common', 'archer'),
+  card('archer_b', 'Лучник', 'unit', 'ranged', 3, null, 'common', 'archer'),
   card('catapult', 'Катапульта', 'unit', 'siege', 5),
   card('champion', 'Витязь', 'hero', 'melee', 7),
   card('warhorn', 'Рог войны', 'special', 'melee', 0, 'horn'),

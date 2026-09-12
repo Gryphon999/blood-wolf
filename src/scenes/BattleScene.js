@@ -9,6 +9,7 @@ import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard } from '../economy/profile.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
+import { preloadBattleAssets } from '../ui/preloadAssets.js';
 
 const ROW_TINT = { melee: 0x261a1a, ranged: 0x1a2620, siege: 0x1a1f2a };
 
@@ -19,8 +20,17 @@ export class BattleScene extends Phaser.Scene {
     super('BattleScene');
   }
 
+  preload() {
+    preloadBattleAssets(this);
+  }
+
   create(data) {
     drawBackground(this);
+    if (this.textures.exists('battle_bg')) {
+      this.add.image(SCREEN.width / 2, SCREEN.height / 2, 'battle_bg')
+        .setDisplaySize(SCREEN.width, SCREEN.height)
+        .setAlpha(0.18);
+    }
     this.storyIndex = data?.storyIndex ?? null;
     this.rewardGold = data?.rewardGold ?? 0;
     this.rewardCardId = data?.rewardCardId ?? null;

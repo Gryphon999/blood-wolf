@@ -5,10 +5,15 @@ import { getProfile, persist } from '../economy/session.js';
 import { canBuy, buyCard } from '../economy/profile.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
+import { preloadCardAssets } from '../ui/preloadAssets.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
     super('ShopScene');
+  }
+
+  preload() {
+    preloadCardAssets(this);
   }
 
   create() {
