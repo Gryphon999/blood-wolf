@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createProfile, addGold, upgradeCost, canUpgrade, upgradeCard,
   toggleDeckCard, isDeckValid, buildDeckCards, canBuy, buyCard,
+  isNodeUnlocked, isNodeCleared, clearNode, grantCard,
 } from './profile.js';
 
 describe('profile', () => {
@@ -86,5 +87,35 @@ describe('shop purchases', () => {
     const p = createProfile();
     expect(canBuy(p, 'paladin')).toBe(false);
     expect(() => buyCard(p, 'paladin')).toThrow('Cannot buy card: paladin');
+  });
+});
+
+describe('story progress', () => {
+  it('starts with only the first node unlocked', () => {
+    const p = createProfile();
+    expect(p.story.cleared).toBe(0);
+    expect(isNodeUnlocked(p, 0)).toBe(true);
+    expect(isNodeUnlocked(p, 1)).toBe(false);
+    expect(isNodeCleared(p, 0)).toBe(false);
+  });
+
+  it('clearing the frontier node unlocks the next', () => {
+    const p = createProfile();
+    clearNode(p, 0);
+    expect(p.story.cleared).toBe(1);
+    expect(isNodeCleared(p, 0)).toBe(true);
+    expect(isNodeUnlocked(p, 1)).toBe(true);
+  });
+
+  it('clearing a non-frontier node is a no-op', () => {
+    const p = createProfile();
+    clearNode(p, 2);
+    expect(p.story.cleared).toBe(0);
+  });
+
+  it('grants a card into the collection', () => {
+    const p = createProfile();
+    grantCard(p, 'paladin');
+    expect(p.collection['paladin']).toEqual({ count: 1, level: 1 });
   });
 });

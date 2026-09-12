@@ -3,9 +3,10 @@ import { MENU_ITEMS, menuButtonY, MENU_CENTER_X } from './menuLayout.js';
 import { SCREEN } from './layout.js';
 
 describe('menuLayout', () => {
-  it('has four items starting with Бой', () => {
-    expect(MENU_ITEMS.length).toBe(4);
+  it('has five items with Бой and Сюжет first', () => {
+    expect(MENU_ITEMS.length).toBe(5);
     expect(MENU_ITEMS[0]).toBe('Бой');
+    expect(MENU_ITEMS[1]).toBe('Сюжет');
   });
 
   it('stacks buttons from top to bottom', () => {
