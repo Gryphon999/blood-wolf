@@ -30,10 +30,12 @@ export function createCardView(scene, cardDef, options = {}) {
       const srcH = tex.source[0].height;
       // Crop the bottom ~35% (stats/text area of the source card image).
       const cropH = Math.floor(srcH * 0.65);
+      // Fit proportionally (no stretch) — like CSS object-fit: contain.
+      const scale = Math.min(ART_W / srcW, ART_H / cropH);
       const img = scene.add
         .image(0, ART_CENTER_Y, artKey)
         .setCrop(0, 0, srcW, cropH)
-        .setDisplaySize(ART_W, ART_H);
+        .setScale(scale);
       container.add(img);
     }
 
