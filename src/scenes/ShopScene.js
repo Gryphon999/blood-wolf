@@ -4,6 +4,7 @@ import { createCardView } from '../ui/CardView.js';
 import { getProfile, persist } from '../economy/session.js';
 import { canBuy, buyCard } from '../economy/profile.js';
 import { SCREEN } from '../ui/layout.js';
+import { drawBackground } from '../ui/background.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -11,6 +12,7 @@ export class ShopScene extends Phaser.Scene {
   }
 
   create() {
+    drawBackground(this);
     this.root = this.add.container(0, 0);
     this.render();
   }

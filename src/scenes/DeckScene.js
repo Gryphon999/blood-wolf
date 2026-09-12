@@ -4,6 +4,7 @@ import { getProfile, persist } from '../economy/session.js';
 import { canUpgrade, upgradeCard, upgradeCost, toggleDeckCard, isDeckValid } from '../economy/profile.js';
 import { getCard } from '../data/cardCatalog.js';
 import { SCREEN } from '../ui/layout.js';
+import { drawBackground } from '../ui/background.js';
 
 export class DeckScene extends Phaser.Scene {
   constructor() {
@@ -11,6 +12,7 @@ export class DeckScene extends Phaser.Scene {
   }
 
   create() {
+    drawBackground(this);
     this.root = this.add.container(0, 0);
     this.render();
   }
