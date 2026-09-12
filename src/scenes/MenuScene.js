@@ -16,11 +16,12 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     MENU_ITEMS.forEach((label, i) => {
-      const enabled = label === 'Бой';
+      const target = { 'Бой': 'BattleScene', 'Колода': 'DeckScene' }[label];
+      const enabled = Boolean(target);
       const shown = enabled ? label : `${label} — скоро`;
       createButton(this, MENU_CENTER_X, menuButtonY(i), shown, {
         enabled,
-        onClick: () => this.scene.start('BattleScene'),
+        onClick: () => this.scene.start(target),
       });
     });
   }
