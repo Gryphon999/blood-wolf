@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createProfile, addGold, upgradeCost, canUpgrade, upgradeCard,
-  toggleDeckCard, isDeckValid, buildDeckCards,
+  toggleDeckCard, isDeckValid, buildDeckCards, canBuy, buyCard,
 } from './profile.js';
 
 describe('profile', () => {
@@ -61,5 +61,30 @@ describe('profile', () => {
     upgradeCard(p, 'knight');
     const knight = buildDeckCards(p).find((c) => c.id === 'knight');
     expect(knight.power).toBe(7);
+  });
+});
+
+describe('shop purchases', () => {
+  it('buys a card the player can afford, spending gold and adding to collection', () => {
+    const p = createProfile();
+    addGold(p, 150);
+    expect(canBuy(p, 'guard')).toBe(true);
+    buyCard(p, 'guard');
+    expect(p.gold).toBe(50);
+    expect(p.collection['guard']).toEqual({ count: 1, level: 1 });
+  });
+
+  it('cannot buy a card already owned', () => {
+    const p = createProfile();
+    addGold(p, 1000);
+    buyCard(p, 'guard');
+    expect(canBuy(p, 'guard')).toBe(false);
+    expect(() => buyCard(p, 'guard')).toThrow('Cannot buy card: guard');
+  });
+
+  it('cannot buy without enough gold', () => {
+    const p = createProfile();
+    expect(canBuy(p, 'paladin')).toBe(false);
+    expect(() => buyCard(p, 'paladin')).toThrow('Cannot buy card: paladin');
   });
 });

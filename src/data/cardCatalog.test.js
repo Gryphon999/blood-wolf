@@ -14,4 +14,8 @@ describe('cardCatalog', () => {
     expect(ALL_CARD_IDS).toContain('knight');
     expect(ALL_CARD_IDS).toContain('ghoul_a');
   });
+
+  it('resolves a shop card', () => {
+    expect(getCard('paladin').name).toBe('Паладин');
+  });
 });

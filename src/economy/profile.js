@@ -48,6 +48,20 @@ export function upgradeCard(profile, id) {
   return profile;
 }
 
+export function canBuy(profile, id) {
+  if (profile.collection[id]) return false;
+  return profile.gold >= getCard(id).cost;
+}
+
+export function buyCard(profile, id) {
+  if (!canBuy(profile, id)) {
+    throw new Error(`Cannot buy card: ${id}`);
+  }
+  profile.gold -= getCard(id).cost;
+  profile.collection[id] = { count: 1, level: 1 };
+  return profile;
+}
+
 export function toggleDeckCard(profile, id) {
   if (!profile.collection[id]) {
     throw new Error(`Card not in collection: ${id}`);
