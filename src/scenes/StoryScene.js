@@ -3,6 +3,7 @@ import { STORY_NODES } from '../data/story.js';
 import { getProfile } from '../economy/session.js';
 import { isNodeUnlocked, isNodeCleared } from '../economy/profile.js';
 import { SCREEN } from '../ui/layout.js';
+import { drawBackground } from '../ui/background.js';
 
 export class StoryScene extends Phaser.Scene {
   constructor() {
@@ -10,6 +11,7 @@ export class StoryScene extends Phaser.Scene {
   }
 
   create() {
+    drawBackground(this);
     this.root = this.add.container(0, 0);
     this.render();
   }

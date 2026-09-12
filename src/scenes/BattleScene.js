@@ -8,6 +8,9 @@ import { AI_DECK } from '../data/starterDecks.js';
 import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard } from '../economy/profile.js';
 import { getCard } from '../data/cardCatalog.js';
+import { drawBackground } from '../ui/background.js';
+
+const ROW_TINT = { melee: 0x261a1a, ranged: 0x1a2620, siege: 0x1a1f2a };
 
 const NO_TARGET_EFFECTS = ['weather_frost', 'weather_fog', 'weather_rain', 'clear'];
 
@@ -17,6 +20,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(data) {
+    drawBackground(this);
     this.storyIndex = data?.storyIndex ?? null;
     this.rewardGold = data?.rewardGold ?? 0;
     this.rewardCardId = data?.rewardCardId ?? null;
@@ -95,7 +99,7 @@ export class BattleScene extends Phaser.Scene {
 
   renderRow(side, sideName, rowName) {
     const y = rowY(sideName, rowName);
-    const bg = this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, 0x1c1a22).setStrokeStyle(1, 0x4a4436);
+    const bg = this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, ROW_TINT[rowName] ?? 0x1c1a22).setStrokeStyle(1, 0x4a4436);
     this.root.add(bg);
 
     side.board[rowName].forEach((card, i) => {
