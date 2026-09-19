@@ -162,7 +162,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   onHandClick(i) {
-    if (this.match.current !== 0 || this.match.winner !== null) return;
+    if (this.match.current !== 0 || this.match.winner !== null || this.awaitingHeal) return;
     const def = this.match.players[0].hand[i].def;
     if (def.type === 'special' && NO_TARGET_EFFECTS.includes(def.effect)) {
       playCard(this.match, i, 'melee'); // row ignored for weather/clear
