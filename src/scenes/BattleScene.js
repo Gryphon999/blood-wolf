@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { createMatch, playCard, pass } from '../engine/GwentMatch.js';
+import { createMatch, playCard, pass, healUnit } from '../engine/GwentMatch.js';
 import { chooseMove } from '../engine/ai/OpponentAI.js';
 import { rowPower } from '../engine/Board.js';
 import { createCardView } from '../ui/CardView.js';
@@ -43,6 +43,7 @@ export class BattleScene extends Phaser.Scene {
     this.rewardGranted = false;
     this.reward = 0;
     this.rewardCardName = null;
+    this.awaitingHeal = false;
     this.root = this.add.container(0, 0);
     this.render();
   }
@@ -113,9 +114,17 @@ export class BattleScene extends Phaser.Scene {
     this.root.add(bg);
 
     side.board[rowName].forEach((card, i) => {
+      const isHealTarget = this.awaitingHeal
+        && sideName === 'player'
+        && card.def.type !== 'hero'
+        && card.power < card.def.power;
       const cv = createCardView(this, card.def);
       cv.setScale(0.6);
       cv.setPosition(220 + i * (CARD_W * 0.6 + 6), y);
+      if (isHealTarget) {
+        cv.list[0].setStrokeStyle(3, 0x00ff88).setInteractive({ useHandCursor: true });
+        cv.list[0].on('pointerdown', () => this.onHealTarget(rowName, i));
+      }
       this.root.add(cv);
     });
 
@@ -167,13 +176,38 @@ export class BattleScene extends Phaser.Scene {
 
   onRowClick(rowName) {
     if (this.selectedIndex === null) return;
+    const playedDef = this.match.players[0].hand[this.selectedIndex].def;
     playCard(this.match, this.selectedIndex, rowName);
     this.selectedIndex = null;
+    if (playedDef.effect === 'heal' && this.findWeakenedCards().length > 0) {
+      this.awaitingHeal = true;
+      this.render();
+      return;
+    }
+    this.afterPlayerAction();
+  }
+
+  findWeakenedCards() {
+    const board = this.match.players[0].board;
+    const result = [];
+    for (const row of ROW_NAMES) {
+      board[row].forEach((card, i) => {
+        if (card.def.type !== 'hero' && card.power < card.def.power) {
+          result.push({ row, cardIndex: i });
+        }
+      });
+    }
+    return result;
+  }
+
+  onHealTarget(row, cardIndex) {
+    healUnit(this.match, 0, row, cardIndex);
+    this.awaitingHeal = false;
     this.afterPlayerAction();
   }
 
   onPass() {
-    if (this.match.current !== 0 || this.match.winner !== null) return;
+    if (this.match.current !== 0 || this.match.winner !== null || this.awaitingHeal) return;
     pass(this.match);
     this.selectedIndex = null;
     this.afterPlayerAction();
