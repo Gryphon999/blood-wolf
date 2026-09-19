@@ -163,3 +163,11 @@ export function pass(match) {
     match.current = 1 - match.current;
   }
 }
+
+export function healUnit(match, playerIndex, row, cardIndex) {
+  const card = match.players[playerIndex]?.board[row]?.[cardIndex];
+  if (!card) throw new Error(`No card at ${row}[${cardIndex}]`);
+  if (card.def.type === 'hero') throw new Error('Cannot heal a hero');
+  if (card.power === card.def.power) throw new Error('Card is not weakened');
+  card.power = card.def.power;
+}
