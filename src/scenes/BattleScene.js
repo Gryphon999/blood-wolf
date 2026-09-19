@@ -6,7 +6,9 @@ import { createCardView } from '../ui/CardView.js';
 import { SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, CARD_W, BOARD_CENTER_Y } from '../ui/layout.js';
 import { AI_DECK } from '../data/starterDecks.js';
 import { getProfile, persist } from '../economy/session.js';
-import { buildDeckCards, addGold, clearNode, grantCard } from '../economy/profile.js';
+import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward } from '../economy/profile.js';
+import { showChest, showInterstitial, recordWin } from '../sdk/yandex.js';
+import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
 import { preloadBattleAssets } from '../ui/preloadAssets.js';
@@ -75,6 +77,8 @@ export class BattleScene extends Phaser.Scene {
             this.rewardCardName = getCard(this.rewardCardId).name;
           }
         }
+        profile.wins = (profile.wins ?? 0) + 1;
+        recordWin(profile);
         persist();
       }
     }
@@ -250,8 +254,23 @@ export class BattleScene extends Phaser.Scene {
       .text(SCREEN.width / 2, SCREEN.height / 2 + 60, '‹ В меню', { fontSize: '24px', color: '#9fbfff' })
       .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => this.scene.start(this.returnScene));
+    back.on('pointerdown', () => showInterstitial(() => this.scene.start(this.returnScene)));
     this.root.add(back);
+
+    if (w === 0) {
+      const chest = this.add
+        .text(SCREEN.width / 2, SCREEN.height / 2 + 100, '🎁 Сундук', { fontSize: '22px', color: '#ffd479' })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+      chest.on('pointerdown', () => {
+        showChest(() => {
+          grantChestReward(getProfile(), SHOP_CARDS);
+          persist();
+          this.render();
+        });
+      });
+      this.root.add(chest);
+    }
 
     if (this.reward > 0) {
       this.root.add(
