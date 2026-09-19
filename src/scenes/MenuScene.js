@@ -3,6 +3,10 @@ import { createButton } from '../ui/Button.js';
 import { MENU_ITEMS, menuButtonY, MENU_CENTER_X } from '../ui/menuLayout.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
+import { showChest } from '../sdk/yandex.js';
+import { getProfile, persist } from '../economy/session.js';
+import { grantChestReward } from '../economy/profile.js';
+import { SHOP_CARDS } from '../data/shopCards.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -24,6 +28,16 @@ export class MenuScene extends Phaser.Scene {
         enabled,
         onClick: () => this.scene.start(target),
       });
+    });
+
+    createButton(this, MENU_CENTER_X, 670, '🎁 Сундук', {
+      enabled: true,
+      onClick: () => {
+        showChest(() => {
+          grantChestReward(getProfile(), SHOP_CARDS);
+          persist();
+        });
+      },
     });
   }
 }
