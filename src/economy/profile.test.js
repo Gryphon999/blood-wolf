@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   createProfile, addGold, upgradeCost, canUpgrade, upgradeCard,
   toggleDeckCard, isDeckValid, buildDeckCards, canBuy, buyCard,
-  isNodeUnlocked, isNodeCleared, clearNode, grantCard,
+  isNodeUnlocked, isNodeCleared, clearNode, grantCard, grantChestReward,
 } from './profile.js';
 
 describe('profile', () => {
@@ -117,5 +117,46 @@ describe('story progress', () => {
     const p = createProfile();
     grantCard(p, 'paladin');
     expect(p.collection['paladin']).toEqual({ count: 1, level: 1 });
+  });
+});
+
+describe('createProfile — wins field', () => {
+  it('initializes wins to zero', () => {
+    const p = createProfile();
+    expect(p.wins).toBe(0);
+  });
+});
+
+describe('grantChestReward', () => {
+  it('adds 100 gold', () => {
+    const p = createProfile();
+    grantChestReward(p, []);
+    expect(p.gold).toBe(100);
+  });
+
+  it('grants an uncollected card when Math.random < 0.2', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const p = createProfile();
+    grantChestReward(p, [{ id: 'rare_card' }]);
+    expect(p.collection['rare_card']).toBeDefined();
+    vi.restoreAllMocks();
+  });
+
+  it('skips card when Math.random >= 0.2', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const p = createProfile();
+    grantChestReward(p, [{ id: 'rare_card' }]);
+    expect(p.collection['rare_card']).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+
+  it('skips cards already in collection', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const p = createProfile(); // медик уже в коллекции из starterDecks
+    const before = { ...p.collection };
+    grantChestReward(p, [{ id: 'medic' }]);
+    expect(p.collection).toEqual(before); // коллекция не изменилась, только золото
+    expect(p.gold).toBe(100);
+    vi.restoreAllMocks();
   });
 });

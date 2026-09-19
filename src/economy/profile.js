@@ -11,6 +11,7 @@ export function createProfile() {
   }
   return {
     gold: 0,
+    wins: 0,
     collection,
     deck: PLAYER_DECK.map((card) => card.id),
     faction: 'humans',
@@ -110,4 +111,14 @@ export function buildDeckCards(profile) {
     const bonus = def.type === 'unit' ? level - 1 : 0;
     return { ...def, power: def.power + bonus };
   });
+}
+
+export function grantChestReward(profile, shopCards) {
+  profile.gold += 100;
+  const uncollected = shopCards.filter(c => !profile.collection[c.id]);
+  if (uncollected.length > 0 && Math.random() < 0.2) {
+    const card = uncollected[Math.floor(Math.random() * uncollected.length)];
+    grantCard(profile, card.id);
+  }
+  return profile;
 }
