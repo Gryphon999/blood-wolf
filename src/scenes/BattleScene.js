@@ -88,7 +88,7 @@ export class BattleScene extends Phaser.Scene {
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
 
     const menuBtn = this.addText(SCREEN.width - 110, 14, '‹ Назад', '#9fbfff').setInteractive({ useHandCursor: true });
-    menuBtn.on('pointerdown', () => this.scene.start(this.returnScene));
+    menuBtn.on('pointerdown', () => showInterstitial(() => this.scene.start(this.returnScene)));
 
     for (const rowName of ROW_NAMES) {
       this.renderRow(opp, 'opponent', rowName);
@@ -266,6 +266,7 @@ export class BattleScene extends Phaser.Scene {
         showChest(() => {
           grantChestReward(getProfile(), SHOP_CARDS);
           persist();
+          this.root.removeAll(true);
           this.render();
         });
       });

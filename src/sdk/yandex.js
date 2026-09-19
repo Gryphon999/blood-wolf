@@ -29,7 +29,7 @@ export function showInterstitial(onClose) {
 }
 
 export function showChest(onReward) {
-  if (!ysdk) return;
+  if (!ysdk) { onReward(); return; }
   ysdk.adv.showRewardedVideo({
     callbacks: {
       onRewarded: () => onReward(),

@@ -152,10 +152,12 @@ describe('grantChestReward', () => {
 
   it('skips cards already in collection', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
-    const p = createProfile(); // медик уже в коллекции из starterDecks
+    const p = createProfile();
+    // Use any card already known to be in the starter collection
+    const ownedId = Object.keys(p.collection)[0];
     const before = { ...p.collection };
-    grantChestReward(p, [{ id: 'medic' }]);
-    expect(p.collection).toEqual(before); // коллекция не изменилась, только золото
+    grantChestReward(p, [{ id: ownedId }]);
+    expect(p.collection).toEqual(before);
     expect(p.gold).toBe(100);
     vi.restoreAllMocks();
   });
