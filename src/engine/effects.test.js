@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createMatch, playCard, pass } from './GwentMatch.js';
 import { createCard } from './Card.js';
 import { addUnit } from './Board.js';
+import { applyDeploy } from './effects.js';
 
 // Helper: minimal unit def
 const uDef = (id, power, row = 'melee', opts = {}) => ({ id, type: 'unit', row, power, ...opts });
@@ -86,6 +87,21 @@ describe('Deploy: boost_neighbor', () => {
     playCard(match, 0, 'melee'); // booster — first is at index 0, booster at 1
     expect(match.players[0].board.melee[0].power).toBe(5); // 3 + 2
   });
+
+  it('does not boost the card placed after it', () => {
+    const leftDef = uDef('left', 4, 'melee');
+    const boosterDef = uDef('bn', 3, 'melee', { deployEffect: 'boost_neighbor', deployParam: 2 });
+    const rightDef = uDef('right', 5, 'melee');
+    const match = createMatch([boosterDef, unit('x', 1)], [unit('b', 1)], 1);
+    // Manually place left neighbor, then booster, then right neighbor
+    addUnit(match.players[0].board, 'melee', createCard(leftDef));
+    addUnit(match.players[0].board, 'melee', createCard(boosterDef));
+    addUnit(match.players[0].board, 'melee', createCard(rightDef));
+    const boosterCard = match.players[0].board.melee[1];
+    applyDeploy(match, boosterCard, 0);
+    expect(match.players[0].board.melee[0].power).toBe(6); // left boosted (4 + 2)
+    expect(match.players[0].board.melee[2].power).toBe(5); // right NOT boosted
+  });
 });
 
 describe('Deploy: boost_all_faction', () => {
@@ -149,5 +165,23 @@ describe('Deploy: wolf_pack', () => {
     addUnit(match.players[0].board, 'melee', createCard({ ...wolfDef, id: 'w1' }));
     playCard(match, 0, 'melee'); // 2 wolves — no boost
     expect(match.players[0].board.melee[0].power).toBe(2);
+  });
+});
+
+describe('Deploy: frost_weather_bonus', () => {
+  it('only boosts if weather was already active', () => {
+    const frostDef = uDef('fw', 4, 'melee', { deployEffect: 'frost_weather_bonus', deployParam: 3 });
+
+    // No weather: no boost
+    const match1 = createMatch([frostDef, unit('a2', 1)], [unit('b', 1)], 1);
+    playCard(match1, 0, 'melee');
+    expect(match1.players[0].board.melee[0].power).toBe(4); // no boost
+    expect(match1.weather.has('melee')).toBe(true); // frost added
+
+    // With existing weather: boost applies
+    const match2 = createMatch([frostDef, unit('a2', 1)], [unit('b', 1)], 1);
+    match2.weather.add('siege'); // pre-existing weather
+    playCard(match2, 0, 'melee');
+    expect(match2.players[0].board.melee[0].power).toBe(7); // 4 + 3
   });
 });

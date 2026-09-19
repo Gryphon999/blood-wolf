@@ -43,7 +43,6 @@ export function applyDeploy(match, card, playerIdx) {
       const rowCards = own[row];
       const idx = rowCards.indexOf(card);
       if (idx > 0) rowCards[idx - 1].power += deployParam;
-      if (idx < rowCards.length - 1) rowCards[idx + 1].power += deployParam;
       break;
     }
     case 'boost_machine': {
@@ -148,8 +147,9 @@ export function applyDeploy(match, card, playerIdx) {
       break;
     }
     case 'frost_weather_bonus': {
+      const hadWeather = match.weather.size > 0;
       match.weather.add('melee');
-      if (match.weather.size > 0) card.power += deployParam;
+      if (hadWeather) card.power += deployParam;
       break;
     }
     default:
