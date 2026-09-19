@@ -7,6 +7,7 @@ function makePlayer(deck, handSize) {
     deck: cards.slice(handSize),
     hand: cards.slice(0, handSize),
     board: createBoard(),
+    graveyard: [],
     passed: false,
     roundsWon: 0,
   };
@@ -95,13 +96,25 @@ export function playCard(match, cardIndex, row) {
 
 function startNextRound(match, lastResult) {
   for (const player of match.players) {
-    player.board = createBoard();
+    for (const row of ROWS) {
+      const kept = [];
+      for (const card of player.board[row]) {
+        if (card.def.resilience) {
+          card.orderUsed = false; // reset Order for next round
+          kept.push(card);
+        } else if (!card.def.doomed) {
+          player.graveyard.push(card); // normal cards → graveyard
+          // doomed cards are simply dropped (neither kept nor graveyard)
+        }
+      }
+      player.board[row] = kept;
+    }
     player.passed = false;
   }
   match.round++;
   match.roundStarter = lastResult === 'draw'
     ? 1 - match.roundStarter
-    : 1 - lastResult; // the loser starts the next round
+    : 1 - lastResult;
   match.current = match.roundStarter;
   match.weather.clear();
 }

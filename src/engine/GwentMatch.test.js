@@ -361,3 +361,42 @@ describe('healUnit', () => {
     expect(() => healUnit(match, 0, 'melee', 0)).toThrow('Card is not weakened');
   });
 });
+
+describe('graveyard', () => {
+  it('player starts with an empty graveyard', () => {
+    const match = createMatch([unit('a', 3)], [unit('b', 3)], 1);
+    expect(match.players[0].graveyard).toEqual([]);
+  });
+
+  it('non-resilience cards go to graveyard at round end', () => {
+    const match = createMatch([unit('a', 5), unit('a2', 5)], [unit('b', 3), unit('b2', 3)], 2);
+    playCard(match, 0, 'melee'); // p0 plays, turn→p1
+    playCard(match, 0, 'melee'); // p1 plays, turn→p0
+    pass(match);                 // p0 passes, turn→p1
+    pass(match);                 // p1 passes, round resolves → round 2 begins
+    expect(match.players[0].graveyard.length).toBe(1); // 'a' cleared
+    expect(match.players[1].graveyard.length).toBe(1); // 'b' cleared
+  });
+
+  it('resilience card stays on board and does not enter graveyard', () => {
+    const resilDef = { id: 'r', row: 'melee', power: 5, resilience: true };
+    const match = createMatch([resilDef, unit('a2', 3)], [unit('b', 3), unit('b2', 3)], 2);
+    playCard(match, 0, 'melee'); // resilient card to board
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match); // round resolves
+    expect(match.players[0].board.melee.length).toBe(1); // stays on board
+    expect(match.players[0].graveyard.length).toBe(0);   // not in graveyard
+  });
+
+  it('doomed card is removed from game (not added to graveyard)', () => {
+    const doomedDef = { id: 'd', row: 'melee', power: 5, doomed: true };
+    const match = createMatch([doomedDef, unit('a2', 3)], [unit('b', 3), unit('b2', 3)], 2);
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match);
+    expect(match.players[0].board.melee.length).toBe(0);
+    expect(match.players[0].graveyard.length).toBe(0); // doomed: NOT in graveyard
+  });
+});
