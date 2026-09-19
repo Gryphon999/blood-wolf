@@ -14,7 +14,8 @@ export const PLAYER_DECK = [
   card('champion', 'Витязь',  'hero',    'melee',  7, null, 'legendary', 'champion'),
   card('warhorn',  'Рог войны', 'special', 'melee', 0, 'horn',          'common', 'warhorn'),
   card('frost',    'Мороз',   'special', 'melee',  0, 'weather_frost',  'rare',   'frost'),
-  card('clear_sky', 'Ясное небо', 'special', 'melee', 0, 'clear',       'common', null),
+  card('clear_sky', 'Ясное небо', 'special', 'melee', 0, 'clear', 'common', null),
+  card('medic',    'Медик',   'unit',    'melee',  4, 'heal',     'rare',   'medic'),
 ];
 
 export const AI_DECK = [
