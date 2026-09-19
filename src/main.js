@@ -5,6 +5,9 @@ import { DeckScene } from './scenes/DeckScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
 import { StoryScene } from './scenes/StoryScene.js';
 import { SCREEN } from './ui/layout.js';
+import { initYandex } from './sdk/yandex.js';
+
+await initYandex();
 
 new Phaser.Game({
   type: Phaser.AUTO,
