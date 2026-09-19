@@ -1,5 +1,6 @@
 import { createCard } from './Card.js';
 import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
+import { applyDeploy } from './effects.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -48,24 +49,53 @@ function applyEffect(match, effect, row) {
     return;
   }
   if (effect === 'horn') {
-    if (!ROWS.includes(row)) {
-      throw new Error(`Unknown row: ${row}`);
-    }
+    if (!ROWS.includes(row)) throw new Error(`Unknown row: ${row}`);
     match.players[match.current].board.horns.add(row);
     return;
   }
   if (effect === 'sign_damage') {
-    if (!ROWS.includes(row)) {
-      throw new Error(`Unknown row: ${row}`);
-    }
+    if (!ROWS.includes(row)) throw new Error(`Unknown row: ${row}`);
     const opponentBoard = match.players[1 - match.current].board;
     for (const card of opponentBoard[row]) {
-      if (card.def.type !== 'hero') {
-        card.power = Math.max(1, card.power - 2);
-      }
+      if (card.def.type !== 'hero') card.power = Math.max(1, card.power - 2);
     }
     return;
   }
+  if (effect === 'lightning_ranged') {
+    const oppBoard = match.players[1 - match.current].board;
+    const units = oppBoard.ranged.filter(c => c.def.type !== 'hero');
+    const target = units.length ? units.reduce((a, b) => (a.power >= b.power ? a : b)) : null;
+    if (target) target.power = Math.max(1, target.power - 3);
+    return;
+  }
+  if (effect === 'blessing_humans') {
+    const ownBoard = match.players[match.current].board;
+    ROWS.forEach(r => ownBoard[r].forEach(c => {
+      if (c.def.faction === 'humans') c.power += 2;
+    }));
+    return;
+  }
+  if (effect === 'order_ready') {
+    const ownBoard = match.players[match.current].board;
+    ROWS.forEach(r => ownBoard[r].forEach(c => {
+      if (c.def.hasOrder && c.def.chargeMax === 0) c.orderUsed = false;
+    }));
+    return;
+  }
+  if (effect === 'fog_frost_combo') {
+    match.weather.add('ranged');
+    match.weather.add('melee');
+    return;
+  }
+  if (effect === 'bleed_all_enemies') {
+    const oppBoard = match.players[1 - match.current].board;
+    ROWS.forEach(r => oppBoard[r].forEach(c => {
+      if (c.def.type !== 'hero') c.bleedStacks++;
+    }));
+    return;
+  }
+  // 'heal' is handled by BattleScene (awaitingHeal flow), not the engine
+  if (effect === 'heal') return;
   throw new Error(`Unknown effect: ${effect}`);
 }
 
@@ -75,6 +105,11 @@ function applyCard(match, card, row) {
     return;
   }
   addUnit(match.players[match.current].board, row, card);
+  // Non-Zeal Order cards can't act the turn they're played
+  if (card.def.hasOrder && !card.def.zeal && card.def.chargeMax === 0) {
+    card.orderUsed = true;
+  }
+  applyDeploy(match, card, match.current);
 }
 
 export function playCard(match, cardIndex, row) {
