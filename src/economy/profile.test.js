@@ -68,25 +68,25 @@ describe('profile', () => {
 describe('shop purchases', () => {
   it('buys a card the player can afford, spending gold and adding to collection', () => {
     const p = createProfile();
-    addGold(p, 150);
-    expect(canBuy(p, 'guard')).toBe(true);
-    buyCard(p, 'guard');
-    expect(p.gold).toBe(50);
-    expect(p.collection['guard']).toEqual({ count: 1, level: 1 });
+    addGold(p, 250); // squire costs 250 (5 prov * 50)
+    expect(canBuy(p, 'squire')).toBe(true);
+    buyCard(p, 'squire');
+    expect(p.gold).toBe(0);
+    expect(p.collection['squire']).toEqual({ count: 1, level: 1 });
   });
 
   it('cannot buy a card already owned', () => {
     const p = createProfile();
     addGold(p, 1000);
-    buyCard(p, 'guard');
-    expect(canBuy(p, 'guard')).toBe(false);
-    expect(() => buyCard(p, 'guard')).toThrow('Cannot buy card: guard');
+    buyCard(p, 'squire');
+    expect(canBuy(p, 'squire')).toBe(false);
+    expect(() => buyCard(p, 'squire')).toThrow('Cannot buy card: squire');
   });
 
   it('cannot buy without enough gold', () => {
     const p = createProfile();
-    expect(canBuy(p, 'paladin')).toBe(false);
-    expect(() => buyCard(p, 'paladin')).toThrow('Cannot buy card: paladin');
+    expect(canBuy(p, 'chaos_demon')).toBe(false); // costs 600 (12 prov * 50)
+    expect(() => buyCard(p, 'chaos_demon')).toThrow('Cannot buy card: chaos_demon');
   });
 });
 
