@@ -9,7 +9,7 @@ const card = (id, name, faction, type, row, power, rarity, prov, opts = {}) => (
   hasOrder: opts.hasOrder ?? false,
   orderEffect: opts.orderEffect ?? null,
   orderParam: opts.orderParam ?? 1,
-  chargeMax: opts.chargeMax ?? (opts.hasOrder ? 1 : 0),
+  chargeMax: opts.chargeMax ?? 0,
   zeal: opts.zeal ?? false,
   armor: opts.armor ?? 0,
   resilience: opts.resilience ?? false,

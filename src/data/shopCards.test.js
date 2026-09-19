@@ -45,6 +45,14 @@ describe('shopCards', () => {
     expect(kingRaven.chargeMax).toBe(2);
   });
 
+  it('regular Order cards (non-Charge) have chargeMax === 0', () => {
+    const regularOrderIds = ['banner', 'paladin', 'eagle_eye', 'field_medic', 'alchemist', 'ballista', 'lich', 'archdemon'];
+    for (const id of regularOrderIds) {
+      const card = SHOP_CARDS.find(c => c.id === id);
+      expect(card.chargeMax, `${id} should have chargeMax 0`).toBe(0);
+    }
+  });
+
   it('resilience and doomed cards are correctly flagged', () => {
     expect(SHOP_CARDS.find(c => c.id === 'paladin').resilience).toBe(true);
     expect(SHOP_CARDS.find(c => c.id === 'chaos_demon').doomed).toBe(true);
