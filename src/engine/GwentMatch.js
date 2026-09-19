@@ -1,6 +1,6 @@
 import { createCard } from './Card.js';
 import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
-import { applyDeploy } from './effects.js';
+import { applyDeploy, applyOrder } from './effects.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -145,6 +145,12 @@ function startNextRound(match, lastResult) {
       player.board[row] = kept;
     }
     player.passed = false;
+    // Werewolves get +2 at the start of each new round
+    for (const row of ROWS) {
+      for (const card of player.board[row]) {
+        if (card.werewolf) card.power += 2;
+      }
+    }
   }
   match.round++;
   match.roundStarter = lastResult === 'draw'
@@ -242,5 +248,27 @@ export function startTurn(match) {
         card.orderUsed = false;
       }
     }
+  }
+}
+
+export function useOrder(match, playerIdx, row, cardIdx, opts = {}) {
+  const card = match.players[playerIdx]?.board[row]?.[cardIdx];
+  if (!card) throw new Error(`No card at ${row}[${cardIdx}]`);
+  if (!card.def.hasOrder) throw new Error('Card has no Order ability');
+  if (card.locked) throw new Error('Card is locked');
+
+  const isCharge = card.def.chargeMax > 0;
+  if (isCharge) {
+    if (card.chargesLeft <= 0) throw new Error('No charges left');
+  } else {
+    if (card.orderUsed) throw new Error('Order already used this turn');
+  }
+
+  applyOrder(match, card, playerIdx, opts);
+
+  if (isCharge) {
+    card.chargesLeft--;
+  } else {
+    card.orderUsed = true;
   }
 }

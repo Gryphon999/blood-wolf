@@ -203,7 +203,10 @@ export function applyOrder(match, card, playerIdx, opts = {}) {
     }
     case 'heal_ally': {
       const target = opts.target ?? weakest(nonHeroes(own).filter(c => c !== card));
-      if (target) target.power = Math.min(target.def.power, target.power + orderParam);
+      if (target) {
+        const cap = target.def.defPower ?? target.def.power;
+        target.power = Math.min(cap, target.power + orderParam);
+      }
       break;
     }
     case 'shield_ally': {

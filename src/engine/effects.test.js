@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, playCard, pass } from './GwentMatch.js';
+import { createMatch, playCard, pass, useOrder } from './GwentMatch.js';
 import { createCard } from './Card.js';
 import { addUnit } from './Board.js';
 import { applyDeploy } from './effects.js';
@@ -183,5 +183,76 @@ describe('Deploy: frost_weather_bonus', () => {
     match2.weather.add('siege'); // pre-existing weather
     playCard(match2, 0, 'melee');
     expect(match2.players[0].board.melee[0].power).toBe(7); // 4 + 3
+  });
+});
+
+describe('useOrder', () => {
+  it('applies the order effect and marks orderUsed', () => {
+    const bannerDef = uDef('bn', 2, 'melee', { hasOrder: true, orderEffect: 'boost_melee_row', orderParam: 1, chargeMax: 0 });
+    const ally = uDef('a', 3, 'melee');
+    const match = createMatch([bannerDef], [unit('x', 1)], 1);
+    addUnit(match.players[0].board, 'melee', createCard(bannerDef));
+    addUnit(match.players[0].board, 'melee', createCard(ally));
+    match.players[0].hand = [];
+    // manually mark as available (Zeal or turn reset simulated)
+    match.players[0].board.melee[0].orderUsed = false;
+    useOrder(match, 0, 'melee', 0);
+    expect(match.players[0].board.melee[1].power).toBe(4); // ally boosted
+    expect(match.players[0].board.melee[0].orderUsed).toBe(true);
+  });
+
+  it('throws if Order already used this turn', () => {
+    const bannerDef = uDef('bn', 2, 'melee', { hasOrder: true, orderEffect: 'boost_melee_row', orderParam: 1, chargeMax: 0 });
+    const match = createMatch([], [unit('x', 1)], 0);
+    addUnit(match.players[0].board, 'melee', createCard(bannerDef));
+    match.players[0].board.melee[0].orderUsed = true;
+    expect(() => useOrder(match, 0, 'melee', 0)).toThrow('Order already used this turn');
+  });
+
+  it('throws if card is locked', () => {
+    const bannerDef = uDef('bn', 2, 'melee', { hasOrder: true, orderEffect: 'boost_melee_row', orderParam: 1, chargeMax: 0 });
+    const match = createMatch([], [unit('x', 1)], 0);
+    addUnit(match.players[0].board, 'melee', createCard(bannerDef));
+    match.players[0].board.melee[0].locked = true;
+    match.players[0].board.melee[0].orderUsed = false;
+    expect(() => useOrder(match, 0, 'melee', 0)).toThrow('Card is locked');
+  });
+
+  it('decrements chargesLeft for Charge cards and allows reuse next turn', () => {
+    const sniperDef = uDef('sn', 4, 'ranged', { hasOrder: true, orderEffect: 'damage_one', orderParam: 2, chargeMax: 2 });
+    const enemy = { id: 'e', type: 'unit', row: 'melee', power: 6 };
+    const match = createMatch([], [enemy], 0);
+    addUnit(match.players[0].board, 'ranged', createCard(sniperDef));
+    addUnit(match.players[1].board, 'melee', createCard(enemy));
+    const sniper = match.players[0].board.ranged[0];
+    expect(sniper.chargesLeft).toBe(2);
+    useOrder(match, 0, 'ranged', 0); // use once
+    expect(sniper.chargesLeft).toBe(1);
+    expect(match.players[1].board.melee[0].power).toBe(4); // 6 - 2
+    useOrder(match, 0, 'ranged', 0); // use second charge
+    expect(sniper.chargesLeft).toBe(0);
+  });
+
+  it('throws when Charge card has no charges left', () => {
+    const sniperDef = uDef('sn', 4, 'ranged', { hasOrder: true, orderEffect: 'damage_one', orderParam: 2, chargeMax: 2 });
+    const match = createMatch([], [unit('x', 1)], 0);
+    addUnit(match.players[0].board, 'ranged', createCard(sniperDef));
+    match.players[0].board.ranged[0].chargesLeft = 0;
+    expect(() => useOrder(match, 0, 'ranged', 0)).toThrow('No charges left');
+  });
+
+  it('Zeal card (field_medic) can use Order on the same turn it is played', () => {
+    const zealDef = uDef('fm', 4, 'melee', {
+      tags: ['medic'], zeal: true, hasOrder: true, orderEffect: 'heal_ally', orderParam: 2, chargeMax: 0,
+    });
+    const wounded = uDef('w', 3, 'melee');
+    const match = createMatch([zealDef], [unit('x', 1)], 1);
+    addUnit(match.players[0].board, 'melee', createCard({ ...wounded, power: 1, defPower: 3 })); // manually wounded
+    playCard(match, 0, 'melee'); // plays zealDef; Zeal so orderUsed stays false
+    // The played zeal card is at index 1 of melee (wounded was 0, zealDef is 1)
+    const zealCard = match.players[0].board.melee.find(c => c.def.id === 'fm');
+    expect(zealCard.orderUsed).toBe(false); // Zeal: available immediately
+    useOrder(match, 0, 'melee', match.players[0].board.melee.indexOf(zealCard));
+    expect(match.players[0].board.melee[0].power).toBeGreaterThan(1); // healed
   });
 });
