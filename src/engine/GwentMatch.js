@@ -184,3 +184,28 @@ export function healUnit(match, playerIndex, row, cardIndex) {
   if (card.power === card.def.power) throw new Error('Card is not weakened');
   card.power = card.def.power;
 }
+
+export function startTurn(match) {
+  // Tick status effects for all cards on all boards
+  for (const player of match.players) {
+    for (const row of ROWS) {
+      for (const card of player.board[row]) {
+        if (card.def.type === 'hero') continue; // heroes immune
+        if (card.bleedStacks > 0) {
+          card.power = Math.max(1, card.power - card.bleedStacks);
+        }
+        if (card.poisoned) {
+          card.power = Math.max(1, card.power - 1);
+        }
+      }
+    }
+  }
+  // Reset regular Order (not Charge) for the current player
+  for (const row of ROWS) {
+    for (const card of match.players[match.current].board[row]) {
+      if (card.def.hasOrder && card.def.chargeMax === 0) {
+        card.orderUsed = false;
+      }
+    }
+  }
+}

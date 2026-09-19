@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, playCard, pass, hasLegalMove, healUnit } from './GwentMatch.js';
+import { createMatch, playCard, pass, hasLegalMove, healUnit, startTurn } from './GwentMatch.js';
 import { totalPower } from './Board.js';
 
 const unit = (id, power, row = 'melee') => ({ id, row, power });
@@ -398,5 +398,70 @@ describe('graveyard', () => {
     pass(match);
     expect(match.players[0].board.melee.length).toBe(0);
     expect(match.players[0].graveyard.length).toBe(0); // doomed: NOT in graveyard
+  });
+});
+
+describe('startTurn', () => {
+  it('reduces power by bleedStacks (min 1) for all board cards', () => {
+    const match = createMatch([unit('a', 5)], [unit('b', 5)], 1);
+    playCard(match, 0, 'melee');  // p0 plays, turn -> p1
+    match.players[0].board.melee[0].bleedStacks = 2;
+    playCard(match, 0, 'melee');  // p1 plays, turn -> p0
+    match.players[1].board.melee[0].bleedStacks = 1;
+    startTurn(match); // called at start of p0's turn
+    expect(match.players[0].board.melee[0].power).toBe(3); // 5 - 2
+    expect(match.players[1].board.melee[0].power).toBe(4); // 5 - 1
+  });
+
+  it('bleed does not reduce power below 1', () => {
+    const match = createMatch([unit('a', 1)], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    match.players[0].board.melee[0].bleedStacks = 5;
+    playCard(match, 0, 'melee');
+    startTurn(match);
+    expect(match.players[0].board.melee[0].power).toBe(1);
+  });
+
+  it('poison reduces power by 1 (min 1)', () => {
+    const match = createMatch([unit('a', 3)], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    match.players[0].board.melee[0].poisoned = true;
+    playCard(match, 0, 'melee');
+    startTurn(match);
+    expect(match.players[0].board.melee[0].power).toBe(2);
+  });
+
+  it('heroes are immune to bleed and poison', () => {
+    const heroDef = { id: 'h', type: 'hero', row: 'melee', power: 7 };
+    const match = createMatch([heroDef], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    match.players[0].board.melee[0].bleedStacks = 3;
+    match.players[0].board.melee[0].poisoned = true;
+    playCard(match, 0, 'melee');
+    startTurn(match);
+    expect(match.players[0].board.melee[0].power).toBe(7); // unchanged
+  });
+
+  it('resets orderUsed for current player non-Charge Order cards', () => {
+    const orderDef = { id: 'o', row: 'melee', power: 3, hasOrder: true, chargeMax: 0 };
+    const match = createMatch([orderDef], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    match.players[0].board.melee[0].orderUsed = true;
+    playCard(match, 0, 'melee');
+    // Now it's p0's turn again
+    match.current = 0;
+    startTurn(match);
+    expect(match.players[0].board.melee[0].orderUsed).toBe(false);
+  });
+
+  it('does NOT reset chargesLeft for Charge cards', () => {
+    const chargeDef = { id: 'c', row: 'melee', power: 3, hasOrder: true, chargeMax: 2 };
+    const match = createMatch([chargeDef], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    match.players[0].board.melee[0].chargesLeft = 1; // spent one charge
+    playCard(match, 0, 'melee');
+    match.current = 0;
+    startTurn(match);
+    expect(match.players[0].board.melee[0].chargesLeft).toBe(1); // unchanged
   });
 });
