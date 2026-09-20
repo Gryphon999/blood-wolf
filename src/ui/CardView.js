@@ -2,13 +2,8 @@ import Phaser from 'phaser';
 import { CARD_W, CARD_H } from './layout.js';
 import { rarityColor } from './rarity.js';
 
-// Vertical zones within the card (origin at card center).
-const NAME_Y = -CARD_H / 2 + 8;     // top
-const ART_TOP = -CARD_H / 2 + 22;   // below name
-const BADGE_Y = CARD_H / 2 - 20;    // above bottom edge
-const ART_H = BADGE_Y - 14 - ART_TOP; // space between name and badge
-const ART_W = CARD_W - 4;
-const ART_CENTER_Y = ART_TOP + ART_H / 2;
+const NAME_Y = -CARD_H / 2 + 8;
+const BADGE_Y = CARD_H / 2 - 20;
 
 export function createCardView(scene, cardDef, options = {}) {
   const { faceDown = false, selected = false } = options;
@@ -22,20 +17,12 @@ export function createCardView(scene, cardDef, options = {}) {
   container.add(bg);
 
   if (!faceDown) {
-    // Card art (when texture is available)
+    // Card art — fills the full card like a background
     const artKey = cardDef.art;
     if (artKey && scene.textures.exists(artKey)) {
-      const tex = scene.textures.get(artKey);
-      const srcW = tex.source[0].width;
-      const srcH = tex.source[0].height;
-      // Crop the bottom ~35% (stats/text area of the source card image).
-      const cropH = Math.floor(srcH * 0.65);
-      // Fit proportionally (no stretch) — like CSS object-fit: contain.
-      const scale = Math.min(ART_W / srcW, ART_H / cropH);
       const img = scene.add
-        .image(0, ART_CENTER_Y, artKey)
-        .setCrop(0, 0, srcW, cropH)
-        .setScale(scale);
+        .image(0, 0, artKey)
+        .setDisplaySize(CARD_W, CARD_H);
       container.add(img);
     }
 

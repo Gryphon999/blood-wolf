@@ -1,7 +1,7 @@
 export const SCREEN = { width: 1280, height: 720 };
 export const ROW_NAMES = ['melee', 'ranged', 'siege'];
-export const CARD_W = 84;
-export const CARD_H = 116;
+export const CARD_W = 100;
+export const CARD_H = 140;
 export const ROW_HEIGHT = 76;
 export const HAND_Y = 648;
 export const BOARD_CENTER_Y = 300;

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Blood Wolf — Card Gallery</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #d8c9a8;
+    font-family: 'Georgia', serif;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    color: #ffd479;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #7a6a4a;
+    font-size: 13px;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+  }
+  .gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .card {
+    width: 140px;
+    height: 196px;
+    border-radius: 8px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.25s, box-shadow 0.25s;
+    background: #1a1520;
+    border: 2px solid #3a2e1e;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  }
+  .card:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.8), 0 0 20px rgba(255,212,121,0.3);
+    border-color: #ffd479;
+  }
+  .card-art {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+  }
+  .card-body {
+    padding: 6px 8px;
+  }
+  .card-name {
+    font-size: 11px;
+    font-weight: bold;
+    color: #ffd479;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-type {
+    font-size: 9px;
+    color: #7a6a4a;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+  .card-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .power {
+    background: #ffd479;
+    color: #1a1208;
+    font-size: 18px;
+    font-weight: bold;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Georgia', serif;
+  }
+  .power.special {
+    background: #4a3a6a;
+    color: #c9a8f0;
+    font-size: 14px;
+  }
+  .tags {
+    font-size: 9px;
+    color: #9fbfff;
+    text-align: right;
+    line-height: 1.3;
+  }
+  .rarity-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .rarity-common  { background: #888; }
+  .rarity-rare    { background: #4da6ff; }
+  .rarity-epic    { background: #a855f7; }
+  .rarity-legend  { background: #ffd479; box-shadow: 0 0 6px #ffd479; }
+  .effect-badge {
+    font-size: 9px;
+    color: #9fe3d0;
+    margin-top: 3px;
+  }
+  .section-label {
+    width: 100%;
+    text-align: center;
+    color: #7a6a4a;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin: 16px 0 8px;
+    border-top: 1px solid #2a2010;
+    padding-top: 16px;
+  }
+  .faction-humans { border-color: #4466aa; }
+  .faction-monsters { border-color: #6a2222; }
+  .faction-humans:hover { border-color: #9fbfff; box-shadow: 0 16px 40px rgba(0,0,0,0.8), 0 0 20px rgba(159,191,255,0.3); }
+  .faction-monsters:hover { border-color: #ff6666; box-shadow: 0 16px 40px rgba(0,0,0,0.8), 0 0 20px rgba(255,100,100,0.3); }
+</style>
+</head>
+<body>
+<h1>⚔ Blood Wolf</h1>
+<div class="subtitle">Card Gallery · 35 / 35 illustrated · Dark Fantasy</div>
+
+<div class="gallery">
+  <div class="section-label">⚔ Humans — 18 Cards</div>
+
+  <!-- Shield Knight -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/shield_knight.jpg" alt="Shield Knight">
+    <div class="card-body">
+      <div class="card-name">Shield Knight</div>
+      <div class="card-type">Melee · Human</div>
+      <div class="card-stats">
+        <div class="power">5</div>
+        <div class="tags">Armor 2<br>Deploy</div>
+      </div>
+      <div class="effect-badge">🛡 Deploy: gain Armor +2</div>
+    </div>
+  </div>
+
+  <!-- Squire -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-common"></div>
+    <img class="card-art" src="/assets/cards/squire.jpg" alt="Squire">
+    <div class="card-body">
+      <div class="card-name">Squire</div>
+      <div class="card-type">Melee · Human</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Boost</div>
+      </div>
+      <div class="effect-badge">⚡ Deploy: boost neighbor +2</div>
+    </div>
+  </div>
+
+  <!-- Banner Bearer -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/banner.jpg" alt="Banner Bearer">
+    <div class="card-body">
+      <div class="card-name">Banner Bearer</div>
+      <div class="card-type">Melee · Human</div>
+      <div class="card-stats">
+        <div class="power">2</div>
+        <div class="tags">Aura<br>Order</div>
+      </div>
+      <div class="effect-badge">↑ Order: Boost Melee row +1</div>
+    </div>
+  </div>
+
+  <!-- Paladin -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-epic"></div>
+    <img class="card-art" src="/assets/cards/paladin.jpg" alt="Paladin">
+    <div class="card-body">
+      <div class="card-name">Paladin</div>
+      <div class="card-type">Melee · Human</div>
+      <div class="card-stats">
+        <div class="power">5</div>
+        <div class="tags">Resilience<br>Order</div>
+      </div>
+      <div class="effect-badge">🌿 Resilience · Order: Boost Knights</div>
+    </div>
+  </div>
+
+  <!-- Poison Arrow -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/poison_arrow.jpg" alt="Poison Arrow">
+    <div class="card-body">
+      <div class="card-name">Poison Arrow</div>
+      <div class="card-type">Ranged · Human</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Poison</div>
+      </div>
+      <div class="effect-badge">☠ Deploy: Poison enemy</div>
+    </div>
+  </div>
+
+  <!-- Crossbow -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/crossbow.jpg" alt="Crossbow Soldier">
+    <div class="card-body">
+      <div class="card-name">Crossbow</div>
+      <div class="card-type">Ranged · Human</div>
+      <div class="card-stats">
+        <div class="power">4</div>
+        <div class="tags">Deploy</div>
+      </div>
+      <div class="effect-badge">⚡ Deploy: deal 3 damage</div>
+    </div>
+  </div>
+
+  <!-- Sniper -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/sniper.jpg" alt="Sniper">
+    <div class="card-body">
+      <div class="card-name">Sniper</div>
+      <div class="card-type">Ranged · Human</div>
+      <div class="card-stats">
+        <div class="power">4</div>
+        <div class="tags">Charge 2<br>Order</div>
+      </div>
+      <div class="effect-badge">🎯 Order: deal 2 dmg ×2</div>
+    </div>
+  </div>
+
+  <!-- Eagle Eye -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-epic"></div>
+    <img class="card-art" src="/assets/cards/eagle_eye.jpg" alt="Eagle Eye">
+    <div class="card-body">
+      <div class="card-name">Eagle Eye</div>
+      <div class="card-type">Ranged · Human</div>
+      <div class="card-stats">
+        <div class="power">5</div>
+        <div class="tags">Zeal<br>Poison ×2</div>
+      </div>
+      <div class="effect-badge">☠ Zeal Order: Poison ×2</div>
+    </div>
+  </div>
+
+  <!-- Field Medic -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/field_medic.jpg" alt="Field Medic">
+    <div class="card-body">
+      <div class="card-name">Field Medic</div>
+      <div class="card-type">Melee · Human</div>
+      <div class="card-stats">
+        <div class="power">4</div>
+        <div class="tags">Zeal<br>Heal</div>
+      </div>
+      <div class="effect-badge">⚡ Zeal Order: heal +2</div>
+    </div>
+  </div>
+
+  <!-- Priest -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-common"></div>
+    <img class="card-art" src="/assets/cards/priest.jpg" alt="Priest">
+    <div class="card-body">
+      <div class="card-name">Priest</div>
+      <div class="card-type">Melee · Human</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Cleanse</div>
+      </div>
+      <div class="effect-badge">✨ Deploy: Cleanse ally</div>
+    </div>
+  </div>
+
+  <!-- Alchemist -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/alchemist.jpg" alt="Alchemist">
+    <div class="card-body">
+      <div class="card-name">Alchemist</div>
+      <div class="card-type">Ranged · Human</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Shield<br>Order</div>
+      </div>
+      <div class="effect-badge">🛡 Order: Shield an ally</div>
+    </div>
+  </div>
+
+  <!-- Order Healer -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-legend"></div>
+    <img class="card-art" src="/assets/cards/order_healer.jpg" alt="Order Healer">
+    <div class="card-body">
+      <div class="card-name">Order Healer</div>
+      <div class="card-type">Melee · Human</div>
+      <div class="card-stats">
+        <div class="power">4</div>
+        <div class="tags">Resilience<br>Deploy</div>
+      </div>
+      <div class="effect-badge">🌿 Resilience · Deploy: Boost all +1</div>
+    </div>
+  </div>
+
+  <!-- Ballista -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/ballista.jpg" alt="Fire Ballista">
+    <div class="card-body">
+      <div class="card-name">Fire Ballista</div>
+      <div class="card-type">Siege · Human</div>
+      <div class="card-stats">
+        <div class="power">5</div>
+        <div class="tags">Lock<br>Order</div>
+      </div>
+      <div class="effect-badge">🔥 Order: Damage &amp; Lock</div>
+    </div>
+  </div>
+
+  <!-- Engineer -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/engineer.jpg" alt="Engineer">
+    <div class="card-body">
+      <div class="card-name">Engineer</div>
+      <div class="card-type">Siege · Human</div>
+      <div class="card-stats">
+        <div class="power">4</div>
+        <div class="tags">Machine<br>Boost</div>
+      </div>
+      <div class="effect-badge">⚙ Deploy: Boost Machines +3</div>
+    </div>
+  </div>
+
+  <!-- Lightning (Special) -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/lightning.jpg" alt="Lightning">
+    <div class="card-body">
+      <div class="card-name">Heavenly Fire</div>
+      <div class="card-type">Special · Human</div>
+      <div class="card-stats">
+        <div class="power special">✦</div>
+        <div class="tags">Ranged<br>Strike</div>
+      </div>
+      <div class="effect-badge">⚡ Strike the Ranged row</div>
+    </div>
+  </div>
+
+  <!-- Blessing (Special) -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/blessing.jpg" alt="Blessing">
+    <div class="card-body">
+      <div class="card-name">Blessing</div>
+      <div class="card-type">Special · Human</div>
+      <div class="card-stats">
+        <div class="power special">✦</div>
+        <div class="tags">Boost all<br>Humans</div>
+      </div>
+      <div class="effect-badge">✨ Boost all Human units</div>
+    </div>
+  </div>
+
+  <!-- Battle Order (Special) -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-common"></div>
+    <img class="card-art" src="/assets/cards/battle_order.jpg" alt="Battle Order">
+    <div class="card-body">
+      <div class="card-name">Battle Order</div>
+      <div class="card-type">Special · Human</div>
+      <div class="card-stats">
+        <div class="power special">✦</div>
+        <div class="tags">Ready<br>Orders</div>
+      </div>
+      <div class="effect-badge">📯 Ready all Order abilities</div>
+    </div>
+  </div>
+
+  <!-- King Raven (Leader) -->
+  <div class="card faction-humans">
+    <div class="rarity-dot rarity-legend"></div>
+    <img class="card-art" src="/assets/cards/king_raven.jpg" alt="King Raven">
+    <div class="card-body">
+      <div class="card-name">King Raven</div>
+      <div class="card-type">Melee · Leader</div>
+      <div class="card-stats">
+        <div class="power">5</div>
+        <div class="tags">Leader<br>Charge ×2</div>
+      </div>
+      <div class="effect-badge">👑 Order: Boost Knights ×2</div>
+    </div>
+  </div>
+
+  <div class="section-label">💀 Monsters — 17 Cards</div>
+
+  <!-- Werewolf -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/werewolf.jpg" alt="Werewolf">
+    <div class="card-body">
+      <div class="card-name">Werewolf</div>
+      <div class="card-type">Melee · Monster</div>
+      <div class="card-stats">
+        <div class="power">5</div>
+        <div class="tags">Beast<br>Wolf</div>
+      </div>
+      <div class="effect-badge">🐺 +2 power each new round</div>
+    </div>
+  </div>
+
+  <!-- Vampire -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/vampire.jpg" alt="Vampire">
+    <div class="card-body">
+      <div class="card-name">Vampire</div>
+      <div class="card-type">Melee · Monster</div>
+      <div class="card-stats">
+        <div class="power">4</div>
+        <div class="tags">Undead<br>Bleed</div>
+      </div>
+      <div class="effect-badge">🩸 Deploy: Bleed two enemies</div>
+    </div>
+  </div>
+
+  <!-- Bloodsucker -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-common"></div>
+    <img class="card-art" src="/assets/cards/bloodsucker.jpg" alt="Bloodsucker">
+    <div class="card-body">
+      <div class="card-name">Bloodsucker</div>
+      <div class="card-type">Melee · Monster</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Undead<br>Bleed</div>
+      </div>
+      <div class="effect-badge">🩸 Deploy: Bleed if bleeding</div>
+    </div>
+  </div>
+
+  <!-- Necromancer -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/necromancer.jpg" alt="Necromancer">
+    <div class="card-body">
+      <div class="card-name">Necromancer</div>
+      <div class="card-type">Melee · Monster</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Undead<br>Graveyard</div>
+      </div>
+      <div class="effect-badge">💀 Deploy: Copy from graveyard</div>
+    </div>
+  </div>
+
+  <!-- Lich -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-legend"></div>
+    <img class="card-art" src="/assets/cards/lich.jpg" alt="Lich">
+    <div class="card-body">
+      <div class="card-name">Lich</div>
+      <div class="card-type">Melee · Monster</div>
+      <div class="card-stats">
+        <div class="power">6</div>
+        <div class="tags">Resilience<br>Order</div>
+      </div>
+      <div class="effect-badge">💀 Resilience · Order: Debuff Living</div>
+    </div>
+  </div>
+
+  <!-- Wolf -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-common"></div>
+    <img class="card-art" src="/assets/cards/wolf.jpg" alt="Wolf">
+    <div class="card-body">
+      <div class="card-name">Wolf</div>
+      <div class="card-type">Melee · Monster</div>
+      <div class="card-stats">
+        <div class="power">2</div>
+        <div class="tags">Beast<br>Pack</div>
+      </div>
+      <div class="effect-badge">🐺 Deploy: Wolf Pack buff</div>
+    </div>
+  </div>
+
+  <!-- Serpent -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-common"></div>
+    <img class="card-art" src="/assets/cards/serpent.jpg" alt="Serpent">
+    <div class="card-body">
+      <div class="card-name">Serpent</div>
+      <div class="card-type">Ranged · Monster</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Beast<br>Poison</div>
+      </div>
+      <div class="effect-badge">☠ Deploy: Poison enemy</div>
+    </div>
+  </div>
+
+  <!-- Harpy Hunter -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/harpy_hunter.jpg" alt="Harpy Hunter">
+    <div class="card-body">
+      <div class="card-name">Harpy Hunter</div>
+      <div class="card-type">Ranged · Monster</div>
+      <div class="card-stats">
+        <div class="power">4</div>
+        <div class="tags">Beast<br>Boost</div>
+      </div>
+      <div class="effect-badge">↑ Deploy: Boost self +2</div>
+    </div>
+  </div>
+
+  <!-- Fire Demon -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/fire_demon.jpg" alt="Fire Demon">
+    <div class="card-body">
+      <div class="card-name">Fire Demon</div>
+      <div class="card-type">Siege · Monster</div>
+      <div class="card-stats">
+        <div class="power">5</div>
+        <div class="tags">Demon<br>Damage</div>
+      </div>
+      <div class="effect-badge">🔥 Deploy: Damage row 2</div>
+    </div>
+  </div>
+
+  <!-- Seducer -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/seducer.jpg" alt="Seducer">
+    <div class="card-body">
+      <div class="card-name">Seducer</div>
+      <div class="card-type">Ranged · Monster</div>
+      <div class="card-stats">
+        <div class="power">3</div>
+        <div class="tags">Demon<br>Control</div>
+      </div>
+      <div class="effect-badge">🔮 Deploy: Control weakest</div>
+    </div>
+  </div>
+
+  <!-- Archdemon -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-epic"></div>
+    <img class="card-art" src="/assets/cards/archdemon.jpg" alt="Archdemon">
+    <div class="card-body">
+      <div class="card-name">Archdemon</div>
+      <div class="card-type">Siege · Monster</div>
+      <div class="card-stats">
+        <div class="power">6</div>
+        <div class="tags">Demon<br>Order</div>
+      </div>
+      <div class="effect-badge">⚡ Order: Damage chosen row</div>
+    </div>
+  </div>
+
+  <!-- Chaos Demon -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-legend"></div>
+    <img class="card-art" src="/assets/cards/chaos_demon.jpg" alt="Chaos Demon">
+    <div class="card-body">
+      <div class="card-name">Chaos Demon</div>
+      <div class="card-type">Siege · Monster</div>
+      <div class="card-stats">
+        <div class="power">9</div>
+        <div class="tags">Doomed<br>Blast</div>
+      </div>
+      <div class="effect-badge">🔥 Doomed · Blast all rows 5</div>
+    </div>
+  </div>
+
+  <!-- Ice Giant -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/ice_giant.jpg" alt="Ice Giant">
+    <div class="card-body">
+      <div class="card-name">Ice Giant</div>
+      <div class="card-type">Siege · Monster</div>
+      <div class="card-stats">
+        <div class="power">6</div>
+        <div class="tags">Giant<br>Frost</div>
+      </div>
+      <div class="effect-badge">❄ Deploy: Frost bonus +3</div>
+    </div>
+  </div>
+
+  <!-- Regen Troll -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-legend"></div>
+    <img class="card-art" src="/assets/cards/regen_troll.jpg" alt="Regenerating Troll">
+    <div class="card-body">
+      <div class="card-name">Regen Troll</div>
+      <div class="card-type">Siege · Monster</div>
+      <div class="card-stats">
+        <div class="power">7</div>
+        <div class="tags">Doomed<br>Resurrect</div>
+      </div>
+      <div class="effect-badge">🧟 Doomed · Resurrect 4 weak</div>
+    </div>
+  </div>
+
+  <!-- Darkness (Special) -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/darkness.jpg" alt="Darkness">
+    <div class="card-body">
+      <div class="card-name">Darkness</div>
+      <div class="card-type">Special · Monster</div>
+      <div class="card-stats">
+        <div class="power special">✦</div>
+        <div class="tags">Fog<br>Frost</div>
+      </div>
+      <div class="effect-badge">🌑 Apply Fog + Frost combo</div>
+    </div>
+  </div>
+
+  <!-- Blood Ritual (Special) -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-rare"></div>
+    <img class="card-art" src="/assets/cards/blood_ritual.jpg" alt="Blood Ritual">
+    <div class="card-body">
+      <div class="card-name">Blood Ritual</div>
+      <div class="card-type">Special · Monster</div>
+      <div class="card-stats">
+        <div class="power special">✦</div>
+        <div class="tags">Bleed<br>All foes</div>
+      </div>
+      <div class="effect-badge">🩸 Bleed all enemies</div>
+    </div>
+  </div>
+
+  <!-- Fang Darkness (Leader) -->
+  <div class="card faction-monsters">
+    <div class="rarity-dot rarity-legend"></div>
+    <img class="card-art" src="/assets/cards/fang_darkness.jpg" alt="Fang Darkness">
+    <div class="card-body">
+      <div class="card-name">Fang Darkness</div>
+      <div class="card-type">Melee · Leader</div>
+      <div class="card-stats">
+        <div class="power">6</div>
+        <div class="tags">Leader<br>Charge ×2</div>
+      </div>
+      <div class="effect-badge">👑 Order: Boost all Monsters ×2</div>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center; margin-top:48px; color:#3a2e1e; font-size:11px; letter-spacing:2px;">
+  BLOOD WOLF · ЯНДЕКС.ИГРЫ · DARK FANTASY
+</div>
+</body>
+</html>
