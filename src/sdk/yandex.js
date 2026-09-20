@@ -3,11 +3,15 @@ let player = null;
 
 export async function initYandex() {
   if (!window.YaGames) return;
-  ysdk = await YaGames.init();
-  player = await ysdk.getPlayer();
-  const data = await player.getData(['profile']);
-  if (data.profile) {
-    localStorage.setItem('blood-wolf-profile', JSON.stringify(data.profile));
+  try {
+    ysdk = await YaGames.init();
+    player = await ysdk.getPlayer();
+    const data = await player.getData(['profile']);
+    if (data.profile) {
+      localStorage.setItem('blood-wolf-profile', JSON.stringify(data.profile));
+    }
+  } catch {
+    // Outside Yandex Games iframe (local dev) — continue without SDK
   }
 }
 

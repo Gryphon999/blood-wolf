@@ -7,9 +7,19 @@ import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
 import { preloadCardAssets } from '../ui/preloadAssets.js';
 
+const COLS = 4;
+const ROWS = 2;
+const PAGE_SIZE = COLS * ROWS;
+const CARD_SCALE = 1.4;
+const STEP_X = 158;
+const STEP_Y = 226;
+const START_X = SCREEN.width / 2 - ((COLS - 1) / 2) * STEP_X;
+const START_Y = 180;
+
 export class ShopScene extends Phaser.Scene {
   constructor() {
     super('ShopScene');
+    this.page = 0;
   }
 
   preload() {
@@ -19,6 +29,7 @@ export class ShopScene extends Phaser.Scene {
   create() {
     drawBackground(this);
     this.root = this.add.container(0, 0);
+    this.page = 0;
     this.render();
   }
 
@@ -31,38 +42,59 @@ export class ShopScene extends Phaser.Scene {
   render() {
     this.root.removeAll(true);
     const p = getProfile();
+    const totalPages = Math.ceil(SHOP_CARDS.length / PAGE_SIZE);
+    const pageCards = SHOP_CARDS.slice(this.page * PAGE_SIZE, (this.page + 1) * PAGE_SIZE);
 
+    // Header
     this.text(20, 16, `Золото: ${p.gold}`, '#ffd479', '22px');
     this.text(SCREEN.width / 2 - 60, 16, 'Магазин', '#d8c9a8', '22px');
-    const back = this.text(SCREEN.width - 120, 16, '‹ В меню', '#9fbfff', '20px').setInteractive({ useHandCursor: true });
+    const back = this.text(SCREEN.width - 120, 16, '‹ В меню', '#9fbfff', '20px')
+      .setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('MenuScene'));
 
-    const cols = 5;
-    const startX = 200;
-    const startY = 220;
-    const stepX = 200;
+    // Cards
+    pageCards.forEach((def, idx) => {
+      const col = idx % COLS;
+      const row = Math.floor(idx / COLS);
+      const x = START_X + col * STEP_X;
+      const y = START_Y + row * STEP_Y;
 
-    SHOP_CARDS.forEach((def, idx) => {
-      const x = startX + (idx % cols) * stepX;
-      const y = startY;
       const cv = createCardView(this, def);
-      cv.setScale(0.9);
+      cv.setScale(CARD_SCALE);
       cv.setPosition(x, y);
       this.root.add(cv);
 
+      const labelY = y + Math.round(70 * CARD_SCALE);
       const owned = Boolean(p.collection[def.id]);
       if (owned) {
-        this.text(x - 22, y + 76, 'есть', '#9a8a6a', '16px');
+        this.text(x - 18, labelY, 'есть', '#9a8a6a', '15px');
       } else if (canBuy(p, def.id)) {
-        const buy = this.text(x - 40, y + 76, `Купить ${def.cost}`, '#9fe3d0', '16px').setInteractive({ useHandCursor: true });
+        const buy = this.text(x - 38, labelY, `Купить ${def.cost}`, '#9fe3d0', '15px')
+          .setInteractive({ useHandCursor: true });
         buy.on('pointerdown', () => {
           buyCard(p, def.id);
           persist();
           this.render();
         });
       } else {
-        this.text(x - 44, y + 76, `${def.cost} — мало`, '#ff9d9d', '15px');
+        this.text(x - 42, labelY, `${def.cost} — мало`, '#ff9d9d', '14px');
       }
     });
+
+    // Pagination
+    const navY = SCREEN.height - 36;
+    this.text(SCREEN.width / 2 - 60, navY, `${this.page + 1} / ${totalPages}`, '#7a6a4a', '18px');
+
+    if (this.page > 0) {
+      const prev = this.text(SCREEN.width / 2 - 140, navY, '◀ Пред', '#9fbfff', '18px')
+        .setInteractive({ useHandCursor: true });
+      prev.on('pointerdown', () => { this.page--; this.render(); });
+    }
+
+    if (this.page < totalPages - 1) {
+      const next = this.text(SCREEN.width / 2 + 60, navY, 'След ▶', '#9fbfff', '18px')
+        .setInteractive({ useHandCursor: true });
+      next.on('pointerdown', () => { this.page++; this.render(); });
+    }
   }
 }
