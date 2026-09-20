@@ -6,6 +6,7 @@ import { canBuy, buyCard } from '../economy/profile.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
 import { preloadCardAssets } from '../ui/preloadAssets.js';
+import { cardDescription } from '../ui/cardDescription.js';
 
 const COLS = 4;
 const ROWS = 2;
@@ -15,6 +16,9 @@ const STEP_X = 158;
 const STEP_Y = 226;
 const START_X = SCREEN.width / 2 - ((COLS - 1) / 2) * STEP_X;
 const START_Y = 180;
+
+const TOOLTIP_Y = SCREEN.height - 80;
+const TOOLTIP_W = SCREEN.width - 80;
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -52,6 +56,36 @@ export class ShopScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('MenuScene'));
 
+    // Tooltip panel (hidden by default)
+    const tooltipBg = this.add.rectangle(
+      SCREEN.width / 2, TOOLTIP_Y, TOOLTIP_W, 52, 0x0d0b10, 0.92,
+    ).setStrokeStyle(1, 0x3a2e1e).setVisible(false);
+    this.root.add(tooltipBg);
+
+    const tooltipName = this.add.text(SCREEN.width / 2, TOOLTIP_Y - 20, '', {
+      fontSize: '15px', color: '#ffd479', align: 'center',
+    }).setOrigin(0.5).setVisible(false);
+    this.root.add(tooltipName);
+
+    const tooltipDesc = this.add.text(SCREEN.width / 2, TOOLTIP_Y + 4, '', {
+      fontSize: '13px', color: '#c8b88a', align: 'center',
+      wordWrap: { width: TOOLTIP_W - 24 },
+    }).setOrigin(0.5, 0).setVisible(false);
+    this.root.add(tooltipDesc);
+
+    const showTooltip = (def) => {
+      tooltipName.setText(def.name ?? def.id);
+      tooltipDesc.setText(cardDescription(def));
+      tooltipBg.setVisible(true);
+      tooltipName.setVisible(true);
+      tooltipDesc.setVisible(true);
+    };
+    const hideTooltip = () => {
+      tooltipBg.setVisible(false);
+      tooltipName.setVisible(false);
+      tooltipDesc.setVisible(false);
+    };
+
     // Cards
     pageCards.forEach((def, idx) => {
       const col = idx % COLS;
@@ -62,6 +96,9 @@ export class ShopScene extends Phaser.Scene {
       const cv = createCardView(this, def);
       cv.setScale(CARD_SCALE);
       cv.setPosition(x, y);
+      cv.setInteractive();
+      cv.on('pointerover', () => showTooltip(def));
+      cv.on('pointerout', hideTooltip);
       this.root.add(cv);
 
       const labelY = y + Math.round(70 * CARD_SCALE);
