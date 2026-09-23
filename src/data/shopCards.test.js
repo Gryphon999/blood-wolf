@@ -6,8 +6,8 @@ const REQUIRED_FIELDS = ['id', 'name', 'faction', 'type', 'row', 'power', 'rarit
   'tags', 'deployEffect', 'hasOrder', 'orderEffect', 'chargeMax', 'zeal', 'armor', 'resilience', 'doomed', 'immune'];
 
 describe('shopCards', () => {
-  it('has 35 buyable cards', () => {
-    expect(SHOP_CARDS.length).toBe(35);
+  it('has 36 buyable cards', () => {
+    expect(SHOP_CARDS.length).toBe(36);
   });
 
   it('every card has all required fields', () => {

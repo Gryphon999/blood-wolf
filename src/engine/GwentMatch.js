@@ -94,6 +94,26 @@ function applyEffect(match, effect, row) {
     }));
     return;
   }
+  if (effect === 'scorch') {
+    // Destroy all non-hero units tied for highest power if that power >= 10
+    const candidates = [];
+    for (const pl of match.players) {
+      for (const r of ROWS) {
+        pl.board[r].forEach(c => {
+          if (c.def.type !== 'hero') candidates.push({ card: c, player: pl, row: r });
+        });
+      }
+    }
+    const maxPow = candidates.reduce((m, e) => Math.max(m, e.card.power), 0);
+    if (maxPow >= 10) {
+      candidates.filter(e => e.card.power === maxPow).forEach(e => {
+        const idx = e.player.board[e.row].indexOf(e.card);
+        if (idx !== -1) e.player.board[e.row].splice(idx, 1);
+        // Scorched cards are doomed — go to neither graveyard
+      });
+    }
+    return;
+  }
   // 'heal' is handled by BattleScene (awaitingHeal flow), not the engine
   if (effect === 'heal') return;
   throw new Error(`Unknown effect: ${effect}`);

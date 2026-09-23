@@ -42,6 +42,7 @@ const HUMAN_CARDS = [
   card('lightning',      'Небесный Огонь',    'humans', 'special', 'ranged', 0, 'rare',      5,  { art: 'lightning',      effect: 'lightning_ranged' }),
   card('blessing',       'Благословение',     'humans', 'special', 'melee',  0, 'rare',      5,  { art: 'blessing',       effect: 'blessing_humans' }),
   card('battle_order',   'Боевой Приказ',     'humans', 'special', 'melee',  0, 'common',    4,  { art: 'battle_order',   effect: 'order_ready' }),
+  card('scorch',         'Скорч',             'humans', 'special', 'melee',  0, 'epic',      7,  { effect: 'scorch' }),
   // Leader
   card('king_raven',     'Король Рэйвен',     'humans', 'hero',    'melee',  5, 'legendary', 0,  { art: 'king_raven',     tags: ['leader', 'knight'], cost: 0, deployEffect: 'shield_self', hasOrder: true, orderEffect: 'boost_knights', orderParam: 1, chargeMax: 2 }),
 ];
