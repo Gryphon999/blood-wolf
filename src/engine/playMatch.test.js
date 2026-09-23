@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { playMatch } from './playMatch.js';
+import { PLAYER_DECK, AI_DECK } from '../data/starterDecks.js';
+import { buildFactionPool } from '../data/factionPool.js';
+import { seededRng } from './rng.js';
 
 const unit = (id, power) => ({ id, row: 'melee', power });
 
@@ -29,5 +32,15 @@ describe('playMatch with special cards', () => {
     const deckB = [u('b1', 4), u('b2', 4), sign, u('b3', 4)];
     const match = playMatch(deckA, deckB, 4);
     expect([0, 1, 'draw']).toContain(match.winner);
+  });
+});
+
+describe('playMatch with real decks, targets and round draws', () => {
+  it('always finishes (20 seeds)', () => {
+    const pools = [buildFactionPool('humans'), buildFactionPool('monsters')];
+    for (let seed = 1; seed <= 20; seed++) {
+      const match = playMatch(PLAYER_DECK, AI_DECK, 10, { rng: seededRng(seed), pools });
+      expect([0, 1, 'draw']).toContain(match.winner);
+    }
   });
 });
