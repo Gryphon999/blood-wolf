@@ -4,6 +4,8 @@ import { applyDeploy, applyOrder } from './effects.js';
 import { emit } from './events.js';
 import { resolveTarget, targetKind } from './targeting.js';
 import { dealDamage, boost, addBleed, damageRow, destroy } from './actions.js';
+import { dealRandom, ROUND_DRAW, MAX_HAND } from './dealRandom.js';
+import { shuffle } from './rng.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -17,9 +19,10 @@ function makePlayer(deck, handSize) {
   };
 }
 
-export function createMatch(deckA, deckB, handSize = 10) {
+export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = null } = {}) {
+  const order = (deck) => (rng ? shuffle(deck, rng) : deck);
   return {
-    players: [makePlayer(deckA, handSize), makePlayer(deckB, handSize)],
+    players: [makePlayer(order(deckA), handSize), makePlayer(order(deckB), handSize)],
     current: 0,
     round: 1,
     roundStarter: 0,
@@ -27,6 +30,8 @@ export function createMatch(deckA, deckB, handSize = 10) {
     lastRound: null,
     weather: new Set(),
     events: [],
+    rng: rng ?? Math.random,
+    pools, // [poolA, poolB] of card defs, or null = no round draws
   };
 }
 
@@ -179,6 +184,14 @@ function startNextRound(match, lastResult) {
     : 1 - lastResult;
   match.current = match.roundStarter;
   match.weather.clear();
+  if (match.pools) {
+    match.players.forEach((player, i) => {
+      const count = Math.max(0, Math.min(ROUND_DRAW, MAX_HAND - player.hand.length));
+      const cards = dealRandom(match.pools[i], count, match.rng).map(createCard);
+      player.hand.push(...cards);
+      emit(match, { type: 'draw', player: i, uids: cards.map((c) => c.uid) });
+    });
+  }
 }
 
 function finishMatch(match) {

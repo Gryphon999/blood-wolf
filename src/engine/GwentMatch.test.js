@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createMatch, playCard, pass, hasLegalMove, healUnit, startTurn } from './GwentMatch.js';
 import { totalPower } from './Board.js';
+import { seededRng } from './rng.js';
 
 const unit = (id, power, row = 'melee') => ({ id, row, power });
 
@@ -493,5 +494,49 @@ describe('shield vs special damage', () => {
     const t = match.players[1].board.melee[0];
     expect(t.power).toBe(6);
     expect(t.shielded).toBe(false);
+  });
+});
+
+describe('round draws', () => {
+  const poolCard = { id: 'p', name: 'P', type: 'unit', row: 'melee', power: 2, rarity: 'common' };
+  const pool = [poolCard];
+
+  it('deals 5 pool cards to each player at the start of round 2', () => {
+    const match = createMatch([unit('a', 5)], [unit('b', 3)], 1, { rng: seededRng(1), pools: [pool, pool] });
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match); // p0 wins round 1
+    expect(match.round).toBe(2);
+    expect(match.players[0].hand).toHaveLength(5);
+    expect(match.players[1].hand).toHaveLength(5);
+    const draws = match.events.filter((e) => e.type === 'draw');
+    expect(draws.map((e) => e.player)).toEqual([0, 1]);
+    expect(draws[0].uids).toEqual(match.players[0].hand.map((c) => c.uid));
+  });
+
+  it('never fills a hand above 10', () => {
+    const deck = Array.from({ length: 8 }, (_, i) => unit(`a${i}`, 1));
+    const match = createMatch(deck, [unit('b', 3)], 8, { rng: seededRng(2), pools: [pool, pool] });
+    pass(match);
+    pass(match); // 0 vs 0 -> draw, round 2 starts
+    expect(match.players[0].hand).toHaveLength(10);
+  });
+
+  it('without pools no cards are dealt', () => {
+    const match = createMatch([unit('a', 5), unit('a2', 1)], [unit('b', 3), unit('b2', 1)], 1);
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match);
+    expect(match.players[0].hand).toHaveLength(0);
+  });
+
+  it('shuffles the opening hand when rng is given', () => {
+    const deck = Array.from({ length: 10 }, (_, i) => unit(`c${i}`, i + 1));
+    const match = createMatch(deck, deck, 10, { rng: seededRng(3) });
+    const ids = match.players[0].hand.map((c) => c.def.id);
+    expect([...ids].sort()).toEqual(deck.map((c) => c.id).sort());
+    expect(ids).not.toEqual(deck.map((c) => c.id));
   });
 });
