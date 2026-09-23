@@ -3,7 +3,7 @@ import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
 import { applyDeploy, applyOrder } from './effects.js';
 import { emit } from './events.js';
 import { resolveTarget, targetKind } from './targeting.js';
-import { dealDamage } from './actions.js';
+import { dealDamage, boost, addBleed, damageRow, destroy } from './actions.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -30,6 +30,10 @@ export function createMatch(deckA, deckB, handSize = 10) {
   };
 }
 
+function allOnBoard(board) {
+  return ROWS.flatMap(r => board[r]);
+}
+
 function passTurn(match) {
   const opponent = 1 - match.current;
   if (!match.players[opponent].passed) {
@@ -45,6 +49,9 @@ const WEATHER_ROW = {
 
 function applyEffect(match, card, row, target) {
   const effect = card.def.effect;
+  const own = match.players[match.current].board;
+  const opp = match.players[1 - match.current].board;
+
   if (effect in WEATHER_ROW) {
     match.weather.add(WEATHER_ROW[effect]);
     return;
@@ -55,40 +62,28 @@ function applyEffect(match, card, row, target) {
   }
   if (effect === 'horn') {
     if (!ROWS.includes(row)) throw new Error(`Unknown row: ${row}`);
-    match.players[match.current].board.horns.add(row);
+    own.horns.add(row);
     return;
   }
   if (effect === 'sign_damage') {
     if (!ROWS.includes(row)) throw new Error(`Unknown row: ${row}`);
-    const opponentBoard = match.players[1 - match.current].board;
-    for (const card of opponentBoard[row]) {
-      if (card.def.type !== 'hero') card.power = Math.max(1, card.power - 2);
-    }
+    damageRow(match, card, 1 - match.current, row, 2);
     return;
   }
   if (effect === 'lightning') {
     dealDamage(match, card, target, card.def.deployParam ?? 1);
     return;
   }
-  if (effect === 'lightning_ranged') {
-    const oppBoard = match.players[1 - match.current].board;
-    const units = oppBoard.ranged.filter(c => c.def.type !== 'hero');
-    const target = units.length ? units.reduce((a, b) => (a.power >= b.power ? a : b)) : null;
-    if (target) target.power = Math.max(1, target.power - 3);
-    return;
-  }
   if (effect === 'blessing_humans') {
-    const ownBoard = match.players[match.current].board;
-    ROWS.forEach(r => ownBoard[r].forEach(c => {
-      if (c.def.faction === 'humans') c.power += 2;
-    }));
+    allOnBoard(own)
+      .filter(c => c.def.faction === 'humans')
+      .forEach(c => boost(match, card, c, 2));
     return;
   }
   if (effect === 'order_ready') {
-    const ownBoard = match.players[match.current].board;
-    ROWS.forEach(r => ownBoard[r].forEach(c => {
+    allOnBoard(own).forEach(c => {
       if (c.def.hasOrder && c.def.chargeMax === 0) c.orderUsed = false;
-    }));
+    });
     return;
   }
   if (effect === 'fog_frost_combo') {
@@ -97,34 +92,21 @@ function applyEffect(match, card, row, target) {
     return;
   }
   if (effect === 'bleed_all_enemies') {
-    const oppBoard = match.players[1 - match.current].board;
-    ROWS.forEach(r => oppBoard[r].forEach(c => {
-      if (c.def.type !== 'hero') c.bleedStacks++;
-    }));
+    allOnBoard(opp).forEach(c => addBleed(match, card, c, 1));
     return;
   }
   if (effect === 'scorch') {
     // Destroy all non-hero units tied for highest power if that power >= 10
-    const candidates = [];
-    for (const pl of match.players) {
-      for (const r of ROWS) {
-        pl.board[r].forEach(c => {
-          if (c.def.type !== 'hero') candidates.push({ card: c, player: pl, row: r });
-        });
-      }
-    }
-    const maxPow = candidates.reduce((m, e) => Math.max(m, e.card.power), 0);
+    const candidates = match.players
+      .flatMap(pl => allOnBoard(pl.board))
+      .filter(c => c.def.type !== 'hero');
+    const maxPow = candidates.reduce((m, c) => Math.max(m, c.power), 0);
     if (maxPow >= 10) {
-      candidates.filter(e => e.card.power === maxPow).forEach(e => {
-        const idx = e.player.board[e.row].indexOf(e.card);
-        if (idx !== -1) e.player.board[e.row].splice(idx, 1);
-        // Scorched cards are doomed — go to neither graveyard
-      });
+      // Scorched cards are exiled — they go to neither graveyard
+      candidates.filter(c => c.power === maxPow).forEach(c => destroy(match, c, { exile: true }));
     }
     return;
   }
-  // 'heal' is handled by BattleScene (awaitingHeal flow), not the engine
-  if (effect === 'heal') return;
   throw new Error(`Unknown effect: ${effect}`);
 }
 
@@ -187,10 +169,8 @@ function startNextRound(match, lastResult) {
     }
     player.passed = false;
     // Werewolves get +2 at the start of each new round
-    for (const row of ROWS) {
-      for (const card of player.board[row]) {
-        if (card.werewolf) card.power += 2;
-      }
+    for (const card of allOnBoard(player.board)) {
+      if (card.werewolf) boost(match, card, card, 2);
     }
   }
   match.round++;
@@ -268,26 +248,17 @@ export function healUnit(match, playerIndex, row, cardIndex) {
 }
 
 export function startTurn(match) {
-  // Tick status effects for all cards on all boards
+  // Status ticks: bleed + poison, straight to power (shield/armor don't stop them)
   for (const player of match.players) {
-    for (const row of ROWS) {
-      for (const card of player.board[row]) {
-        if (card.def.type === 'hero') continue; // heroes immune
-        if (card.bleedStacks > 0) {
-          card.power = Math.max(1, card.power - card.bleedStacks);
-        }
-        if (card.poisoned) {
-          card.power = Math.max(1, card.power - 1);
-        }
-      }
+    for (const card of allOnBoard(player.board)) {
+      const tick = card.bleedStacks + (card.poisoned ? 1 : 0);
+      if (tick > 0) dealDamage(match, null, card, tick, { direct: true });
     }
   }
   // Reset regular Order (not Charge) for the current player
-  for (const row of ROWS) {
-    for (const card of match.players[match.current].board[row]) {
-      if (card.def.hasOrder && card.def.chargeMax === 0) {
-        card.orderUsed = false;
-      }
+  for (const card of allOnBoard(match.players[match.current].board)) {
+    if (card.def.hasOrder && card.def.chargeMax === 0) {
+      card.orderUsed = false;
     }
   }
 }

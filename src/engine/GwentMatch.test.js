@@ -286,7 +286,7 @@ describe('sign damage in a match', () => {
     expect(match.players[1].board.melee[1].power).toBe(4); // hero immune
   });
 
-  it('floors damaged power at 1', () => {
+  it('kills a unit whose power drops to 0', () => {
     const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
     const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
     const weak = { id: 'w', type: 'unit', row: 'melee', power: 2 };
@@ -294,8 +294,9 @@ describe('sign damage in a match', () => {
     const match = createMatch([f(), sign], [weak, extra], 2);
     playCard(match, 0, 'ranged'); // p0 filler
     playCard(match, 0, 'melee');  // p1 weak
-    playCard(match, 0, 'melee');  // p0 sign
-    expect(match.players[1].board.melee[0].power).toBe(1); // 2 - 2 = 0 -> floor 1
+    playCard(match, 0, 'melee');  // p0 sign: 2 - 2 = 0 -> dies
+    expect(match.players[1].board.melee).toHaveLength(0);
+    expect(match.players[1].graveyard.map((c) => c.def.id)).toEqual(['w']);
   });
 });
 
@@ -413,13 +414,26 @@ describe('startTurn', () => {
     expect(match.players[1].board.melee[0].power).toBe(4); // 5 - 1
   });
 
-  it('bleed does not reduce power below 1', () => {
+  it('bleed can kill a card', () => {
     const match = createMatch([unit('a', 1)], [unit('b', 3)], 1);
     playCard(match, 0, 'melee');
     match.players[0].board.melee[0].bleedStacks = 5;
     playCard(match, 0, 'melee');
     startTurn(match);
-    expect(match.players[0].board.melee[0].power).toBe(1);
+    expect(match.players[0].board.melee).toHaveLength(0);
+    expect(match.events.some((e) => e.type === 'destroy')).toBe(true);
+  });
+
+  it('status ticks bypass the shield', () => {
+    const match = createMatch([unit('a', 3)], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    const card = match.players[0].board.melee[0];
+    card.poisoned = true;
+    card.shielded = true;
+    playCard(match, 0, 'melee');
+    startTurn(match);
+    expect(card.power).toBe(2);
+    expect(card.shielded).toBe(true);
   });
 
   it('poison reduces power by 1 (min 1)', () => {
@@ -463,5 +477,21 @@ describe('startTurn', () => {
     match.current = 0;
     startTurn(match);
     expect(match.players[0].board.melee[0].chargesLeft).toBe(1); // unchanged
+  });
+});
+
+describe('shield vs special damage', () => {
+  it('a shielded unit ignores sign damage once', () => {
+    const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
+    const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
+    const troll = { id: 't', type: 'unit', row: 'melee', power: 6, deployEffect: 'shield_self' };
+    const extra = { id: 'e', type: 'unit', row: 'siege', power: 1 };
+    const match = createMatch([f(), sign], [troll, extra], 2);
+    playCard(match, 0, 'ranged');
+    playCard(match, 0, 'melee');  // troll shields itself
+    playCard(match, 0, 'melee');  // sign hits melee
+    const t = match.players[1].board.melee[0];
+    expect(t.power).toBe(6);
+    expect(t.shielded).toBe(false);
   });
 });
