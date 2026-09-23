@@ -9,6 +9,7 @@ export function createCardView(scene, cardDef, options = {}) {
   const { faceDown = false, selected = false, card = null } = options;
 
   const container = scene.add.container(0, 0);
+  container.setPower = () => {};
   const fill = faceDown ? 0x3a2a1a : 0x24222b;
   const strokeColor = selected ? 0xffd479 : rarityColor(cardDef.rarity);
 
@@ -44,9 +45,16 @@ export function createCardView(scene, cardDef, options = {}) {
         : '#ffd479';
 
       container.add(scene.add.circle(0, BADGE_Y, 15, badgeFill).setStrokeStyle(2, strokeColor));
-      container.add(
-        scene.add.text(0, BADGE_Y, String(cur), { fontSize: '18px', color: numColor }).setOrigin(0.5),
-      );
+      const powerText = scene.add.text(0, BADGE_Y, String(cur), { fontSize: '18px', color: numColor }).setOrigin(0.5);
+      container.add(powerText);
+      // Lets animations update the number without a full re-render
+      container.setPower = (n) => {
+        powerText.setText(String(n));
+        powerText.setColor(cardDef.type === 'hero' ? '#ff9d5c'
+          : n > base ? '#7fff7f'
+          : n < base ? '#ff9f9f'
+          : '#ffd479');
+      };
 
       if (card) {
         // Status effect icons above the power badge

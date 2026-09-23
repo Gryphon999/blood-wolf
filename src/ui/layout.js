@@ -22,3 +22,10 @@ export function handCardX(index, count, gap = 8) {
   const startX = (SCREEN.width - totalWidth) / 2 + CARD_W / 2;
   return startX + index * (CARD_W + gap);
 }
+
+export const BOARD_CARD_SCALE = 0.6;
+const BOARD_CARD_X0 = 220;
+
+export function boardCardX(index) {
+  return BOARD_CARD_X0 + index * (CARD_W * BOARD_CARD_SCALE + 6);
+}
