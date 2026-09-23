@@ -1,0 +1,102 @@
+import { createCard } from './Card.js';
+import { emit, locateOnBoard } from './events.js';
+
+const uidOf = (card) => card?.uid ?? null;
+const isHero = (card) => card.def.type === 'hero';
+
+export function destroy(match, card, { exile = false } = {}) {
+  const loc = locateOnBoard(match, card);
+  if (!loc) return;
+  const owner = match.players[loc.player];
+  owner.board[loc.row].splice(loc.index, 1);
+  if (!exile && !card.def.doomed) owner.graveyard.push(card);
+  emit(match, { type: 'destroy', uid: card.uid, player: loc.player, row: loc.row });
+}
+
+export function dealDamage(match, source, target, amount, { direct = false } = {}) {
+  if (amount <= 0 || isHero(target)) return;
+  let dmg = amount;
+  if (!direct) {
+    if (target.shielded) {
+      target.shielded = false;
+      emit(match, { type: 'shieldBreak', sourceUid: uidOf(source), targetUid: target.uid });
+      return;
+    }
+    const absorbed = Math.min(target.armorLeft, dmg);
+    target.armorLeft -= absorbed;
+    dmg -= absorbed;
+    if (dmg === 0) return;
+  }
+  target.power -= dmg;
+  emit(match, {
+    type: 'damage', sourceUid: uidOf(source), targetUid: target.uid,
+    amount: dmg, powerAfter: Math.max(0, target.power),
+  });
+  if (target.power <= 0) destroy(match, target);
+}
+
+export function heal(match, source, target, amount) {
+  if (target.power >= target.def.power) return;
+  const before = target.power;
+  target.power = Math.min(target.def.power, target.power + amount);
+  emit(match, {
+    type: 'heal', sourceUid: uidOf(source), targetUid: target.uid,
+    amount: target.power - before, powerAfter: target.power,
+  });
+}
+
+export function boost(match, source, target, amount) {
+  if (amount <= 0) return;
+  target.power += amount;
+  emit(match, {
+    type: 'boost', sourceUid: uidOf(source), targetUid: target.uid,
+    amount, powerAfter: target.power,
+  });
+}
+
+export function giveShield(match, source, target) {
+  target.shielded = true;
+  emit(match, { type: 'shield', sourceUid: uidOf(source), targetUid: target.uid });
+}
+
+export function copyToHand(match, source, target, playerIdx) {
+  const copy = createCard(target.def);
+  copy.isCopy = true;
+  match.players[playerIdx].hand.push(copy);
+  emit(match, {
+    type: 'copyToHand', sourceUid: uidOf(source), targetUid: target.uid,
+    newUid: copy.uid, player: playerIdx,
+  });
+}
+
+export function applyPoison(match, source, target) {
+  if (isHero(target)) return;
+  target.poisoned = true;
+  emit(match, { type: 'poison', sourceUid: uidOf(source), targetUid: target.uid });
+}
+
+export function addBleed(match, source, target, stacks) {
+  if (isHero(target) || stacks <= 0) return;
+  target.bleedStacks += stacks;
+  emit(match, { type: 'bleed', sourceUid: uidOf(source), targetUid: target.uid });
+}
+
+export function damageRow(match, source, victimIdx, row, amount) {
+  emit(match, { type: 'rowDamage', sourceUid: uidOf(source), player: victimIdx, row });
+  // Copy the row first: dealDamage may splice dead cards out of it
+  for (const card of [...match.players[victimIdx].board[row]]) {
+    dealDamage(match, source, card, amount);
+  }
+}
+
+export function takeControl(match, source, target, newOwnerIdx) {
+  const loc = locateOnBoard(match, target);
+  if (!loc) return;
+  match.players[loc.player].board[loc.row].splice(loc.index, 1);
+  target.controlled = true;
+  match.players[newOwnerIdx].board[target.def.row].push(target);
+  emit(match, {
+    type: 'control', sourceUid: uidOf(source), targetUid: target.uid,
+    player: newOwnerIdx, row: target.def.row,
+  });
+}
