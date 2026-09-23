@@ -252,14 +252,6 @@ export function pass(match) {
   }
 }
 
-export function healUnit(match, playerIndex, row, cardIndex) {
-  const card = match.players[playerIndex]?.board[row]?.[cardIndex];
-  if (!card) throw new Error(`No card at ${row}[${cardIndex}]`);
-  if (card.def.type === 'hero') throw new Error('Cannot heal a hero');
-  if (card.power === card.def.power) throw new Error('Card is not weakened');
-  card.power = card.def.power;
-}
-
 export function startTurn(match) {
   // Status ticks: bleed + poison, straight to power (shield/armor don't stop them)
   for (const player of match.players) {

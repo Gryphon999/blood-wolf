@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, playCard, pass, hasLegalMove, healUnit, startTurn } from './GwentMatch.js';
+import { createMatch, playCard, pass, hasLegalMove, startTurn } from './GwentMatch.js';
 import { totalPower } from './Board.js';
 import { seededRng } from './rng.js';
 
@@ -324,43 +324,6 @@ describe('effects layer — extra coverage', () => {
     playCard(match, 0, 'melee'); // p0 frost -> weather melee
     playCard(match, 0, 'melee'); // p1 strong(6)
     expect(totalPower(match.players[1].board, match.weather)).toBe(1); // opponent 6 -> 1
-  });
-});
-
-describe('healUnit', () => {
-  it('restores a weakened unit to its base power', () => {
-    const unit = { id: 'u', type: 'unit', row: 'melee', power: 5 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([unit], [filler], 1);
-    playCard(match, 0, 'melee');
-    match.players[0].board.melee[0].power = 2; // simulate sign_damage
-    healUnit(match, 0, 'melee', 0);
-    expect(match.players[0].board.melee[0].power).toBe(5);
-  });
-
-  it('throws when card index does not exist', () => {
-    const unit = { id: 'u', type: 'unit', row: 'melee', power: 5 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([unit], [filler], 1);
-    playCard(match, 0, 'melee');
-    expect(() => healUnit(match, 0, 'melee', 9)).toThrow('No card at melee[9]');
-  });
-
-  it('throws when card is a hero', () => {
-    const hero = { id: 'h', type: 'hero', row: 'melee', power: 7 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([hero], [filler], 1);
-    playCard(match, 0, 'melee');
-    match.players[0].board.melee[0].power = 4; // force-weaken to test the guard
-    expect(() => healUnit(match, 0, 'melee', 0)).toThrow('Cannot heal a hero');
-  });
-
-  it('throws when card is not weakened', () => {
-    const unit = { id: 'u', type: 'unit', row: 'melee', power: 5 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([unit], [filler], 1);
-    playCard(match, 0, 'melee');
-    expect(() => healUnit(match, 0, 'melee', 0)).toThrow('Card is not weakened');
   });
 });
 
