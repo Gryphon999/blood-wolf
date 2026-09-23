@@ -1,5 +1,8 @@
 import { createCard } from './Card.js';
 import { ROWS } from './Board.js';
+import {
+  dealDamage, heal, boost, giveShield, copyToHand, applyPoison, addBleed, damageRow, takeControl,
+} from './actions.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -17,7 +20,7 @@ function strongest(units) {
 
 // ── Deploy effects ────────────────────────────────────────────────────────────
 
-export function applyDeploy(match, card, playerIdx) {
+export function applyDeploy(match, card, playerIdx, target = null) {
   const { deployEffect, deployParam = 1 } = card.def;
   if (!deployEffect) return;
 
@@ -25,6 +28,21 @@ export function applyDeploy(match, card, playerIdx) {
   const opp = match.players[1 - playerIdx].board;
 
   switch (deployEffect) {
+    // ── Targeted (target validated in targeting.js before we get here)
+    case 'damage':       dealDamage(match, card, target, deployParam); break;
+    case 'heal':         heal(match, card, target, deployParam); break;
+    case 'boost':        boost(match, card, target, deployParam); break;
+    case 'shield':       giveShield(match, card, target); break;
+    case 'duplicate':    if (!card.isCopy) copyToHand(match, card, target, playerIdx); break;
+    case 'poison':       applyPoison(match, card, target); break;
+    case 'bleed':        addBleed(match, card, target, deployParam); break;
+    case 'row_damage':   damageRow(match, card, 1 - playerIdx, target, deployParam); break;
+    case 'take_control': takeControl(match, card, target, playerIdx); break;
+    case 'cleanse_heal':
+      target.poisoned = false;
+      target.bleedStacks = 0;
+      heal(match, card, target, deployParam);
+      break;
     case 'knight_bonus': {
       const knights = ROWS.flatMap(r => own[r]).filter(c => c.def.tags?.includes('knight') && c !== card);
       card.power += knights.length;
@@ -159,7 +177,7 @@ export function applyDeploy(match, card, playerIdx) {
 
 // ── Order effects ─────────────────────────────────────────────────────────────
 
-export function applyOrder(match, card, playerIdx, opts = {}) {
+export function applyOrder(match, card, playerIdx, target = null) {
   const { orderEffect, orderParam = 1 } = card.def;
   if (!orderEffect) return;
 
@@ -185,24 +203,24 @@ export function applyOrder(match, card, playerIdx, opts = {}) {
       break;
     }
     case 'damage_one': {
-      const target = opts.target ?? strongest(nonHeroes(opp));
+      target = target ?? strongest(nonHeroes(opp));
       if (target) target.power = Math.max(1, target.power - orderParam);
       break;
     }
     case 'damage_lock': {
-      const target = opts.target ?? strongest(nonHeroes(opp));
+      target = target ?? strongest(nonHeroes(opp));
       if (target) { target.power = Math.max(1, target.power - orderParam); target.locked = true; }
       break;
     }
     case 'damage_row_choice': {
-      const row = opts.row ?? 'melee';
+      const row = target ?? 'melee';
       opp[row].forEach(c => {
         if (c.def.type !== 'hero') c.power = Math.max(1, c.power - orderParam);
       });
       break;
     }
     case 'heal_ally': {
-      const target = opts.target ?? weakest(nonHeroes(own).filter(c => c !== card));
+      target = target ?? weakest(nonHeroes(own).filter(c => c !== card));
       if (target) {
         const cap = target.def.defPower ?? target.def.power;
         target.power = Math.min(cap, target.power + orderParam);
@@ -210,7 +228,7 @@ export function applyOrder(match, card, playerIdx, opts = {}) {
       break;
     }
     case 'shield_ally': {
-      const target = opts.target ?? weakest(nonHeroes(own).filter(c => c !== card));
+      target = target ?? weakest(nonHeroes(own).filter(c => c !== card));
       if (target) target.shielded = true;
       break;
     }

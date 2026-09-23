@@ -2,6 +2,8 @@ import { createCard } from './Card.js';
 import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
 import { applyDeploy, applyOrder } from './effects.js';
 import { emit } from './events.js';
+import { resolveTarget, targetKind } from './targeting.js';
+import { dealDamage } from './actions.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -41,7 +43,8 @@ const WEATHER_ROW = {
   weather_rain: 'siege',
 };
 
-function applyEffect(match, effect, row) {
+function applyEffect(match, card, row, target) {
+  const effect = card.def.effect;
   if (effect in WEATHER_ROW) {
     match.weather.add(WEATHER_ROW[effect]);
     return;
@@ -61,6 +64,10 @@ function applyEffect(match, effect, row) {
     for (const card of opponentBoard[row]) {
       if (card.def.type !== 'hero') card.power = Math.max(1, card.power - 2);
     }
+    return;
+  }
+  if (effect === 'lightning') {
+    dealDamage(match, card, target, card.def.deployParam ?? 1);
     return;
   }
   if (effect === 'lightning_ranged') {
@@ -121,24 +128,29 @@ function applyEffect(match, effect, row) {
   throw new Error(`Unknown effect: ${effect}`);
 }
 
-function applyCard(match, card, row) {
+function applyCard(match, card, row, target, fizzled) {
   const self = match.current;
-  if (card.def.type === 'special') {
+  const special = card.def.type === 'special';
+  if (special) {
     emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: null, special: true });
-    applyEffect(match, card.def.effect, row);
+  } else {
+    const board = match.players[self].board;
+    addUnit(board, row, card);
+    emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: board[row].length - 1, special: false });
+    // Non-Zeal Order cards can't act the turn they're played
+    if (card.def.hasOrder && !card.def.zeal && card.def.chargeMax === 0) {
+      card.orderUsed = true;
+    }
+  }
+  if (fizzled) {
+    emit(match, { type: 'fizzle', sourceUid: card.uid });
     return;
   }
-  const board = match.players[self].board;
-  addUnit(board, row, card);
-  emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: board[row].length - 1, special: false });
-  // Non-Zeal Order cards can't act the turn they're played
-  if (card.def.hasOrder && !card.def.zeal && card.def.chargeMax === 0) {
-    card.orderUsed = true;
-  }
-  applyDeploy(match, card, self);
+  if (special) applyEffect(match, card, row, target);
+  else applyDeploy(match, card, self, target);
 }
 
-export function playCard(match, cardIndex, row) {
+export function playCard(match, cardIndex, row, { target } = {}) {
   if (match.winner !== null) {
     throw new Error('Match is over');
   }
@@ -150,8 +162,11 @@ export function playCard(match, cardIndex, row) {
   if (!card) {
     throw new Error(`No card at index ${cardIndex}`);
   }
+  // Validate before mutating anything: a bad target must not cost the card
+  const chosen = resolveTarget(match, match.current, card, 'deploy', target);
+  const fizzled = targetKind(card, 'deploy') !== 'none' && chosen === null;
   player.hand.splice(cardIndex, 1);
-  applyCard(match, card, row);
+  applyCard(match, card, row, chosen, fizzled);
   passTurn(match);
 }
 
@@ -277,7 +292,7 @@ export function startTurn(match) {
   }
 }
 
-export function useOrder(match, playerIdx, row, cardIdx, opts = {}) {
+export function useOrder(match, playerIdx, row, cardIdx, { target } = {}) {
   const card = match.players[playerIdx]?.board[row]?.[cardIdx];
   if (!card) throw new Error(`No card at ${row}[${cardIdx}]`);
   if (!card.def.hasOrder) throw new Error('Card has no Order ability');
@@ -290,7 +305,11 @@ export function useOrder(match, playerIdx, row, cardIdx, opts = {}) {
     if (card.orderUsed) throw new Error('Order already used this turn');
   }
 
-  applyOrder(match, card, playerIdx, opts);
+  const chosen = resolveTarget(match, playerIdx, card, 'order', target);
+  if (targetKind(card, 'order') !== 'none' && chosen === null) {
+    throw new Error('No valid targets');
+  }
+  applyOrder(match, card, playerIdx, chosen);
 
   if (isCharge) {
     card.chargesLeft--;

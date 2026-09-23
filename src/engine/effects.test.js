@@ -225,11 +225,12 @@ describe('useOrder', () => {
     addUnit(match.players[0].board, 'ranged', createCard(sniperDef));
     addUnit(match.players[1].board, 'melee', createCard(enemy));
     const sniper = match.players[0].board.ranged[0];
+    const target = match.players[1].board.melee[0];
     expect(sniper.chargesLeft).toBe(2);
-    useOrder(match, 0, 'ranged', 0); // use once
+    useOrder(match, 0, 'ranged', 0, { target });
     expect(sniper.chargesLeft).toBe(1);
-    expect(match.players[1].board.melee[0].power).toBe(4); // 6 - 2
-    useOrder(match, 0, 'ranged', 0); // use second charge
+    expect(target.power).toBe(4); // 6 - 2
+    useOrder(match, 0, 'ranged', 0, { target });
     expect(sniper.chargesLeft).toBe(0);
   });
 
@@ -245,14 +246,121 @@ describe('useOrder', () => {
     const zealDef = uDef('fm', 4, 'melee', {
       tags: ['medic'], zeal: true, hasOrder: true, orderEffect: 'heal_ally', orderParam: 2, chargeMax: 0,
     });
-    const wounded = uDef('w', 3, 'melee');
     const match = createMatch([zealDef], [unit('x', 1)], 1);
-    addUnit(match.players[0].board, 'melee', createCard({ ...wounded, power: 1, defPower: 3 })); // manually wounded
-    playCard(match, 0, 'melee'); // plays zealDef; Zeal so orderUsed stays false
-    // The played zeal card is at index 1 of melee (wounded was 0, zealDef is 1)
+    addUnit(match.players[0].board, 'melee', createCard(uDef('w', 3, 'melee')));
+    const wounded = match.players[0].board.melee[0];
+    wounded.power = 1;
+    playCard(match, 0, 'melee');
     const zealCard = match.players[0].board.melee.find(c => c.def.id === 'fm');
     expect(zealCard.orderUsed).toBe(false); // Zeal: available immediately
-    useOrder(match, 0, 'melee', match.players[0].board.melee.indexOf(zealCard));
-    expect(match.players[0].board.melee[0].power).toBeGreaterThan(1); // healed
+    useOrder(match, 0, 'melee', match.players[0].board.melee.indexOf(zealCard), { target: wounded });
+    expect(wounded.power).toBe(3);
+  });
+});
+
+describe('targeted Deploy effects', () => {
+  function setup(playedDef) {
+    const match = createMatch([playedDef], [unit('x', 1)], 1);
+    return match;
+  }
+  const put = (match, playerIdx, d) => {
+    const card = createCard(d);
+    addUnit(match.players[playerIdx].board, d.row, card);
+    return card;
+  };
+
+  it('damage hits the chosen enemy, not the strongest', () => {
+    const match = setup(uDef('ar', 3, 'ranged', { deployEffect: 'damage', deployParam: 2 }));
+    const weak = put(match, 1, unit('w', 5));
+    const strong = put(match, 1, unit('s', 8));
+    playCard(match, 0, 'ranged', { target: weak });
+    expect(weak.power).toBe(3);
+    expect(strong.power).toBe(8);
+  });
+
+  it('heal, boost and shield act on the chosen ally', () => {
+    const match = createMatch([
+      uDef('m', 4, 'melee', { deployEffect: 'heal', deployParam: 4 }),
+      uDef('sq', 3, 'melee', { deployEffect: 'boost', deployParam: 2 }),
+      uDef('sh', 3, 'melee', { deployEffect: 'shield' }),
+    ], [unit('x1', 1), unit('x2', 1), unit('x3', 1)], 3);
+    const ally = put(match, 0, unit('a', 6));
+    ally.power = 1;
+    playCard(match, 0, 'melee', { target: ally }); // heal 4 -> 5
+    playCard(match, 0, 'melee');                    // opponent
+    playCard(match, 0, 'melee', { target: ally }); // boost 2 -> 7
+    playCard(match, 0, 'melee');                    // opponent
+    playCard(match, 0, 'melee', { target: ally }); // shield
+    expect(ally.power).toBe(7);
+    expect(ally.shielded).toBe(true);
+  });
+
+  it('duplicate puts a copy of the chosen ally into hand', () => {
+    const match = setup(uDef('alc', 3, 'ranged', { deployEffect: 'duplicate' }));
+    const ally = put(match, 0, unit('k', 6));
+    playCard(match, 0, 'ranged', { target: ally });
+    expect(match.players[0].hand).toHaveLength(1);
+    expect(match.players[0].hand[0].def).toBe(ally.def);
+    expect(match.players[0].hand[0].isCopy).toBe(true);
+  });
+
+  it('a copied duplicator does not duplicate again', () => {
+    const dup = uDef('alc', 3, 'ranged', { deployEffect: 'duplicate' });
+    const match = setup(dup);
+    const copy = createCard(dup);
+    copy.isCopy = true;
+    match.players[0].hand = [copy];
+    const ally = put(match, 0, unit('k', 6));
+    playCard(match, 0, 'ranged', { target: ally });
+    expect(match.players[0].hand).toHaveLength(0);
+  });
+
+  it('poison and bleed apply to the chosen enemy', () => {
+    const match = createMatch([
+      uDef('pa', 3, 'ranged', { deployEffect: 'poison' }),
+      uDef('v', 4, 'melee', { deployEffect: 'bleed', deployParam: 2 }),
+    ], [unit('x1', 1), unit('x2', 1)], 2);
+    const enemy = put(match, 1, unit('e', 9));
+    playCard(match, 0, 'ranged', { target: enemy });
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee', { target: enemy });
+    expect(enemy.poisoned).toBe(true);
+    expect(enemy.bleedStacks).toBe(2);
+  });
+
+  it('row_damage hits every card in the chosen enemy row', () => {
+    const match = setup(uDef('cat', 5, 'siege', { deployEffect: 'row_damage', deployParam: 1 }));
+    const a = put(match, 1, unit('a', 3, 'ranged'));
+    const b = put(match, 1, unit('b', 4, 'ranged'));
+    const m = put(match, 1, unit('m', 4, 'melee'));
+    playCard(match, 0, 'siege', { target: 'ranged' });
+    expect([a.power, b.power, m.power]).toEqual([2, 3, 4]);
+  });
+
+  it('take_control steals the chosen enemy', () => {
+    const match = setup(uDef('sd', 3, 'ranged', { deployEffect: 'take_control' }));
+    const enemy = put(match, 1, unit('e', 4));
+    playCard(match, 0, 'ranged', { target: enemy });
+    expect(match.players[0].board.melee).toContain(enemy);
+  });
+
+  it('cleanse_heal removes statuses and heals', () => {
+    const match = setup(uDef('pr', 3, 'melee', { deployEffect: 'cleanse_heal', deployParam: 2 }));
+    const ally = put(match, 0, unit('a', 6));
+    ally.power = 2;
+    ally.poisoned = true;
+    ally.bleedStacks = 2;
+    playCard(match, 0, 'melee', { target: ally });
+    expect(ally.poisoned).toBe(false);
+    expect(ally.bleedStacks).toBe(0);
+    expect(ally.power).toBe(4);
+  });
+
+  it('lightning special damages the chosen enemy', () => {
+    const lightning = { id: 'l', type: 'special', effect: 'lightning', row: 'ranged', power: 0, deployParam: 4 };
+    const match = setup(lightning);
+    const enemy = put(match, 1, unit('e', 6));
+    playCard(match, 0, 'ranged', { target: enemy });
+    expect(enemy.power).toBe(2);
   });
 });
