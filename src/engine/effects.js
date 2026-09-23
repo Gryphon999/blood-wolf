@@ -138,7 +138,8 @@ export function applyDeploy(match, card, playerIdx, target = null) {
     }
     case 'wolf_pack': {
       const wolves = ROWS.flatMap(r => own[r]).filter(c => c.def.tags?.includes('wolf'));
-      if (wolves.length >= 3) wolves.forEach(w => { w.power += 2; });
+      if (wolves.length >= 3) wolves.forEach(w => boost(match, card, w, 2));
+      if (!card.isCopy) copyToHand(match, card, card, playerIdx);
       break;
     }
     case 'bleed_check_self': {

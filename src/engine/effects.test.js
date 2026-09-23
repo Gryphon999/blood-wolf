@@ -166,6 +166,17 @@ describe('Deploy: wolf_pack', () => {
     playCard(match, 0, 'melee'); // 2 wolves — no boost
     expect(match.players[0].board.melee[0].power).toBe(2);
   });
+
+  it('puts a copy of itself into hand; the copy does not copy again', () => {
+    const wolfDef = uDef('wf', 2, 'melee', { tags: ['wolf', 'beast'], deployEffect: 'wolf_pack' });
+    const match = createMatch([wolfDef], [unit('x', 1), unit('x2', 1)], 1);
+    playCard(match, 0, 'melee');
+    expect(match.players[0].hand).toHaveLength(1);
+    expect(match.players[0].hand[0].isCopy).toBe(true);
+    playCard(match, 0, 'melee'); // opponent
+    playCard(match, 0, 'melee'); // the copy
+    expect(match.players[0].hand).toHaveLength(0);
+  });
 });
 
 describe('Deploy: frost_weather_bonus', () => {
