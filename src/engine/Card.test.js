@@ -44,3 +44,17 @@ describe('createCard — runtime state fields', () => {
     expect(card.controlled).toBe(false);
   });
 });
+
+describe('createCard — identity', () => {
+  it('assigns a unique, increasing uid to every instance', () => {
+    const def = { id: 'a', row: 'melee', power: 1 };
+    const first = createCard(def);
+    const second = createCard(def);
+    expect(typeof first.uid).toBe('number');
+    expect(second.uid).toBeGreaterThan(first.uid);
+  });
+
+  it('is not a copy by default', () => {
+    expect(createCard({ id: 'a', row: 'melee', power: 1 }).isCopy).toBe(false);
+  });
+});

@@ -1,10 +1,15 @@
 import Phaser from 'phaser';
-import { createMatch, playCard, pass, healUnit, useOrder, startTurn } from '../engine/GwentMatch.js';
+import { createMatch, playCard, pass, useOrder, startTurn } from '../engine/GwentMatch.js';
+import { drainEvents } from '../engine/events.js';
+import { getValidTargets, targetKind } from '../engine/targeting.js';
 import { chooseMove } from '../engine/ai/OpponentAI.js';
 import { rowPower } from '../engine/Board.js';
 import { createCardView } from '../ui/CardView.js';
-import { SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, CARD_W, BOARD_CENTER_Y } from '../ui/layout.js';
+import {
+  SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, BOARD_CENTER_Y, boardCardX, BOARD_CARD_SCALE,
+} from '../ui/layout.js';
 import { AI_DECK } from '../data/starterDecks.js';
+import { buildFactionPool } from '../data/factionPool.js';
 import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward } from '../economy/profile.js';
 import { showChest, showInterstitial, recordWin } from '../sdk/yandex.js';
@@ -13,16 +18,25 @@ import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
 import { preloadBattleAssets } from '../ui/preloadAssets.js';
 import { sfx } from '../ui/SoundEngine.js';
-import { floatText } from '../ui/FloatingText.js';
+import { AnimationQueue } from '../ui/AnimationQueue.js';
+import { ANIMATIONS, ensureSparkTexture } from '../ui/effectAnimations.js';
 
 const ROW_TINT = { melee: 0x261a1a, ranged: 0x1a2620, siege: 0x1a1f2a };
 const WEATHER_OVERLAY = { melee: 0x4488ee, ranged: 0x88aacc, siege: 0x224488 };
 const WEATHER_LABEL   = { melee: '❄', ranged: '🌫', siege: '🌧' };
-const ROW_SFX = { melee: sfx.cardMelee, ranged: sfx.cardRanged, siege: sfx.cardSiege };
-const NO_TARGET_EFFECTS = ['weather_frost', 'weather_fog', 'weather_rain', 'clear', 'scorch',
-  'lightning_ranged', 'blessing_humans', 'order_ready', 'fog_frost_combo', 'bleed_all_enemies'];
-// Order effects that require the player to pick a target card
-const ORDER_NEEDS_TARGET = new Set(['damage_one', 'damage_lock', 'heal_ally', 'shield_ally']);
+// Specials that affect the whole board: one click on the card plays them
+const INSTANT_SPECIALS = new Set(['weather_frost', 'weather_fog', 'weather_rain', 'clear', 'scorch',
+  'blessing_humans', 'order_ready', 'fog_frost_combo', 'bleed_all_enemies']);
+const TARGET_STROKE = 0xff6600;
+
+// Left-click only: right-click is reserved for cancelling target selection
+function onLeftClick(obj, handler) {
+  obj.setInteractive({ useHandCursor: true });
+  obj.on('pointerdown', (pointer) => {
+    if (!pointer.rightButtonDown()) handler();
+  });
+  return obj;
+}
 
 export class BattleScene extends Phaser.Scene {
   constructor() {
@@ -40,28 +54,48 @@ export class BattleScene extends Phaser.Scene {
         .setDisplaySize(SCREEN.width, SCREEN.height)
         .setAlpha(0.18);
     }
+    ensureSparkTexture(this);
 
     this.storyIndex   = data?.storyIndex ?? null;
     this.rewardGold   = data?.rewardGold ?? 0;
     this.rewardCardId = data?.rewardCardId ?? null;
     this.returnScene  = this.storyIndex !== null ? 'StoryScene' : 'MenuScene';
     const enemyDeck   = data?.enemyDeck ?? AI_DECK;
+    const playerDeck  = buildDeckCards(getProfile());
+    const pools = [
+      buildFactionPool(playerDeck[0]?.faction ?? 'humans'),
+      this.storyIndex !== null ? enemyDeck : buildFactionPool(enemyDeck[0]?.faction ?? 'monsters'),
+    ];
+    this.match = createMatch(playerDeck, enemyDeck, 10, { rng: Math.random, pools });
 
-    this.match = createMatch(buildDeckCards(getProfile()), enemyDeck, 10);
-
-    this.selectedIndex = null;
-    this.rewardGranted = false;
-    this.reward        = 0;
+    this.selectedIndex  = null;
+    this.pendingPlay    = null;  // { handIndex, row, targets } while choosing a Deploy target
+    this.pendingOrder   = null;  // { row, cardIdx, targets } while choosing an Order target
+    this.busy           = false; // true while the animation queue is playing
+    this.busyStartedAt  = 0;
+    this.rewardGranted  = false;
+    this.reward         = 0;
     this.rewardCardName = null;
-    this.awaitingHeal  = false;
-    this.pendingOrder  = null; // { row, cardIdx } while waiting for Order target click
-    this.pendingFloats = [];   // { card, diff } to spawn after next render
-    this._lastCurrent  = -1;  // tracks when to call startTurn
+    this._lastTurn      = -1;
+    this.viewsByUid     = new Map();
 
     this.root      = this.add.container(0, 0);
-    this.animLayer = this.add.container(0, 0); // sits above root, never cleared by render
+    this.animLayer = this.add.container(0, 0); // above root, cleared after each action
+    this.queue     = new AnimationQueue(ANIMATIONS, this);
+
+    this.input.mouse?.disableContextMenu();
+    this.input.on('pointerdown', (pointer) => {
+      if (this.busy) {
+        // Ignore the very click that started the action; later clicks speed things up
+        if (this.time.now - this.busyStartedAt > 50) this.queue.speedUp();
+        return;
+      }
+      if (pointer.rightButtonDown()) this.cancelTargeting();
+    });
+    this.input.keyboard?.on('keydown-ESC', () => this.cancelTargeting());
 
     this.render();
+    this.act(() => {}); // runs startTurn for whoever moves first
   }
 
   // ─── Utilities ────────────────────────────────────────────────────────────
@@ -72,100 +106,93 @@ export class BattleScene extends Phaser.Scene {
     return t;
   }
 
-  /** Capture current power for every card on both boards. */
-  snapshotPowers() {
-    const snap = new Map();
-    for (const player of this.match.players) {
-      for (const row of ROW_NAMES) {
-        for (const card of player.board[row]) {
-          snap.set(card, card.power);
-        }
-      }
-    }
-    return snap;
+  canAct() {
+    const m = this.match;
+    return m.current === 0 && m.winner === null && !this.busy && !this.pendingPlay && !this.pendingOrder;
   }
 
-  /** Return list of { card, diff } where power changed since snapshot. */
-  computeDiffs(before) {
-    const diffs = [];
-    for (const [card, prev] of before.entries()) {
-      const diff = card.power - prev;
-      if (diff !== 0) diffs.push({ card, diff });
-    }
-    return diffs;
+  activeTargets() {
+    return this.pendingPlay?.targets ?? this.pendingOrder?.targets ?? null;
   }
 
-  /** Spawn floating numbers at board-card positions and clear queue. */
-  flushFloats() {
-    for (const { card, diff } of this.pendingFloats) {
-      outer: for (let pi = 0; pi < 2; pi++) {
-        for (const row of ROW_NAMES) {
-          const idx = this.match.players[pi].board[row].indexOf(card);
-          if (idx !== -1) {
-            const side = pi === 0 ? 'player' : 'opponent';
-            const x = 220 + idx * (CARD_W * 0.6 + 6);
-            const y = rowY(side, row);
-            floatText(this, x, y, diff > 0 ? `+${diff}` : `${diff}`, diff > 0 ? '#7fff7f' : '#ff9f9f');
-            break outer;
-          }
-        }
-      }
+  orderReady(card) {
+    return card.def.hasOrder && !card.orderUsed && !card.locked
+      && (card.def.chargeMax === 0 || card.chargesLeft > 0);
+  }
+
+  // ─── Turn flow ────────────────────────────────────────────────────────────
+
+  /** Run one engine action, animate what it did, then redraw. */
+  async act(action) {
+    if (this.busy) return;
+    this.busy = true;
+    this.busyStartedAt = this.time.now;
+    try {
+      action();
+    } catch (e) {
+      console.warn('Action failed:', e);
     }
-    this.pendingFloats = [];
+    await this.queue.play(drainEvents(this.match));
+    await this.beginTurnIfNeeded();
+    this.animLayer.removeAll(true);
+    this.busy = false;
+    this.render();
+    this.maybeRunAi();
+  }
+
+  /** startTurn exactly once per turn; animate status ticks. */
+  async beginTurnIfNeeded() {
+    const m = this.match;
+    if (m.winner !== null || this._lastTurn === m.turn) return;
+    this._lastTurn = m.turn;
+    startTurn(m);
+    const events = drainEvents(m);
+    if (events.length > 0) {
+      this.animLayer.removeAll(true);
+      this.render();
+      await this.queue.play(events);
+    }
+  }
+
+  maybeRunAi() {
+    if (this.match.winner !== null || this.match.current !== 1) return;
+    this.time.delayedCall(400, () => this.act(() => {
+      try {
+        const move = chooseMove(this.match, 1);
+        if (move.type === 'pass') {
+          pass(this.match);
+          sfx.pass();
+        } else {
+          playCard(this.match, move.cardIndex, move.row, { target: move.target });
+        }
+      } catch (e) {
+        console.warn('AI move failed, passing instead:', e);
+        if (this.match.winner === null && this.match.current === 1) pass(this.match);
+      }
+    }));
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
   render() {
     const m = this.match;
-
-    // Call startTurn exactly once each time the active player changes
-    if (m.winner === null && this._lastCurrent !== m.current) {
-      startTurn(m);
-      this._lastCurrent = m.current;
-    }
-
     this.root.removeAll(true);
+    this.viewsByUid = new Map();
     const [player, opp] = m.players;
 
-    // ── Grant reward on first render after match ends
-    if (m.winner !== null && !this.rewardGranted) {
-      this.rewardGranted = true;
-      if (m.winner === 0) {
-        const profile = getProfile();
-        if (this.storyIndex === null) {
-          addGold(profile, 50);
-          this.reward = 50;
-        } else {
-          clearNode(profile, this.storyIndex);
-          addGold(profile, this.rewardGold);
-          this.reward = this.rewardGold;
-          if (this.rewardCardId) {
-            grantCard(profile, this.rewardCardId);
-            this.rewardCardName = getCard(this.rewardCardId).name;
-          }
-        }
-        profile.wins = (profile.wins ?? 0) + 1;
-        recordWin(profile);
-        persist();
-        sfx.roundWin();
-      } else if (m.winner !== 'draw') {
-        sfx.roundLose();
-      }
-    }
+    this.grantRewardOnce();
 
     // ── Header
     this.addText(20, 14, `Соперник — карт: ${opp.hand.length}   раунды: ${pips(opp.roundsWon)}`, '#d8c9a8');
     const status = m.winner !== null ? '' : m.current === 0 ? 'Твой ход' : 'Ход ИИ…';
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
-    this.addText(SCREEN.width - 110, 14, '‹ Назад', '#9fbfff')
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => showInterstitial(() => this.scene.start(this.returnScene)));
+    onLeftClick(this.addText(SCREEN.width - 110, 14, '‹ Назад', '#9fbfff'),
+      () => { if (!this.busy) showInterstitial(() => this.scene.start(this.returnScene)); });
 
     // ── Board rows
     for (const rowName of ROW_NAMES) {
-      this.renderRow(opp, 'opponent', rowName, 1);
-      this.renderRow(player, 'player', rowName, 0);
+      this.renderRow(opp, 'opponent', rowName);
+      this.renderRow(player, 'player', rowName);
     }
 
     // ── Weather + score
@@ -186,36 +213,57 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Footer
     this.addText(20, HAND_Y + 52, `Ты — раунды: ${pips(player.roundsWon)}`, '#d8c9a8');
-    this.addText(SCREEN.width - 160, HAND_Y + 48, '[ ПАС ]', '#ffb3b3', '20px')
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.onPass());
+    onLeftClick(this.addText(SCREEN.width - 160, HAND_Y + 48, '[ ПАС ]', '#ffb3b3', '20px'),
+      () => this.onPass());
 
-    // ── Order-targeting hint bar
-    if (this.pendingOrder) {
-      this.addText(SCREEN.width / 2 - 110, HAND_Y - 28, '⚡ Выберите цель для Приказа', '#ffd479', '14px');
-      this.addText(SCREEN.width / 2 + 120, HAND_Y - 28, '[отмена]', '#ff9f9f', '13px')
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => { this.pendingOrder = null; this.render(); });
+    // ── Target-selection hint
+    if (this.pendingPlay || this.pendingOrder) {
+      this.addText(SCREEN.width / 2 - 170, BOARD_CENTER_Y + 14, '🎯 Выберите цель   (ПКМ / Esc — отмена)', '#ffd479', '15px');
+      onLeftClick(this.addText(SCREEN.width / 2 + 180, BOARD_CENTER_Y + 14, '[отмена]', '#ff9f9f', '15px'),
+        () => this.cancelTargeting());
     }
-
-    // ── Floating damage/heal numbers
-    this.flushFloats();
 
     if (m.winner !== null) this.renderResult();
   }
 
+  grantRewardOnce() {
+    const m = this.match;
+    if (m.winner === null || this.rewardGranted) return;
+    this.rewardGranted = true;
+    if (m.winner === 0) {
+      const profile = getProfile();
+      if (this.storyIndex === null) {
+        addGold(profile, 50);
+        this.reward = 50;
+      } else {
+        clearNode(profile, this.storyIndex);
+        addGold(profile, this.rewardGold);
+        this.reward = this.rewardGold;
+        if (this.rewardCardId) {
+          grantCard(profile, this.rewardCardId);
+          this.rewardCardName = getCard(this.rewardCardId).name;
+        }
+      }
+      profile.wins = (profile.wins ?? 0) + 1;
+      recordWin(profile);
+      persist();
+      sfx.roundWin();
+    } else if (m.winner !== 'draw') {
+      sfx.roundLose();
+    }
+  }
+
   // ─── Row ──────────────────────────────────────────────────────────────────
 
-  renderRow(side, sideName, rowName, playerIdx) {
+  renderRow(side, sideName, rowName) {
     const y = rowY(sideName, rowName);
     const m = this.match;
+    const targets = this.activeTargets();
 
-    // Background
     const bg = this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, ROW_TINT[rowName] ?? 0x1c1a22)
       .setStrokeStyle(1, 0x4a4436);
     this.root.add(bg);
 
-    // Weather colour overlay + icon
     if (m.weather.has(rowName)) {
       this.root.add(
         this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, WEATHER_OVERLAY[rowName], 0.24),
@@ -223,60 +271,50 @@ export class BattleScene extends Phaser.Scene {
       this.addText(170, y - 10, WEATHER_LABEL[rowName] ?? '☁', '#aaddff', '18px');
     }
 
-    // Determine Order-targeting context
-    const orderCard = this.pendingOrder
-      ? m.players[0].board[this.pendingOrder.row]?.[this.pendingOrder.cardIdx]
-      : null;
-    const oe = orderCard?.def.orderEffect ?? '';
-    const targetAlly  = oe === 'heal_ally' || oe === 'shield_ally';
-    const targetEnemy = oe === 'damage_one' || oe === 'damage_lock';
-
-    // Cards
     side.board[rowName].forEach((card, i) => {
-      const isHealTarget = this.awaitingHeal && sideName === 'player'
-        && card.def.type !== 'hero' && card.power < card.def.power;
-
-      const isOrderTarget = this.pendingOrder !== null
-        && ((targetEnemy && sideName === 'opponent' && card.def.type !== 'hero' && !card.immune)
-         || (targetAlly  && sideName === 'player'   && card !== orderCard && card.def.type !== 'hero' && !card.immune));
-
       const cv = createCardView(this, card.def, { card });
-      cv.setScale(0.6);
-      cv.setPosition(220 + i * (CARD_W * 0.6 + 6), y);
+      cv.setScale(BOARD_CARD_SCALE);
+      cv.setPosition(boardCardX(i), y);
+      this.viewsByUid.set(card.uid, cv);
 
-      if (isHealTarget) {
-        cv.list[0].setStrokeStyle(3, 0x00ff88).setInteractive({ useHandCursor: true });
-        cv.list[0].on('pointerdown', () => this.onHealTarget(rowName, i));
+      if (targets) {
+        if (targets.includes(card)) {
+          cv.list[0].setStrokeStyle(3, TARGET_STROKE);
+          onLeftClick(cv.list[0], () => this.onTargetClick(card));
+        } else {
+          cv.setAlpha(0.45);
+        }
       }
-
-      if (isOrderTarget) {
-        cv.list[0].setStrokeStyle(3, 0xff6600).setInteractive({ useHandCursor: true });
-        cv.list[0].on('pointerdown', () => this.onOrderTarget(card));
-      }
-
       this.root.add(cv);
 
-      // ⚡ Order button below player cards when it's idle player turn
-      if (sideName === 'player' && m.current === 0 && m.winner === null
-          && !this.awaitingHeal && !this.pendingOrder && this.selectedIndex === null
-          && card.def.hasOrder && !card.orderUsed && !card.locked
-          && (card.def.chargeMax === 0 || card.chargesLeft > 0)) {
-        const bx = 220 + i * (CARD_W * 0.6 + 6);
-        const obtn = this.add.text(bx, y + 50, '⚡', {
+      if (sideName === 'player' && this.canAct() && this.selectedIndex === null && this.orderReady(card)
+          && (targetKind(card, 'order') === 'none' || getValidTargets(this.match, 0, card, 'order').length > 0)) {
+        const obtn = this.add.text(boardCardX(i), y + 50, '⚡', {
           fontSize: '14px', color: '#ffdd44', stroke: '#000', strokeThickness: 2,
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-        obtn.on('pointerdown', () => this.onOrderButtonClick(rowName, i));
+        }).setOrigin(0.5);
+        onLeftClick(obtn, () => this.onOrderButtonClick(rowName, i));
         this.root.add(obtn);
       }
     });
 
-    // Row power
+    // Ghost of the unit being placed while its Deploy target is chosen
+    if (sideName === 'player' && this.pendingPlay?.row === rowName) {
+      const def = m.players[0].hand[this.pendingPlay.handIndex].def;
+      if (def.type !== 'special') {
+        const ghost = createCardView(this, def);
+        ghost.setScale(BOARD_CARD_SCALE).setAlpha(0.5).setPosition(boardCardX(side.board[rowName].length), y);
+        this.root.add(ghost);
+      }
+    }
+
     this.addText(SCREEN.width - 300, y - 10, `[${rowPower(side.board, rowName, m.weather)}]`, '#ffd479');
 
-    // Row click target for placing a unit/special
-    if (this.selectedIndex !== null && this.isValidTarget(sideName, rowName)) {
-      bg.setStrokeStyle(3, 0xffd479).setInteractive({ useHandCursor: true });
-      bg.on('pointerdown', () => this.onRowClick(rowName));
+    if (targets && sideName === 'opponent' && targets.includes(rowName)) {
+      bg.setStrokeStyle(3, TARGET_STROKE);
+      onLeftClick(bg, () => this.onTargetClick(rowName));
+    } else if (!targets && this.selectedIndex !== null && this.isValidRow(sideName, rowName)) {
+      bg.setStrokeStyle(3, 0xffd479);
+      onLeftClick(bg, () => this.onRowClick(rowName));
     }
   }
 
@@ -284,11 +322,12 @@ export class BattleScene extends Phaser.Scene {
 
   renderHand(player) {
     player.hand.forEach((card, i) => {
-      const cv = createCardView(this, card.def, { selected: this.selectedIndex === i });
+      const selected = this.selectedIndex === i || this.pendingPlay?.handIndex === i;
+      const cv = createCardView(this, card.def, { selected });
       cv.setScale(0.9);
       cv.setPosition(handCardX(i, player.hand.length), HAND_Y);
-      cv.list[0].setInteractive({ useHandCursor: true });
-      cv.list[0].on('pointerdown', () => this.onHandClick(i));
+      this.viewsByUid.set(card.uid, cv);
+      onLeftClick(cv.list[0], () => this.onHandClick(i));
       this.root.add(cv);
     });
   }
@@ -304,10 +343,10 @@ export class BattleScene extends Phaser.Scene {
 
   // ─── Input handlers ───────────────────────────────────────────────────────
 
-  isValidTarget(sideName, rowName) {
+  isValidRow(sideName, rowName) {
     const card = this.match.players[0].hand[this.selectedIndex];
     if (!card) return false;
-    const def = card.def;
+    const { def } = card;
     if (def.type === 'special') {
       if (def.effect === 'horn')        return sideName === 'player';
       if (def.effect === 'sign_damage') return sideName === 'opponent';
@@ -317,162 +356,99 @@ export class BattleScene extends Phaser.Scene {
   }
 
   onHandClick(i) {
-    if (this.match.current !== 0 || this.match.winner !== null || this.awaitingHeal || this.pendingOrder) return;
-    const def = this.match.players[0].hand[i].def;
+    if (!this.canAct()) return;
+    const card = this.match.players[0].hand[i];
+    const { def } = card;
 
-    // Special cards with no board target play instantly
-    if (def.type === 'special' && NO_TARGET_EFFECTS.includes(def.effect)) {
-      const before = this.snapshotPowers();
-      playCard(this.match, i, 'melee');
-      sfx.cardSpecial();
+    if (def.type === 'special' && INSTANT_SPECIALS.has(def.effect)) {
+      this.selectedIndex = null;
       if (def.effect.startsWith('weather_')) sfx.weather();
       if (def.effect === 'scorch') sfx.scorch();
-      this.pendingFloats = this.computeDiffs(before);
-      this.selectedIndex = null;
-      this.afterPlayerAction();
+      this.act(() => playCard(this.match, i, 'melee'));
       return;
     }
-
+    // Targeted specials (e.g. lightning) skip row selection
+    if (def.type === 'special' && targetKind(card, 'deploy') !== 'none') {
+      this.beginPlay(i, 'melee');
+      return;
+    }
     this.selectedIndex = this.selectedIndex === i ? null : i;
     this.render();
   }
 
   onRowClick(rowName) {
-    if (this.selectedIndex === null) return;
-    const i = this.selectedIndex;
-    const handCount = this.match.players[0].hand.length;
-    const fromX = handCardX(i, handCount);
-    const playedDef = this.match.players[0].hand[i].def;
+    if (this.selectedIndex === null || this.busy) return;
+    this.beginPlay(this.selectedIndex, rowName);
+  }
 
-    const before = this.snapshotPowers();
-    playCard(this.match, i, rowName);
-
-    // Sound
-    if (playedDef.type === 'special') {
-      sfx.cardSpecial();
-      if (playedDef.effect === 'scorch') sfx.scorch();
-    } else {
-      (ROW_SFX[rowName] ?? sfx.cardMelee)();
-    }
-
-    // Flying card animation (clone from hand to board row center)
-    const clone = createCardView(this, playedDef);
-    clone.setScale(0.9);
-    clone.setPosition(fromX, HAND_Y);
-    this.animLayer.add(clone);
-    this.tweens.add({
-      targets: clone,
-      x: SCREEN.width / 2, y: rowY('player', rowName),
-      scaleX: 0.6, scaleY: 0.6,
-      duration: 280, ease: 'Power2.Out',
-      onComplete: () => this.animLayer.removeAll(true),
-    });
-
-    this.pendingFloats = this.computeDiffs(before);
+  beginPlay(handIndex, row) {
+    const card = this.match.players[0].hand[handIndex];
     this.selectedIndex = null;
-
-    if (playedDef.effect === 'heal' && this.findWeakenedCards().length > 0) {
-      this.awaitingHeal = true;
-      this.render();
+    const targets = getValidTargets(this.match, 0, card, 'deploy');
+    if (targetKind(card, 'deploy') === 'none' || targets.length === 0) {
+      this.render(); // drop selection visuals; hand view is re-registered for the play animation
+      this.act(() => playCard(this.match, handIndex, row)); // no choice needed (or it fizzles)
       return;
     }
-    this.afterPlayerAction();
+    this.pendingPlay = { handIndex, row, targets };
+    this.render();
   }
 
-  // ── Order handlers ────────────────────────────────────────────────────────
-
-  onOrderButtonClick(orderRow, cardIdx) {
-    const card = this.match.players[0].board[orderRow]?.[cardIdx];
+  onOrderButtonClick(row, cardIdx) {
+    if (!this.canAct()) return;
+    const card = this.match.players[0].board[row]?.[cardIdx];
     if (!card?.def.hasOrder) return;
-    if (ORDER_NEEDS_TARGET.has(card.def.orderEffect)) {
-      this.pendingOrder = { row: orderRow, cardIdx };
-      this.render();
-    } else {
-      this.resolveOrder(orderRow, cardIdx, {});
-    }
-  }
-
-  onOrderTarget(targetCard) {
-    if (!this.pendingOrder) return;
-    const { row, cardIdx } = this.pendingOrder;
-    this.pendingOrder = null;
-    this.resolveOrder(row, cardIdx, { target: targetCard });
-  }
-
-  resolveOrder(orderRow, cardIdx, opts) {
-    const before = this.snapshotPowers();
-    try {
-      useOrder(this.match, 0, orderRow, cardIdx, opts);
-    } catch (e) {
-      console.warn('Order failed:', e.message);
-      this.render();
+    if (targetKind(card, 'order') === 'none') {
+      this.act(() => {
+        useOrder(this.match, 0, row, cardIdx);
+        sfx.order();
+      });
       return;
     }
-    sfx.order();
-    const diffs = this.computeDiffs(before);
-    const hasDamage = diffs.some(d => d.diff < 0);
-    const hasHeal   = diffs.some(d => d.diff > 0);
-    if (hasDamage) sfx.damage();
-    if (hasHeal)   sfx.heal();
-    this.pendingFloats = diffs;
-    this.afterPlayerAction();
+    const targets = getValidTargets(this.match, 0, card, 'order');
+    if (targets.length === 0) return;
+    this.pendingOrder = { row, cardIdx, targets };
+    this.render();
   }
 
-  // ── Heal targeting ────────────────────────────────────────────────────────
-
-  findWeakenedCards() {
-    const board = this.match.players[0].board;
-    return ROW_NAMES.flatMap(row =>
-      board[row]
-        .map((card, cardIndex) => ({ row, cardIndex, card }))
-        .filter(({ card }) => card.def.type !== 'hero' && card.power < card.def.power),
-    );
+  onTargetClick(target) {
+    if (this.busy) return;
+    if (this.pendingPlay) {
+      const { handIndex, row } = this.pendingPlay;
+      this.pendingPlay = null;
+      this.selectedIndex = null;
+      this.render();
+      this.act(() => playCard(this.match, handIndex, row, { target }));
+      return;
+    }
+    if (this.pendingOrder) {
+      const { row, cardIdx } = this.pendingOrder;
+      this.pendingOrder = null;
+      this.selectedIndex = null;
+      this.render();
+      this.act(() => {
+        useOrder(this.match, 0, row, cardIdx, { target });
+        sfx.order();
+      });
+    }
   }
 
-  onHealTarget(row, cardIndex) {
-    healUnit(this.match, 0, row, cardIndex);
-    sfx.heal();
-    this.awaitingHeal = false;
-    this.afterPlayerAction();
+  cancelTargeting() {
+    if (this.busy) return;
+    if (!this.pendingPlay && !this.pendingOrder && this.selectedIndex === null) return;
+    this.pendingPlay = null;
+    this.pendingOrder = null;
+    this.selectedIndex = null;
+    this.render();
   }
-
-  // ── Pass ──────────────────────────────────────────────────────────────────
 
   onPass() {
-    if (this.match.current !== 0 || this.match.winner !== null || this.awaitingHeal || this.pendingOrder) return;
-    sfx.pass();
-    pass(this.match);
+    if (!this.canAct()) return;
     this.selectedIndex = null;
-    this.afterPlayerAction();
-  }
-
-  // ── Turn flow ─────────────────────────────────────────────────────────────
-
-  afterPlayerAction() {
-    this.render();
-    this.maybeRunAi();
-  }
-
-  maybeRunAi() {
-    if (this.match.winner !== null || this.match.current !== 1) return;
-    setTimeout(() => {
-      if (this.match.winner !== null || this.match.current !== 1) {
-        this.render();
-        return;
-      }
-      const before = this.snapshotPowers();
-      const move = chooseMove(this.match, 1);
-      if (move.type === 'pass') {
-        pass(this.match);
-        sfx.pass();
-      } else {
-        playCard(this.match, move.cardIndex, move.row);
-        (ROW_SFX[move.row] ?? sfx.cardMelee)();
-      }
-      this.pendingFloats = this.computeDiffs(before);
-      this.render();
-      this.maybeRunAi();
-    }, 600);
+    this.act(() => {
+      pass(this.match);
+      sfx.pass();
+    });
   }
 
   // ─── Result overlay ───────────────────────────────────────────────────────
@@ -490,25 +466,24 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0.5),
     );
 
-    this.root.add(
+    this.root.add(onLeftClick(
       this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, '‹ В меню', { fontSize: '24px', color: '#9fbfff' })
-        .setOrigin(0.5).setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => showInterstitial(() => this.scene.start(this.returnScene))),
-    );
+        .setOrigin(0.5),
+      () => showInterstitial(() => this.scene.start(this.returnScene)),
+    ));
 
     if (w === 0) {
-      this.root.add(
+      this.root.add(onLeftClick(
         this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, '🎁 Сундук', { fontSize: '22px', color: '#ffd479' })
-          .setOrigin(0.5).setInteractive({ useHandCursor: true })
-          .on('pointerdown', () => {
-            showChest(() => {
-              grantChestReward(getProfile(), SHOP_CARDS);
-              persist();
-              this.root.removeAll(true);
-              this.render();
-            });
-          }),
-      );
+          .setOrigin(0.5),
+        () => {
+          showChest(() => {
+            grantChestReward(getProfile(), SHOP_CARDS);
+            persist();
+            this.render();
+          });
+        },
+      ));
     }
 
     if (this.reward > 0) {

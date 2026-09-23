@@ -99,6 +99,7 @@ API:
 - Событие `draw` на каждого игрока.
 
 `buildFactionPool(faction)` = все определения фракции из `starterDecks` + `shopCards`, без тега `leader`.
+- В сюжетных боях пул врага — его собственная сюжетная колода (сложность узла сохраняется).
 
 `dealRandom(pool, count, rng)`:
 - Веса: common 50 / rare 30 / epic 15 / legendary 5.

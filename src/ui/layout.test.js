@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SCREEN, ROW_NAMES, rowY, handCardX } from './layout.js';
+import { SCREEN, ROW_NAMES, rowY, handCardX, boardCardX, BOARD_CARD_SCALE } from './layout.js';
 
 describe('layout', () => {
   it('lists the three rows in order', () => {
@@ -25,5 +25,13 @@ describe('layout', () => {
     const last = handCardX(3, 4);
     expect(first).toBeLessThan(last);
     expect((first + last) / 2).toBeCloseTo(SCREEN.width / 2, 0);
+  });
+});
+
+describe('boardCardX', () => {
+  it('places board cards left to right with a fixed step', () => {
+    expect(BOARD_CARD_SCALE).toBe(0.6);
+    expect(boardCardX(0)).toBe(220);
+    expect(boardCardX(1)).toBe(220 + 100 * 0.6 + 6);
   });
 });

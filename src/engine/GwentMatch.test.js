@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, playCard, pass, hasLegalMove, healUnit, startTurn } from './GwentMatch.js';
-import { totalPower } from './Board.js';
+import { createMatch, playCard, pass, hasLegalMove, startTurn, useOrder } from './GwentMatch.js';
+import { totalPower, addUnit } from './Board.js';
+import { createCard } from './Card.js';
+import { seededRng } from './rng.js';
 
 const unit = (id, power, row = 'melee') => ({ id, row, power });
 
@@ -134,6 +136,51 @@ describe('round-starter after a draw', () => {
     expect(match.lastRound).toBe('draw');
     expect(match.roundStarter).toBe(1); // was 0, a draw toggles it
     expect(match.current).toBe(1);
+  });
+});
+
+describe('turn counter', () => {
+  it('starts a new match at turn 0', () => {
+    const match = createMatch([unit('a', 1)], [unit('b', 1)], 1);
+    expect(match.turn).toBe(0);
+  });
+
+  it('increments on playCard even when the opponent has already passed (current stays the same)', () => {
+    const match = createMatch(
+      [unit('a', 5), unit('a2', 3)],
+      [unit('b', 1), unit('b2', 1)],
+      2,
+    );
+    playCard(match, 0, 'melee'); // p0 plays -> turn 0->1, current -> 1
+    pass(match);                 // p1 passes -> turn 1->2, current -> 0 (p0 hasn't passed)
+    const turnBefore = match.turn;
+    const currentBefore = match.current;
+    playCard(match, 0, 'melee'); // p0 plays again; p1 already passed so current is unchanged
+    expect(match.current).toBe(currentBefore);
+    expect(match.turn).toBe(turnBefore + 1);
+  });
+
+  it('increments on pass, both when handing the turn over and when it resolves the round', () => {
+    const match = createMatch([unit('a', 1)], [unit('b', 1)], 1);
+    expect(match.turn).toBe(0);
+    pass(match); // hands the turn over
+    expect(match.turn).toBe(1);
+    pass(match); // both passed -> resolves the round
+    expect(match.turn).toBe(2);
+  });
+
+  it('does not change on useOrder', () => {
+    const match = createMatch([unit('a', 1)], [unit('b', 1)], 1);
+    const def = {
+      id: 'orderer', name: 'Orderer', power: 3, type: 'unit', row: 'melee',
+      hasOrder: true, orderEffect: 'boost_melee_row', chargeMax: 0,
+    };
+    const card = createCard(def);
+    card.orderUsed = false;
+    addUnit(match.players[0].board, 'melee', card);
+    const turnBefore = match.turn;
+    useOrder(match, 0, 'melee', 0);
+    expect(match.turn).toBe(turnBefore);
   });
 });
 
@@ -286,7 +333,7 @@ describe('sign damage in a match', () => {
     expect(match.players[1].board.melee[1].power).toBe(4); // hero immune
   });
 
-  it('floors damaged power at 1', () => {
+  it('kills a unit whose power drops to 0', () => {
     const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
     const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
     const weak = { id: 'w', type: 'unit', row: 'melee', power: 2 };
@@ -294,8 +341,9 @@ describe('sign damage in a match', () => {
     const match = createMatch([f(), sign], [weak, extra], 2);
     playCard(match, 0, 'ranged'); // p0 filler
     playCard(match, 0, 'melee');  // p1 weak
-    playCard(match, 0, 'melee');  // p0 sign
-    expect(match.players[1].board.melee[0].power).toBe(1); // 2 - 2 = 0 -> floor 1
+    playCard(match, 0, 'melee');  // p0 sign: 2 - 2 = 0 -> dies
+    expect(match.players[1].board.melee).toHaveLength(0);
+    expect(match.players[1].graveyard.map((c) => c.def.id)).toEqual(['w']);
   });
 });
 
@@ -322,43 +370,6 @@ describe('effects layer — extra coverage', () => {
     playCard(match, 0, 'melee'); // p0 frost -> weather melee
     playCard(match, 0, 'melee'); // p1 strong(6)
     expect(totalPower(match.players[1].board, match.weather)).toBe(1); // opponent 6 -> 1
-  });
-});
-
-describe('healUnit', () => {
-  it('restores a weakened unit to its base power', () => {
-    const unit = { id: 'u', type: 'unit', row: 'melee', power: 5 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([unit], [filler], 1);
-    playCard(match, 0, 'melee');
-    match.players[0].board.melee[0].power = 2; // simulate sign_damage
-    healUnit(match, 0, 'melee', 0);
-    expect(match.players[0].board.melee[0].power).toBe(5);
-  });
-
-  it('throws when card index does not exist', () => {
-    const unit = { id: 'u', type: 'unit', row: 'melee', power: 5 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([unit], [filler], 1);
-    playCard(match, 0, 'melee');
-    expect(() => healUnit(match, 0, 'melee', 9)).toThrow('No card at melee[9]');
-  });
-
-  it('throws when card is a hero', () => {
-    const hero = { id: 'h', type: 'hero', row: 'melee', power: 7 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([hero], [filler], 1);
-    playCard(match, 0, 'melee');
-    match.players[0].board.melee[0].power = 4; // force-weaken to test the guard
-    expect(() => healUnit(match, 0, 'melee', 0)).toThrow('Cannot heal a hero');
-  });
-
-  it('throws when card is not weakened', () => {
-    const unit = { id: 'u', type: 'unit', row: 'melee', power: 5 };
-    const filler = { id: 'f', type: 'unit', row: 'melee', power: 1 };
-    const match = createMatch([unit], [filler], 1);
-    playCard(match, 0, 'melee');
-    expect(() => healUnit(match, 0, 'melee', 0)).toThrow('Card is not weakened');
   });
 });
 
@@ -402,7 +413,7 @@ describe('graveyard', () => {
 });
 
 describe('startTurn', () => {
-  it('reduces power by bleedStacks (min 1) for all board cards', () => {
+  it('reduces power by bleedStacks for all board cards', () => {
     const match = createMatch([unit('a', 5)], [unit('b', 5)], 1);
     playCard(match, 0, 'melee');  // p0 plays, turn -> p1
     match.players[0].board.melee[0].bleedStacks = 2;
@@ -413,16 +424,29 @@ describe('startTurn', () => {
     expect(match.players[1].board.melee[0].power).toBe(4); // 5 - 1
   });
 
-  it('bleed does not reduce power below 1', () => {
+  it('bleed can kill a card', () => {
     const match = createMatch([unit('a', 1)], [unit('b', 3)], 1);
     playCard(match, 0, 'melee');
     match.players[0].board.melee[0].bleedStacks = 5;
     playCard(match, 0, 'melee');
     startTurn(match);
-    expect(match.players[0].board.melee[0].power).toBe(1);
+    expect(match.players[0].board.melee).toHaveLength(0);
+    expect(match.events.some((e) => e.type === 'destroy')).toBe(true);
   });
 
-  it('poison reduces power by 1 (min 1)', () => {
+  it('status ticks bypass the shield', () => {
+    const match = createMatch([unit('a', 3)], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    const card = match.players[0].board.melee[0];
+    card.poisoned = true;
+    card.shielded = true;
+    playCard(match, 0, 'melee');
+    startTurn(match);
+    expect(card.power).toBe(2);
+    expect(card.shielded).toBe(true);
+  });
+
+  it('poison reduces power by 1', () => {
     const match = createMatch([unit('a', 3)], [unit('b', 3)], 1);
     playCard(match, 0, 'melee');
     match.players[0].board.melee[0].poisoned = true;
@@ -463,5 +487,65 @@ describe('startTurn', () => {
     match.current = 0;
     startTurn(match);
     expect(match.players[0].board.melee[0].chargesLeft).toBe(1); // unchanged
+  });
+});
+
+describe('shield vs special damage', () => {
+  it('a shielded unit ignores sign damage once', () => {
+    const f = () => ({ id: 'f', type: 'unit', row: 'ranged', power: 1 });
+    const sign = { id: 'sg', type: 'special', effect: 'sign_damage', row: 'melee', power: 0 };
+    const troll = { id: 't', type: 'unit', row: 'melee', power: 6, deployEffect: 'shield_self' };
+    const extra = { id: 'e', type: 'unit', row: 'siege', power: 1 };
+    const match = createMatch([f(), sign], [troll, extra], 2);
+    playCard(match, 0, 'ranged');
+    playCard(match, 0, 'melee');  // troll shields itself
+    playCard(match, 0, 'melee');  // sign hits melee
+    const t = match.players[1].board.melee[0];
+    expect(t.power).toBe(6);
+    expect(t.shielded).toBe(false);
+  });
+});
+
+describe('round draws', () => {
+  const poolCard = { id: 'p', name: 'P', type: 'unit', row: 'melee', power: 2, rarity: 'common' };
+  const pool = [poolCard];
+
+  it('deals 5 pool cards to each player at the start of round 2', () => {
+    const match = createMatch([unit('a', 5)], [unit('b', 3)], 1, { rng: seededRng(1), pools: [pool, pool] });
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match); // p0 wins round 1
+    expect(match.round).toBe(2);
+    expect(match.players[0].hand).toHaveLength(5);
+    expect(match.players[1].hand).toHaveLength(5);
+    const draws = match.events.filter((e) => e.type === 'draw');
+    expect(draws.map((e) => e.player)).toEqual([0, 1]);
+    expect(draws[0].uids).toEqual(match.players[0].hand.map((c) => c.uid));
+  });
+
+  it('never fills a hand above 10', () => {
+    const deck = Array.from({ length: 8 }, (_, i) => unit(`a${i}`, 1));
+    const match = createMatch(deck, [unit('b', 3)], 8, { rng: seededRng(2), pools: [pool, pool] });
+    pass(match);
+    pass(match); // 0 vs 0 -> draw, round 2 starts
+    expect(match.players[0].hand).toHaveLength(10);
+  });
+
+  it('without pools no cards are dealt', () => {
+    const match = createMatch([unit('a', 5), unit('a2', 1)], [unit('b', 3), unit('b2', 1)], 1);
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match);
+    expect(match.players[0].hand).toHaveLength(0);
+  });
+
+  it('shuffles the opening hand when rng is given', () => {
+    const deck = Array.from({ length: 10 }, (_, i) => unit(`c${i}`, i + 1));
+    const match = createMatch(deck, deck, 10, { rng: seededRng(3) });
+    const ids = match.players[0].hand.map((c) => c.def.id);
+    expect([...ids].sort()).toEqual(deck.map((c) => c.id).sort());
+    expect(ids).not.toEqual(deck.map((c) => c.id));
   });
 });

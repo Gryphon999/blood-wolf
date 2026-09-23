@@ -22,24 +22,24 @@ const card = (id, name, faction, type, row, power, rarity, prov, opts = {}) => (
 const HUMAN_CARDS = [
   // Knights
   card('shield_knight',  'Рыцарь Щита',      'humans', 'unit',    'melee',  5, 'rare',      7,  { art: 'shield_knight',  tags: ['knight'], deployEffect: 'knight_bonus', armor: 2 }),
-  card('squire',         'Оруженосец',        'humans', 'unit',    'melee',  3, 'common',    5,  { art: 'squire',         tags: ['knight'], deployEffect: 'boost_neighbor', deployParam: 2 }),
+  card('squire',         'Оруженосец',        'humans', 'unit',    'melee',  3, 'common',    5,  { art: 'squire',         tags: ['knight'], deployEffect: 'boost', deployParam: 2 }),
   card('banner',         'Знаменосец',        'humans', 'unit',    'melee',  2, 'rare',      6,  { art: 'banner',         tags: ['knight'], hasOrder: true, orderEffect: 'boost_melee_row', orderParam: 1 }),
   card('paladin',        'Паладин',           'humans', 'hero',    'melee',  5, 'epic',      10, { art: 'paladin',        tags: ['knight'], resilience: true, hasOrder: true, orderEffect: 'boost_knights', orderParam: 2 }),
   // Archers
-  card('poison_arrow',   'Отравл. стрела',    'humans', 'unit',    'ranged', 3, 'rare',      5,  { art: 'poison_arrow',   tags: ['archer'], deployEffect: 'poison_one' }),
-  card('crossbow',       'Арбалетчик',        'humans', 'unit',    'ranged', 4, 'rare',      6,  { art: 'crossbow',       tags: ['archer'], deployEffect: 'damage_one', deployParam: 3 }),
+  card('poison_arrow',   'Отравл. стрела',    'humans', 'unit',    'ranged', 3, 'rare',      5,  { art: 'poison_arrow',   tags: ['archer'], deployEffect: 'poison' }),
+  card('crossbow',       'Арбалетчик',        'humans', 'unit',    'ranged', 4, 'rare',      6,  { art: 'crossbow',       tags: ['archer'], deployEffect: 'damage', deployParam: 3 }),
   card('sniper',         'Снайпер',           'humans', 'unit',    'ranged', 4, 'rare',      7,  { art: 'sniper',         tags: ['archer'], hasOrder: true, orderEffect: 'damage_one', orderParam: 2, chargeMax: 2 }),
   card('eagle_eye',      'Орлиный Глаз',      'humans', 'hero',    'ranged', 5, 'epic',      10, { art: 'eagle_eye',      tags: ['archer'], zeal: true, hasOrder: true, orderEffect: 'poison_two' }),
   // Medics
   card('field_medic',    'Боевой Медик',      'humans', 'unit',    'melee',  4, 'rare',      6,  { art: 'field_medic',    tags: ['medic'], zeal: true, hasOrder: true, orderEffect: 'heal_ally', orderParam: 2 }),
-  card('priest',         'Священник',         'humans', 'unit',    'melee',  3, 'common',    5,  { art: 'priest',         tags: ['medic'], deployEffect: 'cleanse_ally' }),
-  card('alchemist',      'Алхимик',           'humans', 'unit',    'ranged', 3, 'rare',      6,  { art: 'alchemist',      tags: ['medic'], hasOrder: true, orderEffect: 'shield_ally' }),
+  card('priest',         'Священник',         'humans', 'unit',    'melee',  3, 'common',    5,  { art: 'priest',         tags: ['medic'], deployEffect: 'cleanse_heal', deployParam: 2 }),
+  card('alchemist',      'Алхимик',           'humans', 'unit',    'ranged', 3, 'rare',      6,  { art: 'alchemist',      tags: ['medic'], deployEffect: 'duplicate', hasOrder: true, orderEffect: 'shield_ally' }),
   card('order_healer',   'Лекарь Ордена',     'humans', 'hero',    'melee',  4, 'legendary', 11, { art: 'order_healer',   tags: ['medic'], resilience: true, deployEffect: 'boost_all_faction', deployParam: 1 }),
   // Siege
   card('ballista',       'Огненная Баллиста', 'humans', 'unit',    'siege',  5, 'rare',      7,  { art: 'ballista',       tags: ['siege', 'machine'], hasOrder: true, orderEffect: 'damage_lock', orderParam: 3 }),
-  card('engineer',       'Инженер',           'humans', 'unit',    'siege',  4, 'rare',      8,  { art: 'engineer',       tags: ['siege'], deployEffect: 'boost_machine', deployParam: 3 }),
+  card('engineer',       'Инженер',           'humans', 'unit',    'siege',  4, 'rare',      8,  { art: 'engineer',       tags: ['siege'], deployEffect: 'boost', deployParam: 3 }),
   // Specials
-  card('lightning',      'Небесный Огонь',    'humans', 'special', 'ranged', 0, 'rare',      5,  { art: 'lightning',      effect: 'lightning_ranged' }),
+  card('lightning',      'Небесный Огонь',    'humans', 'special', 'ranged', 0, 'rare',      5,  { art: 'lightning',      effect: 'lightning', deployParam: 4 }),
   card('blessing',       'Благословение',     'humans', 'special', 'melee',  0, 'rare',      5,  { art: 'blessing',       effect: 'blessing_humans' }),
   card('battle_order',   'Боевой Приказ',     'humans', 'special', 'melee',  0, 'common',    4,  { art: 'battle_order',   effect: 'order_ready' }),
   card('scorch',         'Скорч',             'humans', 'special', 'melee',  0, 'epic',      7,  { effect: 'scorch' }),
@@ -51,18 +51,18 @@ const HUMAN_CARDS = [
 
 const MONSTER_CARDS = [
   // Undead
-  card('vampire',        'Вампир',            'monsters', 'unit',    'melee',  4, 'rare',      6,  { art: 'vampire',        tags: ['undead'], deployEffect: 'bleed_two' }),
+  card('vampire',        'Вампир',            'monsters', 'unit',    'melee',  4, 'rare',      6,  { art: 'vampire',        tags: ['undead'], deployEffect: 'bleed', deployParam: 2 }),
   card('bloodsucker',    'Кровопийца',        'monsters', 'unit',    'melee',  3, 'common',    5,  { art: 'bloodsucker',    tags: ['undead'], deployEffect: 'bleed_check_self' }),
   card('necromancer',    'Некромант',         'monsters', 'unit',    'melee',  3, 'rare',      7,  { art: 'necromancer',    tags: ['undead'], deployEffect: 'copy_enemy_graveyard' }),
   card('lich',           'Лич',               'monsters', 'hero',    'melee',  6, 'legendary', 10, { art: 'lich',           tags: ['undead'], resilience: true, hasOrder: true, orderEffect: 'debuff_living', orderParam: 2 }),
   // Beasts
   card('wolf',           'Волк',              'monsters', 'unit',    'melee',  2, 'common',    3,  { art: 'wolf',           tags: ['beast', 'wolf'], deployEffect: 'wolf_pack' }),
-  card('serpent',        'Серпент',           'monsters', 'unit',    'ranged', 3, 'common',    5,  { art: 'serpent',        tags: ['beast'], deployEffect: 'poison_one' }),
+  card('serpent',        'Серпент',           'monsters', 'unit',    'ranged', 3, 'common',    5,  { art: 'serpent',        tags: ['beast'], deployEffect: 'poison' }),
   card('werewolf',       'Оборотень',         'monsters', 'unit',    'melee',  5, 'rare',      7,  { art: 'werewolf',       tags: ['beast'], deployEffect: 'werewolf_register' }),
   card('harpy_hunter',   'Гарпия-охотница',  'monsters', 'unit',    'ranged', 4, 'rare',      5,  { art: 'harpy_hunter',   tags: ['beast'], deployEffect: 'boost_self', deployParam: 2 }),
   // Demons
   card('fire_demon',     'Демон Огня',        'monsters', 'unit',    'siege',  5, 'rare',      7,  { art: 'fire_demon',     tags: ['demon'], deployEffect: 'damage_row', deployParam: 2 }),
-  card('seducer',        'Соблазнитель',      'monsters', 'unit',    'ranged', 3, 'rare',      6,  { art: 'seducer',        tags: ['demon'], deployEffect: 'control_weakest' }),
+  card('seducer',        'Соблазнитель',      'monsters', 'unit',    'ranged', 3, 'rare',      6,  { art: 'seducer',        tags: ['demon'], deployEffect: 'take_control' }),
   card('archdemon',      'Архидемон',         'monsters', 'unit',    'siege',  6, 'epic',      8,  { art: 'archdemon',      tags: ['demon'], hasOrder: true, orderEffect: 'damage_row_choice', orderParam: 3 }),
   card('chaos_demon',    'Демон Хаоса',       'monsters', 'hero',    'siege',  9, 'legendary', 12, { art: 'chaos_demon',    tags: ['demon'], doomed: true, deployEffect: 'damage_all_rows', deployParam: 5 }),
   // Giants
