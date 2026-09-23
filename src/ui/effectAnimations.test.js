@@ -3,7 +3,7 @@ import { ANIMATIONS } from './effectAnimations.js';
 
 const ENGINE_EVENT_TYPES = [
   'play', 'damage', 'shieldBreak', 'heal', 'boost', 'shield', 'destroy',
-  'copyToHand', 'poison', 'bleed', 'rowDamage', 'control', 'draw', 'fizzle',
+  'copyToHand', 'poison', 'bleed', 'rowDamage', 'control', 'draw', 'fizzle', 'armorBlock', 'cleanse',
 ];
 
 describe('ANIMATIONS', () => {

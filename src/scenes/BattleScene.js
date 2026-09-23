@@ -64,7 +64,7 @@ export class BattleScene extends Phaser.Scene {
     const playerDeck  = buildDeckCards(getProfile());
     const pools = [
       buildFactionPool(playerDeck[0]?.faction ?? 'humans'),
-      buildFactionPool(enemyDeck[0]?.faction ?? 'monsters'),
+      this.storyIndex !== null ? enemyDeck : buildFactionPool(enemyDeck[0]?.faction ?? 'monsters'),
     ];
     this.match = createMatch(playerDeck, enemyDeck, 10, { rng: Math.random, pools });
 
@@ -287,7 +287,8 @@ export class BattleScene extends Phaser.Scene {
       }
       this.root.add(cv);
 
-      if (sideName === 'player' && this.canAct() && this.selectedIndex === null && this.orderReady(card)) {
+      if (sideName === 'player' && this.canAct() && this.selectedIndex === null && this.orderReady(card)
+          && (targetKind(card, 'order') === 'none' || getValidTargets(this.match, 0, card, 'order').length > 0)) {
         const obtn = this.add.text(boardCardX(i), y + 50, '⚡', {
           fontSize: '14px', color: '#ffdd44', stroke: '#000', strokeThickness: 2,
         }).setOrigin(0.5);
@@ -385,6 +386,7 @@ export class BattleScene extends Phaser.Scene {
     this.selectedIndex = null;
     const targets = getValidTargets(this.match, 0, card, 'deploy');
     if (targetKind(card, 'deploy') === 'none' || targets.length === 0) {
+      this.render(); // drop selection visuals; hand view is re-registered for the play animation
       this.act(() => playCard(this.match, handIndex, row)); // no choice needed (or it fizzles)
       return;
     }
@@ -414,12 +416,16 @@ export class BattleScene extends Phaser.Scene {
     if (this.pendingPlay) {
       const { handIndex, row } = this.pendingPlay;
       this.pendingPlay = null;
+      this.selectedIndex = null;
+      this.render();
       this.act(() => playCard(this.match, handIndex, row, { target }));
       return;
     }
     if (this.pendingOrder) {
       const { row, cardIdx } = this.pendingOrder;
       this.pendingOrder = null;
+      this.selectedIndex = null;
+      this.render();
       this.act(() => {
         useOrder(this.match, 0, row, cardIdx, { target });
         sfx.order();

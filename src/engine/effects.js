@@ -1,5 +1,6 @@
 import { createCard } from './Card.js';
 import { ROWS } from './Board.js';
+import { emit } from './events.js';
 import {
   dealDamage, heal, boost, giveShield, copyToHand, applyPoison, addBleed, damageRow, takeControl,
 } from './actions.js';
@@ -39,6 +40,9 @@ export function applyDeploy(match, card, playerIdx, target = null) {
     case 'row_damage':   damageRow(match, card, 1 - playerIdx, target, deployParam); break;
     case 'take_control': takeControl(match, card, target, playerIdx); break;
     case 'cleanse_heal':
+      if (target.poisoned || target.bleedStacks > 0) {
+        emit(match, { type: 'cleanse', sourceUid: card.uid, targetUid: target.uid });
+      }
       target.poisoned = false;
       target.bleedStacks = 0;
       heal(match, card, target, deployParam);

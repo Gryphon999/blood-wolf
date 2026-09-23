@@ -65,6 +65,15 @@ describe('dealDamage', () => {
     expect(t.power).toBe(4);
   });
 
+  it('armor absorbing the whole hit emits armorBlock', () => {
+    const match = newMatch();
+    const t = place(match, 1, def('t', 5, { armor: 3 }));
+    dealDamage(match, null, t, 2);
+    expect(t.power).toBe(5);
+    expect(t.armorLeft).toBe(1);
+    expect(match.events).toEqual([{ type: 'armorBlock', sourceUid: null, targetUid: t.uid }]);
+  });
+
   it('heroes are immune', () => {
     const match = newMatch();
     const t = place(match, 1, def('h', 6, { type: 'hero' }));
@@ -109,6 +118,17 @@ describe('heal / boost / shield', () => {
     t.power = 8;
     heal(match, null, t, 2);
     expect(t.power).toBe(8);
+    expect(match.events).toEqual([
+      { type: 'heal', sourceUid: null, targetUid: t.uid, amount: 0, powerAfter: 8 },
+    ]);
+  });
+
+  it('heal ignores non-positive amounts', () => {
+    const match = newMatch();
+    const t = place(match, 0, def('t', 5));
+    t.power = 2;
+    heal(match, null, t, 0);
+    expect(t.power).toBe(2);
     expect(match.events).toEqual([]);
   });
 
@@ -146,6 +166,15 @@ describe('copyToHand', () => {
     expect(match.events[0]).toEqual({
       type: 'copyToHand', sourceUid: null, targetUid: t.uid, newUid: copy.uid, player: 0,
     });
+  });
+
+  it('fizzles when the hand is full (10 cards)', () => {
+    const match = newMatch();
+    const t = place(match, 0, def('t', 5));
+    for (let i = 0; i < 10; i++) match.players[0].hand.push(createCard(def('f' + i, 1)));
+    copyToHand(match, null, t, 0);
+    expect(match.players[0].hand).toHaveLength(10);
+    expect(match.events).toEqual([{ type: 'fizzle', sourceUid: null }]);
   });
 });
 

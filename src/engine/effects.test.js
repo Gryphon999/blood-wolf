@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { createMatch, playCard, pass, useOrder } from './GwentMatch.js';
 import { createCard } from './Card.js';
 import { addUnit } from './Board.js';
-import { applyDeploy } from './effects.js';
 
 // Helper: minimal unit def
 const uDef = (id, power, row = 'melee', opts = {}) => ({ id, type: 'unit', row, power, ...opts });
@@ -282,6 +281,7 @@ describe('targeted Deploy effects', () => {
     expect(ally.poisoned).toBe(false);
     expect(ally.bleedStacks).toBe(0);
     expect(ally.power).toBe(4);
+    expect(match.events.map((e) => e.type)).toContain('cleanse');
   });
 
   it('lightning special damages the chosen enemy', () => {

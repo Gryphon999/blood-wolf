@@ -1,5 +1,6 @@
 import { createCard } from './Card.js';
 import { emit, locateOnBoard } from './events.js';
+import { MAX_HAND } from './dealRandom.js';
 
 const uidOf = (card) => card?.uid ?? null;
 const isHero = (card) => card.def.type === 'hero';
@@ -25,7 +26,10 @@ export function dealDamage(match, source, target, amount, { direct = false } = {
     const absorbed = Math.min(target.armorLeft, dmg);
     target.armorLeft -= absorbed;
     dmg -= absorbed;
-    if (dmg === 0) return;
+    if (dmg === 0) {
+      emit(match, { type: 'armorBlock', sourceUid: uidOf(source), targetUid: target.uid });
+      return;
+    }
   }
   target.power -= dmg;
   emit(match, {
@@ -36,9 +40,9 @@ export function dealDamage(match, source, target, amount, { direct = false } = {
 }
 
 export function heal(match, source, target, amount) {
-  if (target.power >= target.def.power) return;
+  if (amount <= 0) return;
   const before = target.power;
-  target.power = Math.min(target.def.power, target.power + amount);
+  target.power = Math.max(before, Math.min(target.def.power, before + amount));
   emit(match, {
     type: 'heal', sourceUid: uidOf(source), targetUid: target.uid,
     amount: target.power - before, powerAfter: target.power,
@@ -60,6 +64,10 @@ export function giveShield(match, source, target) {
 }
 
 export function copyToHand(match, source, target, playerIdx) {
+  if (match.players[playerIdx].hand.length >= MAX_HAND) {
+    emit(match, { type: 'fizzle', sourceUid: uidOf(source) });
+    return;
+  }
   const copy = createCard(target.def);
   copy.isCopy = true;
   match.players[playerIdx].hand.push(copy);

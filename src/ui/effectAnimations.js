@@ -134,12 +134,33 @@ export const ANIMATIONS = {
     ring.destroy();
   },
 
+  async armorBlock(scene, ev, queue) {
+    const t = view(scene, ev.targetUid);
+    if (!t) return;
+    await projectile(scene, queue, ev.sourceUid, t, 0x8899aa);
+    sfx.damage();
+    const flash = overlay(scene, t, 0x8899aa);
+    floatText(scene, t.x, t.y - 30, 'Броня', '#c0c8d0');
+    await shake(scene, queue, t);
+    await tweenP(scene, queue, { targets: flash, alpha: 0, duration: 110 });
+    flash.destroy();
+  },
+
+  async cleanse(scene, ev, queue) {
+    const t = view(scene, ev.targetUid);
+    if (!t) return;
+    sfx.heal();
+    burst(scene, t.x, t.y, 0xaaffee, { count: 12, rise: true });
+    floatText(scene, t.x, t.y - 30, 'Очищено', '#aaffee', '16px');
+    await waitP(scene, queue, 300);
+  },
+
   async heal(scene, ev, queue) {
     const t = view(scene, ev.targetUid);
     if (!t) return;
     sfx.heal();
     burst(scene, t.x, t.y + 30, 0x66ff88, { count: 12, rise: true });
-    floatText(scene, t.x, t.y - 30, `+${ev.amount}`, '#7fff7f');
+    if (ev.amount > 0) floatText(scene, t.x, t.y - 30, `+${ev.amount}`, '#7fff7f');
     t.setPower?.(ev.powerAfter);
     await waitP(scene, queue, 350);
   },

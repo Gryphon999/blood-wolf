@@ -413,7 +413,7 @@ describe('graveyard', () => {
 });
 
 describe('startTurn', () => {
-  it('reduces power by bleedStacks (min 1) for all board cards', () => {
+  it('reduces power by bleedStacks for all board cards', () => {
     const match = createMatch([unit('a', 5)], [unit('b', 5)], 1);
     playCard(match, 0, 'melee');  // p0 plays, turn -> p1
     match.players[0].board.melee[0].bleedStacks = 2;
@@ -446,7 +446,7 @@ describe('startTurn', () => {
     expect(card.shielded).toBe(true);
   });
 
-  it('poison reduces power by 1 (min 1)', () => {
+  it('poison reduces power by 1', () => {
     const match = createMatch([unit('a', 3)], [unit('b', 3)], 1);
     playCard(match, 0, 'melee');
     match.players[0].board.melee[0].poisoned = true;

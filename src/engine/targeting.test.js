@@ -83,6 +83,17 @@ describe('playCard with targets', () => {
     expect(match.events[1]).toEqual({ type: 'fizzle', sourceUid: uid });
   });
 
+  it('lightning with no enemy units fizzles: card leaves the hand, board untouched', () => {
+    const lightning = { id: 'l', type: 'special', effect: 'lightning', row: 'ranged', power: 0, deployParam: 4 };
+    const match = createMatch([lightning], [def('x', 1)], 1);
+    const uid = match.players[0].hand[0].uid;
+    playCard(match, 0, 'ranged');
+    expect(match.players[0].hand).toHaveLength(0);
+    expect(match.events.map((e) => e.type)).toEqual(['play', 'fizzle']);
+    expect(match.events[1]).toEqual({ type: 'fizzle', sourceUid: uid });
+    expect(match.players[1].board.melee).toHaveLength(0);
+  });
+
   it('an invalid target throws and leaves the hand untouched', () => {
     const archer = def('ar', 3, { deployEffect: 'damage', deployParam: 2 });
     const match = createMatch([archer], [def('x', 1)], 1);
