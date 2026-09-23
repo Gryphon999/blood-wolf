@@ -1,6 +1,7 @@
 import { createCard } from './Card.js';
 import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
 import { applyDeploy, applyOrder } from './effects.js';
+import { emit } from './events.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -23,6 +24,7 @@ export function createMatch(deckA, deckB, handSize = 10) {
     winner: null,
     lastRound: null,
     weather: new Set(),
+    events: [],
   };
 }
 
@@ -120,16 +122,20 @@ function applyEffect(match, effect, row) {
 }
 
 function applyCard(match, card, row) {
+  const self = match.current;
   if (card.def.type === 'special') {
+    emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: null, special: true });
     applyEffect(match, card.def.effect, row);
     return;
   }
-  addUnit(match.players[match.current].board, row, card);
+  const board = match.players[self].board;
+  addUnit(board, row, card);
+  emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: board[row].length - 1, special: false });
   // Non-Zeal Order cards can't act the turn they're played
   if (card.def.hasOrder && !card.def.zeal && card.def.chargeMax === 0) {
     card.orderUsed = true;
   }
-  applyDeploy(match, card, match.current);
+  applyDeploy(match, card, self);
 }
 
 export function playCard(match, cardIndex, row) {

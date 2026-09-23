@@ -1,5 +1,8 @@
+let nextUid = 1;
+
 export function createCard(def) {
   return {
+    uid: nextUid++,
     def,
     power: def.power,
     armorLeft: def.armor ?? 0,
@@ -10,5 +13,6 @@ export function createCard(def) {
     locked: false,
     shielded: false,
     controlled: false,
+    isCopy: false,
   };
 }
