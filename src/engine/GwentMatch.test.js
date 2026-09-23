@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createMatch, playCard, pass, hasLegalMove, startTurn } from './GwentMatch.js';
-import { totalPower } from './Board.js';
+import { createMatch, playCard, pass, hasLegalMove, startTurn, useOrder } from './GwentMatch.js';
+import { totalPower, addUnit } from './Board.js';
+import { createCard } from './Card.js';
 import { seededRng } from './rng.js';
 
 const unit = (id, power, row = 'melee') => ({ id, row, power });
@@ -135,6 +136,51 @@ describe('round-starter after a draw', () => {
     expect(match.lastRound).toBe('draw');
     expect(match.roundStarter).toBe(1); // was 0, a draw toggles it
     expect(match.current).toBe(1);
+  });
+});
+
+describe('turn counter', () => {
+  it('starts a new match at turn 0', () => {
+    const match = createMatch([unit('a', 1)], [unit('b', 1)], 1);
+    expect(match.turn).toBe(0);
+  });
+
+  it('increments on playCard even when the opponent has already passed (current stays the same)', () => {
+    const match = createMatch(
+      [unit('a', 5), unit('a2', 3)],
+      [unit('b', 1), unit('b2', 1)],
+      2,
+    );
+    playCard(match, 0, 'melee'); // p0 plays -> turn 0->1, current -> 1
+    pass(match);                 // p1 passes -> turn 1->2, current -> 0 (p0 hasn't passed)
+    const turnBefore = match.turn;
+    const currentBefore = match.current;
+    playCard(match, 0, 'melee'); // p0 plays again; p1 already passed so current is unchanged
+    expect(match.current).toBe(currentBefore);
+    expect(match.turn).toBe(turnBefore + 1);
+  });
+
+  it('increments on pass, both when handing the turn over and when it resolves the round', () => {
+    const match = createMatch([unit('a', 1)], [unit('b', 1)], 1);
+    expect(match.turn).toBe(0);
+    pass(match); // hands the turn over
+    expect(match.turn).toBe(1);
+    pass(match); // both passed -> resolves the round
+    expect(match.turn).toBe(2);
+  });
+
+  it('does not change on useOrder', () => {
+    const match = createMatch([unit('a', 1)], [unit('b', 1)], 1);
+    const def = {
+      id: 'orderer', name: 'Orderer', power: 3, type: 'unit', row: 'melee',
+      hasOrder: true, orderEffect: 'boost_melee_row', chargeMax: 0,
+    };
+    const card = createCard(def);
+    card.orderUsed = false;
+    addUnit(match.players[0].board, 'melee', card);
+    const turnBefore = match.turn;
+    useOrder(match, 0, 'melee', 0);
+    expect(match.turn).toBe(turnBefore);
   });
 });
 

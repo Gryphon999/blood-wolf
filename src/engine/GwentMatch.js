@@ -24,6 +24,7 @@ export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = n
   return {
     players: [makePlayer(order(deckA), handSize), makePlayer(order(deckB), handSize)],
     current: 0,
+    turn: 0,
     round: 1,
     roundStarter: 0,
     winner: null,
@@ -155,6 +156,7 @@ export function playCard(match, cardIndex, row, { target } = {}) {
   player.hand.splice(cardIndex, 1);
   applyCard(match, card, row, chosen, fizzled);
   passTurn(match);
+  match.turn++;
 }
 
 function startNextRound(match, lastResult) {
@@ -247,8 +249,10 @@ export function pass(match) {
   player.passed = true;
   if (match.players[1 - match.current].passed) {
     resolveRound(match);
+    match.turn++;
   } else {
     match.current = 1 - match.current;
+    match.turn++;
   }
 }
 

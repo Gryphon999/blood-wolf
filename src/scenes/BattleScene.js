@@ -76,7 +76,7 @@ export class BattleScene extends Phaser.Scene {
     this.rewardGranted  = false;
     this.reward         = 0;
     this.rewardCardName = null;
-    this._lastCurrent   = -1;
+    this._lastTurn      = -1;
     this.viewsByUid     = new Map();
 
     this.root      = this.add.container(0, 0);
@@ -130,7 +130,7 @@ export class BattleScene extends Phaser.Scene {
     try {
       action();
     } catch (e) {
-      console.warn('Action failed:', e.message);
+      console.warn('Action failed:', e);
     }
     await this.queue.play(drainEvents(this.match));
     await this.beginTurnIfNeeded();
@@ -140,11 +140,11 @@ export class BattleScene extends Phaser.Scene {
     this.maybeRunAi();
   }
 
-  /** startTurn exactly once each time the active player changes; animate status ticks. */
+  /** startTurn exactly once per turn; animate status ticks. */
   async beginTurnIfNeeded() {
     const m = this.match;
-    if (m.winner !== null || this._lastCurrent === m.current) return;
-    this._lastCurrent = m.current;
+    if (m.winner !== null || this._lastTurn === m.turn) return;
+    this._lastTurn = m.turn;
     startTurn(m);
     const events = drainEvents(m);
     if (events.length > 0) {
@@ -157,12 +157,17 @@ export class BattleScene extends Phaser.Scene {
   maybeRunAi() {
     if (this.match.winner !== null || this.match.current !== 1) return;
     this.time.delayedCall(400, () => this.act(() => {
-      const move = chooseMove(this.match, 1);
-      if (move.type === 'pass') {
-        pass(this.match);
-        sfx.pass();
-      } else {
-        playCard(this.match, move.cardIndex, move.row, { target: move.target });
+      try {
+        const move = chooseMove(this.match, 1);
+        if (move.type === 'pass') {
+          pass(this.match);
+          sfx.pass();
+        } else {
+          playCard(this.match, move.cardIndex, move.row, { target: move.target });
+        }
+      } catch (e) {
+        console.warn('AI move failed, passing instead:', e);
+        if (this.match.winner === null && this.match.current === 1) pass(this.match);
       }
     }));
   }
@@ -182,7 +187,7 @@ export class BattleScene extends Phaser.Scene {
     const status = m.winner !== null ? '' : m.current === 0 ? 'Твой ход' : 'Ход ИИ…';
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
     onLeftClick(this.addText(SCREEN.width - 110, 14, '‹ Назад', '#9fbfff'),
-      () => showInterstitial(() => this.scene.start(this.returnScene)));
+      () => { if (!this.busy) showInterstitial(() => this.scene.start(this.returnScene)); });
 
     // ── Board rows
     for (const rowName of ROW_NAMES) {
