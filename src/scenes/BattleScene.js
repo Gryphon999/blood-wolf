@@ -24,6 +24,7 @@ import { newSummary, accumulate } from '../economy/matchSummary.js';
 import { recordMatch } from '../economy/progress.js';
 import { toastAchievements } from '../ui/toast.js';
 import { cardName } from '../ui/cardText.js';
+import { tutorialStep, isInfoStep, TUTORIAL_STEPS, TUTORIAL_ANCHOR_Y } from '../ui/tutorial.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
@@ -89,6 +90,7 @@ export class BattleScene extends Phaser.Scene {
     this.difficulty = getProfile().difficulty ?? 'normal';
     this.chestClaimed = false;
     this.summary = newSummary();
+    this.tutorial = !getProfile().tutorialDone && this.storyIndex === null ? { seen: new Set() } : null;
     this.match = createMatch(playerDeck, enemyDeck, 10, {
       rng: Math.random, pools, leaders,
       permanentWeather: data?.rules?.permanentWeather ?? [],
@@ -323,6 +325,59 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.mulliganPicks) this.renderMulligan();
     if (m.winner !== null) this.renderResult();
+    else if (this.tutorial) this.renderTutorial();
+  }
+
+  // ─── Tutorial ─────────────────────────────────────────────────────────────
+
+  renderTutorial() {
+    const m = this.match;
+    const step = tutorialStep({
+      mulligan: Boolean(this.mulliganPicks),
+      selected: this.selectedIndex !== null,
+      pendingTarget: Boolean(this.pendingPlay || this.pendingOrder),
+      played: this.summary.cardsPlayed > 0,
+      myTurn: m.current === 0 && !this.busy,
+      seen: this.tutorial.seen,
+    });
+    if (step === 'done') {
+      this.finishTutorial();
+      return;
+    }
+    if (!step) return;
+    const y = TUTORIAL_ANCHOR_Y[step];
+    const panel = this.add.rectangle(SCREEN.width / 2, y, 980, 78, 0x120e16, 0.95).setStrokeStyle(2, 0x9fe3d0);
+    this.root.add(panel);
+    this.root.add(this.add.text(SCREEN.width / 2 - 470, y, t(`tutorial.${step}`), {
+      fontSize: '15px', color: '#e8f4ee', wordWrap: { width: 730 },
+    }).setOrigin(0, 0.5));
+    if (isInfoStep(step)) {
+      const last = step === TUTORIAL_STEPS[TUTORIAL_STEPS.length - 1];
+      this.root.add(onLeftClick(this.add.text(SCREEN.width / 2 + 400, y - 14, last ? t('tutorial.done') : t('tutorial.next'), {
+        fontSize: '18px', color: '#14100c', backgroundColor: '#9fe3d0', padding: { x: 10, y: 4 },
+      }).setOrigin(0.5), () => {
+        this.tutorial.seen.add(step);
+        sfx.click();
+        this.render();
+      }));
+    }
+    this.root.add(onLeftClick(this.add.text(SCREEN.width / 2 + 400, y + 22, t('tutorial.skip'), {
+      fontSize: '12px', color: '#9a8a6a',
+    }).setOrigin(0.5), () => this.finishTutorial()));
+    if (step === 'hand') {
+      const arrow = this.add.text(SCREEN.width / 2, HAND_Y - 90, '▼', { fontSize: '30px', color: '#9fe3d0' }).setOrigin(0.5);
+      this.root.add(arrow);
+      this.tweens.add({ targets: arrow, y: HAND_Y - 78, duration: 400, yoyo: true, repeat: -1 });
+      arrow.once('destroy', () => this.tweens.killTweensOf(arrow));
+    }
+  }
+
+  finishTutorial() {
+    if (!this.tutorial) return;
+    this.tutorial = null;
+    getProfile().tutorialDone = true;
+    persist();
+    this.render();
   }
 
   grantRewardOnce() {
@@ -524,6 +579,7 @@ export class BattleScene extends Phaser.Scene {
 
   onRowClick(rowName) {
     if (this.selectedIndex === null || this.busy) return;
+    this.tutorial?.seen.add('row');
     this.beginPlay(this.selectedIndex, rowName);
   }
 
@@ -559,6 +615,7 @@ export class BattleScene extends Phaser.Scene {
 
   onTargetClick(target) {
     if (this.busy) return;
+    this.tutorial?.seen.add('target');
     if (this.pendingPlay) {
       const { handIndex, row } = this.pendingPlay;
       this.pendingPlay = null;

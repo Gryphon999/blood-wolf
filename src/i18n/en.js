@@ -392,4 +392,13 @@ export const en = {
   'settings.tutorial': 'Tutorial',
   'settings.tutorial.reset': 'Replay',
   'settings.tutorial.pending': 'The tutorial will run in your next battle',
+  'tutorial.mulligan': 'Tutorial 1/6 · Before the fight you may swap up to 2 weak cards. Mark them and press Replace — or Keep.',
+  'tutorial.hand': 'Tutorial 2/6 · Your turn. Tap a card in your hand to pick it. Hover or long-press shows its rules.',
+  'tutorial.row': 'Tutorial 3/6 · The highlighted row is where the card goes. Tap it. Spies go to the enemy row!',
+  'tutorial.target': 'Tutorial 4/6 · This card acts: pick a target outlined in orange. Right click / Esc cancels.',
+  'tutorial.score': 'Tutorial 5/6 · On the right: row power and the total. When both pass, the stronger side takes the round. Win 2 rounds. Cards with ⚡ can give Orders.',
+  'tutorial.leader': 'Tutorial 6/6 · Bottom left is your leader: one ability per match. PASS ends your round — don\'t waste cards, they\'re scarce!',
+  'tutorial.next': 'Next ›',
+  'tutorial.skip': 'Skip tutorial',
+  'tutorial.done': 'Got it!',
 };
