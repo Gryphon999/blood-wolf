@@ -357,8 +357,8 @@ export const en = {
   'cardname.Вестник луны': 'Moon Herald',
   'cardname.Кровавая луна': 'Blood Moon',
   'cardname.Кровавый Волк': 'Blood Wolf',
-  'battle.enemyInfo': 'Enemy — cards: {n}   rounds: {rounds}',
-  'battle.youInfo': 'You — rounds: {rounds}',
+  'battle.enemyInfo': 'Enemy — cards: {n}',
+  'battle.youInfo': 'You',
   'battle.yourTurn': 'Your turn',
   'battle.aiTurn': 'Enemy turn…',
   'battle.back': '‹ Back',
@@ -405,4 +405,5 @@ export const en = {
   'anim.roundWon': 'Round {n} is yours!  {a} : {b}',
   'anim.roundLost': 'Round {n} goes to the enemy  {a} : {b}',
   'anim.roundDraw': 'Round {n} — a draw  {a} : {b}',
+  'battle.zoomClose': 'Click or Esc to close',
 };

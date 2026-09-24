@@ -25,6 +25,8 @@ import { recordMatch } from '../economy/progress.js';
 import { toastAchievements } from '../ui/toast.js';
 import { cardName } from '../ui/cardText.js';
 import { attachCardTooltip, attachLongPress, hideCardTooltip } from '../ui/tooltip.js';
+import { cardDescription } from '../ui/cardDescription.js';
+import { gemStates, lostGems, GEM_COUNT } from '../ui/gems.js';
 import { tutorialStep, isInfoStep, TUTORIAL_STEPS, TUTORIAL_ANCHOR_Y } from '../ui/tutorial.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
@@ -123,7 +125,10 @@ export class BattleScene extends Phaser.Scene {
       }
       if (pointer.rightButtonDown()) this.cancelTargeting();
     });
-    this.input.keyboard?.on('keydown-ESC', () => this.cancelTargeting());
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.zoomLayer) this.closeZoom();
+      else this.cancelTargeting();
+    });
 
     // Mulligan: the AI swaps silently, the player gets a picker before the first move
     mulligan(this.match, 1, chooseMulligan(this.match, 1));
@@ -212,6 +217,7 @@ export class BattleScene extends Phaser.Scene {
   /** Run one engine action, animate what it did, then redraw. */
   async act(action) {
     if (this.busy) return;
+    this.closeZoom();
     this.busy = true;
     this.busyStartedAt = this.time.now;
     try {
@@ -278,7 +284,8 @@ export class BattleScene extends Phaser.Scene {
     this.grantRewardOnce();
 
     // ── Header
-    this.addText(20, 14, t('battle.enemyInfo', { n: opp.hand.length, rounds: pips(opp.roundsWon) }), '#d8c9a8');
+    const enemyInfo = this.addText(20, 14, t('battle.enemyInfo', { n: opp.hand.length }), '#d8c9a8');
+    this.renderGems(1, enemyInfo.x + enemyInfo.width + 22, 23);
     const status = m.winner !== null ? '' : m.current === 0 ? t('battle.yourTurn') : t('battle.aiTurn');
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
     onLeftClick(this.addText(SCREEN.width - 110, 14, t('battle.back'), '#9fbfff'),
@@ -315,7 +322,8 @@ export class BattleScene extends Phaser.Scene {
     this.renderHand(player);
 
     // ── Footer
-    this.addText(20, HAND_Y + 52, t('battle.youInfo', { rounds: pips(player.roundsWon) }), '#d8c9a8');
+    const youInfo = this.addText(20, HAND_Y + 52, t('battle.youInfo'), '#d8c9a8');
+    this.renderGems(0, youInfo.x + youInfo.width + 22, HAND_Y + 61);
     // Big touch-friendly PASS button to the right of the player's rows (clear of the hand)
     const canPass = this.canAct();
     const passBtn = this.add.rectangle(SCREEN.width - 80, rowY('player', 'siege'), 130, 60, canPass ? 0x3a1c1c : 0x1a1a1f)
@@ -336,6 +344,66 @@ export class BattleScene extends Phaser.Scene {
     if (this.mulliganPicks) this.renderMulligan();
     if (m.winner !== null) this.renderResult();
     else if (this.tutorial) this.renderTutorial();
+  }
+
+  // ─── Round gems ───────────────────────────────────────────────────────────
+
+  /** Two diamonds per side; a newly lost one fades out once, then stays dark. */
+  renderGems(playerIdx, x, y) {
+    this.gemsLost = this.gemsLost ?? [0, 0];
+    const states = gemStates(this.match, playerIdx);
+    const lostNow = lostGems(this.match, playerIdx);
+    states.forEach((state, i) => {
+      const gx = x + i * 22;
+      const fresh = state === 'lost' && i >= GEM_COUNT - lostNow && i < GEM_COUNT - this.gemsLost[playerIdx];
+      const g = this.add.graphics({ x: gx, y });
+      const color = state === 'full' || fresh ? 0xffd479 : 0x2b2b33;
+      g.fillStyle(color, 1);
+      g.lineStyle(1, state === 'full' ? 0xfff0c0 : 0x4a4436, 1);
+      g.beginPath();
+      g.moveTo(0, -9); g.lineTo(7, 0); g.lineTo(0, 9); g.lineTo(-7, 0);
+      g.closePath();
+      g.fillPath();
+      g.strokePath();
+      this.root.add(g);
+      if (fresh) {
+        this.tweens.add({ targets: g, alpha: 0.15, duration: 450, ease: 'Sine.In' });
+        g.once('destroy', () => this.tweens.killTweensOf(g));
+      }
+    });
+    this.gemsLost[playerIdx] = lostNow;
+  }
+
+  // ─── Card zoom ────────────────────────────────────────────────────────────
+
+  /** Big view of a board card with its rules; Esc or a click anywhere closes it. */
+  showZoom(card) {
+    if (this.pendingPlay || this.pendingOrder || this.busy) return;
+    this.closeZoom();
+    hideCardTooltip(this);
+    sfx.click();
+    const layer = this.add.container(0, 0).setDepth(950);
+    const shade = this.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, 0.72)
+      .setInteractive();
+    shade.on('pointerdown', () => this.closeZoom());
+    const cv = createCardView(this, card.def, { card }).setPosition(SCREEN.width / 2, 300).setScale(0.6);
+    const desc = this.add.text(SCREEN.width / 2, 505, cardDescription(card.def), {
+      fontSize: '16px', color: '#e8dcc0', align: 'center', wordWrap: { width: 760 },
+      backgroundColor: '#0d0b10', padding: { x: 12, y: 8 },
+    }).setOrigin(0.5, 0);
+    const hint = this.add.text(SCREEN.width / 2, SCREEN.height - 30, t('battle.zoomClose'), { fontSize: '13px', color: '#9a8a6a' })
+      .setOrigin(0.5);
+    layer.add([shade, cv, desc, hint]);
+    this.zoomLayer = layer;
+    if (this.registry.get('reduceMotion')) cv.setScale(2.5);
+    else this.tweens.add({ targets: cv, scale: 2.5, duration: 160, ease: 'Back.Out' });
+  }
+
+  closeZoom() {
+    if (!this.zoomLayer) return;
+    this.tweens.killTweensOf(this.zoomLayer.list);
+    this.zoomLayer.destroy();
+    this.zoomLayer = null;
   }
 
   // ─── Tutorial ─────────────────────────────────────────────────────────────
@@ -491,6 +559,10 @@ export class BattleScene extends Phaser.Scene {
       if (!targets) {
         cv.list[0].setInteractive();
         attachCardTooltip(this, cv.list[0], card.def, { y: sideName === 'player' ? 90 : HAND_Y - 20 });
+        cv.list[0].on('pointerup', (pointer) => {
+          if (this.tooltipShown || pointer.rightButtonReleased?.()) return;
+          this.showZoom(card);
+        });
       }
       if (targets) {
         if (targets.includes(card)) {
@@ -734,8 +806,4 @@ export class BattleScene extends Phaser.Scene {
       );
     }
   }
-}
-
-function pips(won) {
-  return '●'.repeat(won) + '○'.repeat(Math.max(0, 2 - won));
 }

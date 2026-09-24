@@ -357,8 +357,8 @@ export const ru = {
   'cardname.Вестник луны': 'Вестник луны',
   'cardname.Кровавая луна': 'Кровавая луна',
   'cardname.Кровавый Волк': 'Кровавый Волк',
-  'battle.enemyInfo': 'Соперник — карт: {n}   раунды: {rounds}',
-  'battle.youInfo': 'Ты — раунды: {rounds}',
+  'battle.enemyInfo': 'Соперник — карт: {n}',
+  'battle.youInfo': 'Ты',
   'battle.yourTurn': 'Твой ход',
   'battle.aiTurn': 'Ход ИИ…',
   'battle.back': '‹ Назад',
@@ -405,4 +405,5 @@ export const ru = {
   'anim.roundWon': 'Раунд {n} — за тобой!  {a} : {b}',
   'anim.roundLost': 'Раунд {n} — за врагом  {a} : {b}',
   'anim.roundDraw': 'Раунд {n} — ничья  {a} : {b}',
+  'battle.zoomClose': 'Клик или Esc — закрыть',
 };

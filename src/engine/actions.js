@@ -23,7 +23,8 @@ export function destroy(match, card, { exile = false } = {}) {
   }
 }
 
-export function dealDamage(match, source, target, amount, { direct = false } = {}) {
+// status: 'poison' | 'bleed' | 'both' marks a status tick (for the animation)
+export function dealDamage(match, source, target, amount, { direct = false, status = null } = {}) {
   if (amount <= 0 || isHero(target)) return;
   let dmg = amount;
   if (!direct) {
@@ -45,6 +46,7 @@ export function dealDamage(match, source, target, amount, { direct = false } = {
   emit(match, {
     type: 'damage', sourceUid: uidOf(source), targetUid: target.uid,
     amount: dmg, powerAfter: Math.max(0, target.power),
+    ...(status ? { status } : {}),
   });
   if (target.power <= 0) destroy(match, target);
   // Vampirism: the source drinks what it drained (only while it stands on the board)

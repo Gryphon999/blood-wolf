@@ -20,3 +20,15 @@ describe('procedural music', () => {
     expect(barNotes(THEMES.menu, 0).notes.some((n) => n.kind === 'kick')).toBe(false);
   });
 });
+
+describe('lute melody', () => {
+  it('both themes pluck one lute note per pattern step, on chord tones', () => {
+    for (const theme of Object.values(THEMES)) {
+      const { notes } = barNotes(theme, 1);
+      const lute = notes.filter((n) => n.kind === 'lute');
+      expect(lute).toHaveLength(theme.lutePattern.length);
+      const chord = theme.chords[1].map((n) => n + theme.luteOctave);
+      for (const n of lute) expect(chord).toContain(n.midi);
+    }
+  });
+});

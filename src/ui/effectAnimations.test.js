@@ -13,3 +13,14 @@ describe('ANIMATIONS', () => {
     }
   });
 });
+
+describe('hitStyle', async () => {
+  const { hitStyle } = await import('./effectAnimations.js');
+  it('arrows for ranged, lightning for siege and lightning effects, melee otherwise', () => {
+    expect(hitStyle({ row: 'ranged', deployEffect: 'damage' })).toBe('arrow');
+    expect(hitStyle({ row: 'siege', orderEffect: 'damage_lock' })).toBe('lightning');
+    expect(hitStyle({ row: 'ranged', type: 'special', effect: 'lightning' })).toBe('lightning');
+    expect(hitStyle({ row: 'melee', deployEffect: 'damage' })).toBe('melee');
+    expect(hitStyle(null)).toBe('melee');
+  });
+});

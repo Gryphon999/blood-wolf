@@ -123,3 +123,25 @@ describe('boss start units', () => {
     expect(match.players[1].board.melee.map((c) => c.def.id)).toEqual(['boss']);
   });
 });
+
+describe('status tick events', () => {
+  it('tick damage names the status that caused it', async () => {
+    const { startTurn } = await import('./GwentMatch.js');
+    const match = createMatch([unit('x', 1)], [unit('y', 1)], 1);
+    const a = createCard(unit('a', 5)); a.poisoned = true;
+    const b = createCard(unit('b', 5)); b.bleedStacks = 2;
+    const c = createCard(unit('c', 5)); c.poisoned = true; c.bleedStacks = 1;
+    [a, b, c].forEach((card) => addUnit(match.players[1].board, 'melee', card));
+    startTurn(match);
+    const byTarget = Object.fromEntries(match.events.filter((e) => e.type === 'damage').map((e) => [e.targetUid, e.status]));
+    expect(byTarget).toEqual({ [a.uid]: 'poison', [b.uid]: 'bleed', [c.uid]: 'both' });
+  });
+
+  it('ordinary damage has no status field', () => {
+    const match = createMatch([], [], 0);
+    const t = createCard(unit('t', 5));
+    addUnit(match.players[1].board, 'melee', t);
+    dealDamage(match, null, t, 1);
+    expect(match.events[0]).not.toHaveProperty('status');
+  });
+});
