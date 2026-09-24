@@ -401,4 +401,5 @@ export const en = {
   'tutorial.next': 'Next ›',
   'tutorial.skip': 'Skip tutorial',
   'tutorial.done': 'Got it!',
+  'app.rotate': '⟳ Turn your device sideways — the cards get bigger',
 };

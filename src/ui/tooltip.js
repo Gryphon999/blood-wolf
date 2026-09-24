@@ -4,19 +4,18 @@ import { cardName } from './cardText.js';
 
 const LONG_PRESS_MS = 450;
 
-// Hover (mouse) or long-press (touch) on `target` shows the card's description.
-// While a long-press tooltip is up, scene.tooltipShown is true so the tap can be ignored.
-export function attachCardTooltip(scene, target, def) {
+// Hover (mouse) or long-press (touch) shows something; leaving / releasing hides it.
+// While a long-press is showing, scene.tooltipShown is true so the tap can be ignored.
+export function attachLongPress(scene, target, onShow, onHide) {
   let timer = null;
-  const show = () => showCardTooltip(scene, def);
-  target.on('pointerover', (pointer) => { if (!pointer.wasTouch) show(); });
-  target.on('pointerout', () => { clearTimeout(timer); hideCardTooltip(scene); });
+  target.on('pointerover', (pointer) => { if (!pointer.wasTouch) onShow(); });
+  target.on('pointerout', () => { clearTimeout(timer); onHide(); });
   target.on('pointerdown', (pointer) => {
     if (!pointer.wasTouch) return;
     clearTimeout(timer);
     timer = setTimeout(() => {
       scene.tooltipShown = true;
-      show();
+      onShow();
     }, LONG_PRESS_MS);
   });
   target.on('pointerup', () => {
@@ -25,15 +24,19 @@ export function attachCardTooltip(scene, target, def) {
       // Swallow this tap, then let the next one through
       scene.time.delayedCall(0, () => {
         scene.tooltipShown = false;
-        hideCardTooltip(scene);
+        onHide();
       });
     }
   });
+  target.once('destroy', () => clearTimeout(timer));
 }
 
-export function showCardTooltip(scene, def) {
+export function attachCardTooltip(scene, target, def, options = {}) {
+  attachLongPress(scene, target, () => showCardTooltip(scene, def, options), () => hideCardTooltip(scene));
+}
+
+export function showCardTooltip(scene, def, { y = SCREEN.height - 70 } = {}) {
   hideCardTooltip(scene);
-  const y = SCREEN.height - 70;
   const w = SCREEN.width - 120;
   const box = scene.add.container(0, 0).setDepth(900);
   box.add(scene.add.rectangle(SCREEN.width / 2, y, w, 64, 0x0d0b10, 0.94).setStrokeStyle(1, 0x8a6d3b));

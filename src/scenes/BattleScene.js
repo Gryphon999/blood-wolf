@@ -14,16 +14,17 @@ import { createCardView } from '../ui/CardView.js';
 import {
   SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, BOARD_CENTER_Y, boardCardX, BOARD_CARD_SCALE,
 } from '../ui/layout.js';
-import { AI_DECK } from '../data/starterDecks.js';
+import { AI_DECK, PLAYER_DECK } from '../data/starterDecks.js';
 import { buildFactionPool } from '../data/factionPool.js';
 import { getProfile, persist } from '../economy/session.js';
-import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward } from '../economy/profile.js';
+import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward, isDeckValid } from '../economy/profile.js';
 import { showChest, showInterstitial, recordWin } from '../sdk/yandex.js';
 import { rewardFor } from '../economy/rewards.js';
 import { newSummary, accumulate } from '../economy/matchSummary.js';
 import { recordMatch } from '../economy/progress.js';
 import { toastAchievements } from '../ui/toast.js';
 import { cardName } from '../ui/cardText.js';
+import { attachCardTooltip, attachLongPress, hideCardTooltip } from '../ui/tooltip.js';
 import { tutorialStep, isInfoStep, TUTORIAL_STEPS, TUTORIAL_ANCHOR_Y } from '../ui/tutorial.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
@@ -75,7 +76,8 @@ export class BattleScene extends Phaser.Scene {
     this.rewardCardId = data?.rewardCardId ?? null;
     this.returnScene  = this.storyIndex !== null ? 'StoryScene' : 'MenuScene';
     const enemyDeck   = data?.enemyDeck ?? AI_DECK;
-    const playerDeck  = buildDeckCards(getProfile());
+    // An emptied or too-small deck falls back to the starter deck instead of an empty hand
+    const playerDeck  = isDeckValid(getProfile()) ? buildDeckCards(getProfile()) : PLAYER_DECK;
     const pools = [
       buildFactionPool(playerDeck[0]?.faction ?? 'humans'),
       this.storyIndex !== null ? enemyDeck : buildFactionPool(enemyDeck[0]?.faction ?? 'monsters'),
@@ -269,6 +271,7 @@ export class BattleScene extends Phaser.Scene {
     const m = this.match;
     this.root.removeAll(true);
     this.showHint(null);
+    hideCardTooltip(this);
     this.viewsByUid = new Map();
     const [player, opp] = m.players;
 
@@ -313,8 +316,15 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Footer
     this.addText(20, HAND_Y + 52, t('battle.youInfo', { rounds: pips(player.roundsWon) }), '#d8c9a8');
-    onLeftClick(this.addText(SCREEN.width - 160, HAND_Y + 48, t('battle.pass'), '#ffb3b3', '20px'),
-      () => this.onPass());
+    // Big touch-friendly PASS button to the right of the player's rows (clear of the hand)
+    const canPass = this.canAct();
+    const passBtn = this.add.rectangle(SCREEN.width - 80, rowY('player', 'siege'), 130, 60, canPass ? 0x3a1c1c : 0x1a1a1f)
+      .setStrokeStyle(2, canPass ? 0xffb3b3 : 0x3a3a3a);
+    this.root.add(passBtn);
+    this.root.add(this.add.text(SCREEN.width - 80, rowY('player', 'siege'), t('battle.pass'), {
+      fontSize: '20px', color: canPass ? '#ffb3b3' : '#666666',
+    }).setOrigin(0.5));
+    onLeftClick(passBtn, () => this.onPass());
 
     // ── Target-selection hint
     if (this.pendingPlay || this.pendingOrder) {
@@ -432,11 +442,12 @@ export class BattleScene extends Phaser.Scene {
     const passive = passiveOf(this.match, playerIdx);
     const passiveLine = passive
       ? `\n${t('passive.label', { name: t(`passive.${passive}`), desc: t(`passive.${passive}.desc`) })}` : '';
-    disc.on('pointerover', () => this.showHint(`${t(`leader.${leader.id}`)}: ${t(`leader.${leader.id}.desc`)}${passiveLine}`));
-    disc.on('pointerout', () => this.showHint(null));
+    attachLongPress(this, disc,
+      () => this.showHint(`${t(`leader.${leader.id}`)}: ${t(`leader.${leader.id}.desc`)}${passiveLine}`),
+      () => this.showHint(null));
     if (ready) {
-      disc.on('pointerdown', (pointer) => {
-        if (pointer.rightButtonDown() || !this.canAct()) return;
+      disc.on('pointerup', (pointer) => {
+        if (this.tooltipShown || pointer.rightButtonReleased?.() || !this.canAct()) return;
         this.showHint(null);
         this.act(() => useLeader(this.match, 0));
       });
@@ -477,6 +488,10 @@ export class BattleScene extends Phaser.Scene {
       cv.setPosition(boardCardX(i), y);
       this.viewsByUid.set(card.uid, cv);
 
+      if (!targets) {
+        cv.list[0].setInteractive();
+        attachCardTooltip(this, cv.list[0], card.def, { y: sideName === 'player' ? 90 : HAND_Y - 20 });
+      }
       if (targets) {
         if (targets.includes(card)) {
           cv.list[0].setStrokeStyle(3, TARGET_STROKE);
@@ -528,6 +543,7 @@ export class BattleScene extends Phaser.Scene {
       cv.setPosition(handCardX(i, player.hand.length), HAND_Y);
       this.viewsByUid.set(card.uid, cv);
       onLeftClick(cv.list[0], () => this.onHandClick(i));
+      attachCardTooltip(this, cv.list[0], card.def, { y: BOARD_CENTER_Y });
       this.root.add(cv);
     });
   }

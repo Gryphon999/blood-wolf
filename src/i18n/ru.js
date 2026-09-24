@@ -401,4 +401,5 @@ export const ru = {
   'tutorial.next': 'Далее ›',
   'tutorial.skip': 'Пропустить обучение',
   'tutorial.done': 'Понятно!',
+  'app.rotate': '⟳ Поверните устройство горизонтально — так карты крупнее',
 };

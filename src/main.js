@@ -14,6 +14,7 @@ import { getProfile } from './economy/session.js';
 import { applySettings } from './ui/applySettings.js';
 import { setAudioPaused, getCtx } from './ui/SoundEngine.js';
 import { music } from './ui/MusicEngine.js';
+import { t } from './i18n/index.js';
 
 await initYandex();
 
@@ -23,11 +24,18 @@ const game = new Phaser.Game({
   width: SCREEN.width,
   height: SCREEN.height,
   backgroundColor: '#14100c',
+  // FIT keeps the 16:9 board whole on any screen; portrait phones get a rotate hint (index.html)
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  input: { activePointers: 2 },
+  disableContextMenu: true,
   scene: [MenuScene, BattleScene, DeckScene, ShopScene, StoryScene, PackScene, ProgressScene, RankScene, SettingsScene],
 });
 
 applySettings(game, getProfile());
+const rotateHint = document.getElementById('rotate-hint');
+if (rotateHint) rotateHint.textContent = t('app.rotate');
+// Re-fit when the phone rotates or the browser chrome resizes the viewport
+window.addEventListener('orientationchange', () => setTimeout(() => game.scale.refresh(), 200));
 gameReady();
 
 // Autopause (Yandex Games requirement): hidden tab, lost focus or an SDK pause
