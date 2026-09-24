@@ -405,4 +405,5 @@ export const ru = {
   'anim.roundWon': 'Раунд {n} — за тобой!  {a} : {b}',
   'anim.roundLost': 'Раунд {n} — за врагом  {a} : {b}',
   'anim.roundDraw': 'Раунд {n} — ничья  {a} : {b}',
+  'battle.zoomClose': 'Клик или Esc — закрыть',
 };

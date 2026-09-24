@@ -25,6 +25,7 @@ import { recordMatch } from '../economy/progress.js';
 import { toastAchievements } from '../ui/toast.js';
 import { cardName } from '../ui/cardText.js';
 import { attachCardTooltip, attachLongPress, hideCardTooltip } from '../ui/tooltip.js';
+import { cardDescription } from '../ui/cardDescription.js';
 import { tutorialStep, isInfoStep, TUTORIAL_STEPS, TUTORIAL_ANCHOR_Y } from '../ui/tutorial.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
@@ -123,7 +124,10 @@ export class BattleScene extends Phaser.Scene {
       }
       if (pointer.rightButtonDown()) this.cancelTargeting();
     });
-    this.input.keyboard?.on('keydown-ESC', () => this.cancelTargeting());
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.zoomLayer) this.closeZoom();
+      else this.cancelTargeting();
+    });
 
     // Mulligan: the AI swaps silently, the player gets a picker before the first move
     mulligan(this.match, 1, chooseMulligan(this.match, 1));
@@ -212,6 +216,7 @@ export class BattleScene extends Phaser.Scene {
   /** Run one engine action, animate what it did, then redraw. */
   async act(action) {
     if (this.busy) return;
+    this.closeZoom();
     this.busy = true;
     this.busyStartedAt = this.time.now;
     try {
@@ -336,6 +341,38 @@ export class BattleScene extends Phaser.Scene {
     if (this.mulliganPicks) this.renderMulligan();
     if (m.winner !== null) this.renderResult();
     else if (this.tutorial) this.renderTutorial();
+  }
+
+  // ─── Card zoom ────────────────────────────────────────────────────────────
+
+  /** Big view of a board card with its rules; Esc or a click anywhere closes it. */
+  showZoom(card) {
+    if (this.pendingPlay || this.pendingOrder || this.busy) return;
+    this.closeZoom();
+    hideCardTooltip(this);
+    sfx.click();
+    const layer = this.add.container(0, 0).setDepth(950);
+    const shade = this.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, 0.72)
+      .setInteractive();
+    shade.on('pointerdown', () => this.closeZoom());
+    const cv = createCardView(this, card.def, { card }).setPosition(SCREEN.width / 2, 300).setScale(0.6);
+    const desc = this.add.text(SCREEN.width / 2, 505, cardDescription(card.def), {
+      fontSize: '16px', color: '#e8dcc0', align: 'center', wordWrap: { width: 760 },
+      backgroundColor: '#0d0b10', padding: { x: 12, y: 8 },
+    }).setOrigin(0.5, 0);
+    const hint = this.add.text(SCREEN.width / 2, SCREEN.height - 30, t('battle.zoomClose'), { fontSize: '13px', color: '#9a8a6a' })
+      .setOrigin(0.5);
+    layer.add([shade, cv, desc, hint]);
+    this.zoomLayer = layer;
+    if (this.registry.get('reduceMotion')) cv.setScale(2.5);
+    else this.tweens.add({ targets: cv, scale: 2.5, duration: 160, ease: 'Back.Out' });
+  }
+
+  closeZoom() {
+    if (!this.zoomLayer) return;
+    this.tweens.killTweensOf(this.zoomLayer.list);
+    this.zoomLayer.destroy();
+    this.zoomLayer = null;
   }
 
   // ─── Tutorial ─────────────────────────────────────────────────────────────
@@ -491,6 +528,10 @@ export class BattleScene extends Phaser.Scene {
       if (!targets) {
         cv.list[0].setInteractive();
         attachCardTooltip(this, cv.list[0], card.def, { y: sideName === 'player' ? 90 : HAND_Y - 20 });
+        cv.list[0].on('pointerup', (pointer) => {
+          if (this.tooltipShown || pointer.rightButtonReleased?.()) return;
+          this.showZoom(card);
+        });
       }
       if (targets) {
         if (targets.includes(card)) {

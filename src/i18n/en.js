@@ -405,4 +405,5 @@ export const en = {
   'anim.roundWon': 'Round {n} is yours!  {a} : {b}',
   'anim.roundLost': 'Round {n} goes to the enemy  {a} : {b}',
   'anim.roundDraw': 'Round {n} — a draw  {a} : {b}',
+  'battle.zoomClose': 'Click or Esc to close',
 };
