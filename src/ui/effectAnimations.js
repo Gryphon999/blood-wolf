@@ -108,6 +108,16 @@ async function shake(scene, queue, v) {
   v.x = x0;
 }
 
+// A status icon that fades in and out over the card a couple of times
+function pulseIcon(scene, queue, t, icon, { dx = 0, pulses = 2 } = {}) {
+  const text = scene.add.text(t.x + dx, t.y - 8, icon, { fontSize: '30px' }).setOrigin(0.5).setAlpha(0);
+  scene.animLayer.add(text);
+  return tweenP(scene, queue, {
+    targets: text, alpha: 1, scale: 1.25, duration: 180, yoyo: true, repeat: pulses - 1, ease: 'Sine.InOut',
+  }).then(() => text.destroy());
+}
+
+// Applying a status: the icon drops onto the card, then pulses
 function dropIcon(icon) {
   return async (scene, ev, queue) => {
     const t = view(scene, ev.targetUid);
@@ -115,10 +125,12 @@ function dropIcon(icon) {
     const text = scene.add.text(t.x, t.y - 70, icon, { fontSize: '26px' }).setOrigin(0.5);
     scene.animLayer.add(text);
     await tweenP(scene, queue, { targets: text, y: t.y, duration: 200, ease: 'Quad.In' });
-    await tweenP(scene, queue, { targets: text, alpha: 0, duration: 120 });
     text.destroy();
+    await pulseIcon(scene, queue, t, icon, { pulses: 1 });
   };
 }
+
+const STATUS_ICONS = { poison: ['☠'], bleed: ['🩸'], both: ['☠', '🩸'] };
 
 // Face-down cards fly from the deck corner to their hand slots
 function dealToHand(scene, ev, queue) {
@@ -191,7 +203,11 @@ export const ANIMATIONS = {
     if (!t) return;
     const src = ev.sourceUid == null ? null : findCardByUid(scene.match, ev.sourceUid);
     const style = hitStyle(src?.def);
-    if (style === 'arrow') {
+    if (ev.status) {
+      // Poison / bleed tick: the status icons pulse over the card instead of a projectile
+      const icons = STATUS_ICONS[ev.status] ?? [];
+      await Promise.all(icons.map((icon, i) => pulseIcon(scene, queue, t, icon, { dx: (i - (icons.length - 1) / 2) * 26 })));
+    } else if (style === 'arrow') {
       const s = view(scene, ev.sourceUid);
       await arrowShot(scene, queue, s?.x ?? t.x - 100, s?.y ?? t.y, t.x, t.y);
     } else if (style === 'lightning') {

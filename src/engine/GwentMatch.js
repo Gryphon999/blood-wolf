@@ -360,7 +360,8 @@ export function startTurn(match) {
   for (const player of match.players) {
     for (const card of allOnBoard(player.board)) {
       const tick = card.bleedStacks + (card.poisoned ? 1 : 0);
-      if (tick > 0) dealDamage(match, null, card, tick, { direct: true });
+      const status = card.poisoned && card.bleedStacks > 0 ? 'both' : card.poisoned ? 'poison' : 'bleed';
+      if (tick > 0) dealDamage(match, null, card, tick, { direct: true, status });
     }
   }
   // Reset regular Order (not Charge) for the current player
