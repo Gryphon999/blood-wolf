@@ -76,6 +76,12 @@ export function cardDescription(def) {
   }
 
   // Passive traits
+  if (def.spy)        lines.push('Шпион: встаёт на ряд врага (сила идёт ему), вы берёте 2 карты');
+  if (def.muster)     lines.push('Призыв: все карты этой семьи из руки и колоды выходят на поле');
+  if (def.bond)       lines.push('Узы: сила × число карт с тем же именем в ряду');
+  if (def.berserker)  lines.push('Берсерк: +1 силы за каждую смерть на поле');
+  if (def.ambush)     lines.push('Засада: при вашем пасе сама выходит из руки в случайный ряд');
+  if (def.vampirism)  lines.push('Вампиризм: получает силу, равную нанесённому урону');
   if (def.resilience) lines.push('Стойкость: переходит живым в следующий раунд');
   if (def.doomed)     lines.push('Проклят: удаляется из игры в конце раунда');
   if (def.armor > 0)  lines.push(`Броня ${def.armor}: блокирует первые ${def.armor} урона`);

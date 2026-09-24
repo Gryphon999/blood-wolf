@@ -4,6 +4,20 @@ import { rarityColor } from './rarity.js';
 const NAME_Y = -CARD_H / 2 + 8;
 const BADGE_Y = CARD_H / 2 - 20;
 
+const TRAIT_ICONS = [
+  ['spy', '🕵'], ['muster', '📯'], ['bond', '🔗'], ['berserker', '🪓'], ['ambush', '🌲'], ['vampirism', '🦇'],
+];
+
+export function traitIcons(def) {
+  return TRAIT_ICONS.filter(([key]) => def[key]).map(([, icon]) => icon).join('');
+}
+
+function fallbackGlyph(def) {
+  const trait = TRAIT_ICONS.find(([key]) => def[key]);
+  if (trait) return trait[1];
+  return def.faction === 'monsters' ? '☠' : '⚔';
+}
+
 // options.card = live card instance (has .power, .shielded, etc.)
 export function createCardView(scene, cardDef, options = {}) {
   const { faceDown = false, selected = false, card = null } = options;
@@ -20,6 +34,14 @@ export function createCardView(scene, cardDef, options = {}) {
   if (!faceDown) {
     if (cardDef.art && scene.textures.exists(cardDef.art)) {
       container.add(scene.add.image(0, 0, cardDef.art).setDisplaySize(CARD_W, CARD_H));
+    } else if (cardDef.type !== 'special') {
+      // No portrait yet: a large faded glyph stands in for the art
+      container.add(scene.add.text(0, -6, fallbackGlyph(cardDef), { fontSize: '40px' })
+        .setOrigin(0.5).setAlpha(0.55));
+    }
+    const traits = traitIcons(cardDef);
+    if (traits) {
+      container.add(scene.add.text(-CARD_W / 2 + 4, -CARD_H / 2 + 26, traits, { fontSize: '11px' }).setOrigin(0, 0));
     }
 
     container.add(
@@ -69,6 +91,8 @@ export function createCardView(scene, cardDef, options = {}) {
         if (card.poisoned)        icon('☠', '#44ff88');
         if (card.bleedStacks > 0) icon(`🩸${card.bleedStacks}`);
         if (card.controlled)      icon('👁', '#dd44ff');
+        if (card.spy)             icon('🕵', '#dd88ff');
+        if (card.golden)          icon('★', '#ffd700');
 
         // Order ready: amber indicator top-right corner
         const hasOrderReady = card.def.hasOrder && !card.orderUsed && !card.locked

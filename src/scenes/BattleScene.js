@@ -352,6 +352,7 @@ export class BattleScene extends Phaser.Scene {
       if (def.effect === 'sign_damage') return sideName === 'opponent';
       return false;
     }
+    if (def.spy) return sideName === 'opponent' && rowName === def.row;
     return sideName === 'player' && rowName === def.row;
   }
 
