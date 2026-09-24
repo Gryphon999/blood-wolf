@@ -402,4 +402,7 @@ export const en = {
   'tutorial.skip': 'Skip tutorial',
   'tutorial.done': 'Got it!',
   'app.rotate': '⟳ Turn your device sideways — the cards get bigger',
+  'anim.roundWon': 'Round {n} is yours!  {a} : {b}',
+  'anim.roundLost': 'Round {n} goes to the enemy  {a} : {b}',
+  'anim.roundDraw': 'Round {n} — a draw  {a} : {b}',
 };

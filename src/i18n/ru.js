@@ -402,4 +402,7 @@ export const ru = {
   'tutorial.skip': 'Пропустить обучение',
   'tutorial.done': 'Понятно!',
   'app.rotate': '⟳ Поверните устройство горизонтально — так карты крупнее',
+  'anim.roundWon': 'Раунд {n} — за тобой!  {a} : {b}',
+  'anim.roundLost': 'Раунд {n} — за врагом  {a} : {b}',
+  'anim.roundDraw': 'Раунд {n} — ничья  {a} : {b}',
 };

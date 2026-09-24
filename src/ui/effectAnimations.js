@@ -119,6 +119,21 @@ export const ANIMATIONS = {
       scale: ev.special ? 0.9 : BOARD_CARD_SCALE,
       duration: 280, ease: 'Power2.Out',
     });
+    const calm = scene.registry?.get('reduceMotion');
+    if (ev.special && ev.def.effect === 'scorch' && !calm) {
+      scene.cameras.main.shake(queue.dur(320), 0.012);
+      scene.cameras.main.flash(queue.dur(200), 255, 90, 30);
+    }
+    if (ev.def.rarity === 'legendary') {
+      sfx.legendary();
+      if (!calm) {
+        burst(scene, toX, toY, 0xffd479, { count: 36 });
+        const ring = scene.add.circle(toX, toY, 20, 0xffd479, 0.25).setStrokeStyle(3, 0xffe9b0);
+        scene.animLayer.add(ring);
+        await tweenP(scene, queue, { targets: ring, scale: 4, alpha: 0, duration: 420, ease: 'Quad.Out' });
+        ring.destroy();
+      }
+    }
     if (ev.special) {
       await tweenP(scene, queue, { targets: clone, alpha: 0, scale: 1.2, duration: 220 });
       clone.destroy();
@@ -308,6 +323,30 @@ export const ANIMATIONS = {
     await tweenP(scene, queue, { targets: views, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
     await waitP(scene, queue, 1200);
     await tweenP(scene, queue, { targets: views, alpha: 0, duration: 250 });
+  },
+
+  // Round result: the winner's half of the board glows, a banner names the result
+  async roundEnd(scene, ev, queue) {
+    const sides = ev.result === 'draw' ? ['player', 'opponent'] : [sideOf(ev.result)];
+    const color = ev.result === 0 ? 0xffd479 : ev.result === 1 ? 0xff5a4a : 0xaaaaaa;
+    const glows = sides.map((side) => {
+      const y = (rowY(side, 'melee') + rowY(side, 'siege')) / 2;
+      const glow = scene.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 3 * 76 + 6, color, 0.22)
+        .setStrokeStyle(4, color);
+      scene.animLayer.add(glow);
+      return glow;
+    });
+    if (ev.result === 0) sfx.roundWin();
+    else if (ev.result === 1) sfx.roundLose();
+    const key = ev.result === 0 ? 'anim.roundWon' : ev.result === 1 ? 'anim.roundLost' : 'anim.roundDraw';
+    const banner = scene.add.text(SCREEN.width / 2, BOARD_CENTER_Y, tr(key, { n: ev.round, a: ev.powers[0], b: ev.powers[1] }), {
+      fontSize: '36px', color: ev.result === 1 ? '#ff9f9f' : '#ffd479', stroke: '#000000', strokeThickness: 6,
+    }).setOrigin(0.5).setAlpha(0);
+    scene.animLayer.add(banner);
+    await tweenP(scene, queue, { targets: [banner, ...glows], alpha: 1, duration: 250 });
+    await tweenP(scene, queue, { targets: glows, alpha: 0.35, duration: 300, yoyo: true, repeat: 1 });
+    await waitP(scene, queue, 300);
+    await tweenP(scene, queue, { targets: [banner, ...glows], alpha: 0, duration: 250 });
   },
 
   async fizzle(scene, ev, queue) {
