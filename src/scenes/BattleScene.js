@@ -7,6 +7,7 @@ import { getValidTargets, targetKind } from '../engine/targeting.js';
 import { chooseMove, chooseMulligan } from '../engine/ai/OpponentAI.js';
 import { t } from '../i18n/index.js';
 import { useLeader, canUseLeader } from '../engine/leaders.js';
+import { passiveOf } from '../engine/passives.js';
 import { chosenLeader, getLeader, randomLeader } from '../data/leaders.js';
 import { rowPower } from '../engine/Board.js';
 import { createCardView } from '../ui/CardView.js';
@@ -340,7 +341,10 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '10px', color: used ? '#666666' : '#d8c9a8', align: 'center', wordWrap: { width: 110 },
     }).setOrigin(0.5, 0));
     disc.setInteractive({ useHandCursor: ready });
-    disc.on('pointerover', () => this.showHint(`${t(`leader.${leader.id}`)}: ${t(`leader.${leader.id}.desc`)}`));
+    const passive = passiveOf(this.match, playerIdx);
+    const passiveLine = passive
+      ? `\n${t('passive.label', { name: t(`passive.${passive}`), desc: t(`passive.${passive}.desc`) })}` : '';
+    disc.on('pointerover', () => this.showHint(`${t(`leader.${leader.id}`)}: ${t(`leader.${leader.id}.desc`)}${passiveLine}`));
     disc.on('pointerout', () => this.showHint(null));
     if (ready) {
       disc.on('pointerdown', (pointer) => {

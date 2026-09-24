@@ -29,4 +29,11 @@ export const en = {
   'leader.enemy': 'Enemy leader',
   'leader.revealed': 'Enemy cards:',
   'anim.resurrect': 'Risen!',
+  'passive.discipline': 'Discipline',
+  'passive.discipline.desc': 'Once per match, your first card in round 2 does not end your turn',
+  'passive.discipline.fire': 'Discipline: one more move!',
+  'passive.tiebreak': 'Blood Prevails',
+  'passive.tiebreak.desc': 'Tied rounds go to the monsters',
+  'passive.tiebreak.fire': 'Tie — the monsters take the round',
+  'passive.label': 'Faction passive: {name} — {desc}',
 };

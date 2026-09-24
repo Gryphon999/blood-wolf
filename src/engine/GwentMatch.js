@@ -7,6 +7,7 @@ import { dealDamage, boost, addBleed, damageRow, destroy } from './actions.js';
 import { dealRandom, ROUND_DRAW, MAX_HAND } from './dealRandom.js';
 import { shuffle } from './rng.js';
 import { drawCards } from './draw.js';
+import { keepsTurnAfterPlay, tieWinner } from './passives.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -20,7 +21,7 @@ function makePlayer(deck, handSize) {
   };
 }
 
-export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = null, leaders = null } = {}) {
+export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = null, leaders = null, factions = null } = {}) {
   const order = (deck) => (rng ? shuffle(deck, rng) : deck);
   return {
     players: [makePlayer(order(deckA), handSize), makePlayer(order(deckB), handSize)],
@@ -34,6 +35,7 @@ export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = n
     events: [],
     rng: rng ?? Math.random,
     pools, // [poolA, poolB] of card defs, or null = no round draws
+    factions: factions ?? [deckA[0]?.faction ?? null, deckB[0]?.faction ?? null],
     leaders: leaders ?? [null, null], // [leaderDefA, leaderDefB] ({ id, ability, param }) or nulls
   };
 }
@@ -181,7 +183,7 @@ export function playCard(match, cardIndex, row, { target } = {}) {
   const fizzled = targetKind(card, 'deploy') !== 'none' && chosen === null;
   player.hand.splice(cardIndex, 1);
   applyCard(match, card, row, chosen, fizzled);
-  passTurn(match);
+  if (!keepsTurnAfterPlay(match, match.current)) passTurn(match);
   match.turn++;
 }
 
@@ -246,9 +248,15 @@ function resolveRound(match) {
     p1.roundsWon++;
     result = 1;
   } else {
-    p0.roundsWon++;
-    p1.roundsWon++;
-    result = 'draw';
+    const winner = tieWinner(match);
+    if (winner === null) {
+      p0.roundsWon++;
+      p1.roundsWon++;
+      result = 'draw';
+    } else {
+      match.players[winner].roundsWon++;
+      result = winner;
+    }
   }
   match.lastRound = result;
 

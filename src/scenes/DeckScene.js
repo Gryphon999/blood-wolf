@@ -4,6 +4,7 @@ import { getProfile, persist } from '../economy/session.js';
 import { canUpgrade, upgradeCard, upgradeCost, toggleDeckCard, isDeckValid, setLeader } from '../economy/profile.js';
 import { leadersOf, chosenLeader } from '../data/leaders.js';
 import { t } from '../i18n/index.js';
+import { FACTION_PASSIVE } from '../engine/passives.js';
 import { getCard } from '../data/cardCatalog.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
@@ -46,6 +47,10 @@ export class DeckScene extends Phaser.Scene {
       });
     });
     if (current) this.text(600, 74, t(`leader.${current.id}.desc`), '#9fe3d0', '12px');
+    const passive = FACTION_PASSIVE[faction];
+    if (passive) {
+      this.text(20, 96, t('passive.label', { name: t(`passive.${passive}`), desc: t(`passive.${passive}.desc`) }), '#c8a8e8', '12px');
+    }
   }
 
   render() {

@@ -29,4 +29,11 @@ export const ru = {
   'leader.enemy': 'Лидер врага',
   'leader.revealed': 'Карты врага:',
   'anim.resurrect': 'Воскрешён!',
+  'passive.discipline': 'Дисциплина',
+  'passive.discipline.desc': 'Раз за матч в раунде 2 первая сыгранная карта не завершает ход',
+  'passive.discipline.fire': 'Дисциплина: ещё ход!',
+  'passive.tiebreak': 'Кровь сильнее',
+  'passive.tiebreak.desc': 'Ничья в раунде засчитывается монстрам',
+  'passive.tiebreak.fire': 'Ничья — раунд за монстрами',
+  'passive.label': 'Пассивка фракции: {name} — {desc}',
 };

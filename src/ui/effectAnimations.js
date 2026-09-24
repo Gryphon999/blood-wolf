@@ -283,6 +283,18 @@ export const ANIMATIONS = {
     await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 200 });
   },
 
+  async passive(scene, ev, queue) {
+    sfx.order();
+    const y = ev.player === 0 ? BOARD_CENTER_Y + 50 : BOARD_CENTER_Y - 50;
+    const banner = scene.add.text(SCREEN.width / 2, y, tr(`passive.${ev.passive}.fire`), {
+      fontSize: '28px', color: '#9fe3d0', stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setAlpha(0);
+    scene.animLayer.add(banner);
+    await tweenP(scene, queue, { targets: banner, alpha: 1, duration: 200 });
+    await waitP(scene, queue, 700);
+    await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 200 });
+  },
+
   async reveal(scene, ev, queue) {
     if (ev.player === 0) return; // the AI peeking at us is not shown
     scene.revealed = ev.defs;
