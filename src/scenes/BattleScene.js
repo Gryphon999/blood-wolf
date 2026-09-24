@@ -19,6 +19,7 @@ import { buildFactionPool } from '../data/factionPool.js';
 import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward } from '../economy/profile.js';
 import { showChest, showInterstitial, recordWin } from '../sdk/yandex.js';
+import { rewardFor } from '../economy/rewards.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
@@ -79,6 +80,8 @@ export class BattleScene extends Phaser.Scene {
       data?.enemyLeaderId !== undefined ? getLeader(data.enemyLeaderId) : randomLeader(enemyFaction),
     ];
     this.revealed = null; // enemy cards shown by a peek ability
+    this.difficulty = getProfile().difficulty ?? 'normal';
+    this.chestClaimed = false;
     this.match = createMatch(playerDeck, enemyDeck, 10, { rng: Math.random, pools, leaders });
 
     this.selectedIndex  = null;
@@ -194,8 +197,9 @@ export class BattleScene extends Phaser.Scene {
     } catch (e) {
       console.warn('Action failed:', e);
     }
-    await this.queue.play(drainEvents(this.match));
+    await this.queue.play(drainEvents(this.match), { keepSpeed: true });
     await this.beginTurnIfNeeded();
+    this.queue.resetSpeed();
     this.animLayer.removeAll(true);
     this.busy = false;
     this.render();
@@ -212,7 +216,7 @@ export class BattleScene extends Phaser.Scene {
     if (events.length > 0) {
       this.animLayer.removeAll(true);
       this.render();
-      await this.queue.play(events);
+      await this.queue.play(events, { keepSpeed: true });
     }
   }
 
@@ -220,10 +224,15 @@ export class BattleScene extends Phaser.Scene {
     if (this.match.winner !== null || this.match.current !== 1) return;
     this.time.delayedCall(400, () => this.act(() => {
       try {
-        const move = chooseMove(this.match, 1);
+        const move = chooseMove(this.match, 1, this.difficulty);
         if (move.type === 'pass') {
           pass(this.match);
           sfx.pass();
+        } else if (move.type === 'order') {
+          useOrder(this.match, 1, move.row, move.cardIdx, { target: move.target });
+          sfx.order();
+        } else if (move.type === 'leader') {
+          useLeader(this.match, 1);
         } else {
           playCard(this.match, move.cardIndex, move.row, { target: move.target });
         }
@@ -305,12 +314,12 @@ export class BattleScene extends Phaser.Scene {
     if (m.winner === 0) {
       const profile = getProfile();
       if (this.storyIndex === null) {
-        addGold(profile, 50);
-        this.reward = 50;
+        this.reward = rewardFor(50, this.difficulty);
+        addGold(profile, this.reward);
       } else {
         clearNode(profile, this.storyIndex);
-        addGold(profile, this.rewardGold);
-        this.reward = this.rewardGold;
+        this.reward = rewardFor(this.rewardGold, this.difficulty);
+        addGold(profile, this.reward);
         if (this.rewardCardId) {
           grantCard(profile, this.rewardCardId);
           this.rewardCardName = getCard(this.rewardCardId).name;
@@ -585,18 +594,25 @@ export class BattleScene extends Phaser.Scene {
       () => showInterstitial(() => this.scene.start(this.returnScene)),
     ));
 
-    if (w === 0) {
+    if (w === 0 && !this.chestClaimed) {
       this.root.add(onLeftClick(
-        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, '🎁 Сундук', { fontSize: '22px', color: '#ffd479' })
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, t('chest.open'), { fontSize: '22px', color: '#ffd479' })
           .setOrigin(0.5),
         () => {
+          if (this.chestClaimed) return; // one chest per battle, even on fast double clicks
+          this.chestClaimed = true;
+          this.render();
           showChest(() => {
             grantChestReward(getProfile(), SHOP_CARDS);
             persist();
+            this.chestText = t('chest.got');
             this.render();
           });
         },
       ));
+    }
+    if (this.chestText) {
+      this.root.add(this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, this.chestText, { fontSize: '18px', color: '#9fe3d0' }).setOrigin(0.5));
     }
 
     if (this.reward > 0) {

@@ -17,6 +17,8 @@ export function createProfile() {
     faction: 'humans',
     story: { cleared: 0 },
     leaders: {},
+    difficulty: 'normal',
+    lastChestAt: 0,
   };
 }
 

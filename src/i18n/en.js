@@ -36,4 +36,11 @@ export const en = {
   'passive.tiebreak.desc': 'Tied rounds go to the monsters',
   'passive.tiebreak.fire': 'Tie — the monsters take the round',
   'passive.label': 'Faction passive: {name} — {desc}',
+  'chest.open': '🎁 Chest',
+  'chest.wait': '🎁 Chest in {min} min',
+  'chest.got': 'Chest opened: +100 gold',
+  'difficulty.label': 'Difficulty (gold):',
+  'difficulty.easy': 'Easy',
+  'difficulty.normal': 'Normal',
+  'difficulty.hard': 'Hard',
 };

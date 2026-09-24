@@ -36,4 +36,11 @@ export const ru = {
   'passive.tiebreak.desc': 'Ничья в раунде засчитывается монстрам',
   'passive.tiebreak.fire': 'Ничья — раунд за монстрами',
   'passive.label': 'Пассивка фракции: {name} — {desc}',
+  'chest.open': '🎁 Сундук',
+  'chest.wait': '🎁 Сундук через {min} мин',
+  'chest.got': 'Сундук открыт: +100 золота',
+  'difficulty.label': 'Сложность (золото):',
+  'difficulty.easy': 'Лёгкий',
+  'difficulty.normal': 'Норма',
+  'difficulty.hard': 'Сложный',
 };

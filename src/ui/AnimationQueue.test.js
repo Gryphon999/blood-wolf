@@ -38,4 +38,15 @@ describe('AnimationQueue', () => {
     expect(seen).toEqual([100]);
     expect(queue.dur(300)).toBe(300);
   });
+
+  it('keepSpeed carries a speed-up into the next play until resetSpeed', async () => {
+    const seen = [];
+    const queue = new AnimationQueue({ t: (_s, _e, q) => { seen.push(q.dur(300)); } }, {});
+    queue.speedUp();
+    await queue.play([{ type: 't' }], { keepSpeed: true });
+    await queue.play([{ type: 't' }], { keepSpeed: true });
+    queue.resetSpeed();
+    await queue.play([{ type: 't' }]);
+    expect(seen).toEqual([100, 100, 300]);
+  });
 });
