@@ -21,9 +21,11 @@ function makePlayer(deck, handSize) {
   };
 }
 
-export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = null, leaders = null, factions = null } = {}) {
+export function createMatch(deckA, deckB, handSize = 10, {
+  rng = null, pools = null, leaders = null, factions = null, permanentWeather = [], bossUnits = [],
+} = {}) {
   const order = (deck) => (rng ? shuffle(deck, rng) : deck);
-  return {
+  const match = {
     players: [makePlayer(order(deckA), handSize), makePlayer(order(deckB), handSize)],
     current: 0,
     turn: 0,
@@ -37,7 +39,28 @@ export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = n
     pools, // [poolA, poolB] of card defs, or null = no round draws
     factions: factions ?? [deckA[0]?.faction ?? null, deckB[0]?.faction ?? null],
     leaders: leaders ?? [null, null], // [leaderDefA, leaderDefB] ({ id, ability, param }) or nulls
+    permanentWeather: [...permanentWeather],
+    bossUnits,
   };
+  resetWeather(match);
+  placeBossUnits(match);
+  return match;
+}
+
+// Weather back to the boss rule's permanent rows (none by default)
+export function resetWeather(match) {
+  match.weather.clear();
+  for (const row of match.permanentWeather ?? []) match.weather.add(row);
+}
+
+// Boss rule: these units stand on player 1's board at the start of every round
+function placeBossUnits(match) {
+  const board = match.players[1].board;
+  for (const def of match.bossUnits ?? []) {
+    const row = ROWS.includes(def.row) ? def.row : 'melee';
+    if (board[row].some((c) => c.def === def)) continue;
+    addUnit(board, row, createCard(def));
+  }
 }
 
 function allOnBoard(board) {
@@ -67,7 +90,7 @@ function applyEffect(match, card, row, target) {
     return;
   }
   if (effect === 'clear') {
-    match.weather.clear();
+    resetWeather(match);
     return;
   }
   if (effect === 'horn') {
@@ -145,7 +168,7 @@ function applyCard(match, card, row, target, fizzled) {
     const board = match.players[side].board;
     addUnit(board, row, card);
     card.spy = true;
-    emit(match, { type: 'play', uid: card.uid, def: card.def, player: side, row, index: board[row].length - 1, special: false, spy: true });
+    emit(match, { type: 'play', uid: card.uid, def: card.def, player: side, row, index: board[row].length - 1, special: false, spy: true, owner: self });
     drawCards(match, self, 2, 'spy');
     return;
   } else {
@@ -213,7 +236,8 @@ function startNextRound(match, lastResult) {
     ? 1 - match.roundStarter
     : 1 - lastResult;
   match.current = match.roundStarter;
-  match.weather.clear();
+  resetWeather(match);
+  placeBossUnits(match);
   if (match.pools) {
     match.players.forEach((player, i) => {
       const count = Math.max(0, Math.min(ROUND_DRAW, MAX_HAND - player.hand.length));
@@ -259,7 +283,7 @@ function resolveRound(match) {
     }
   }
   match.lastRound = result;
-
+  emit(match, { type: 'roundEnd', round: match.round, result, powers: [power0, power1] });
   if (p0.roundsWon >= 2 || p1.roundsWon >= 2) {
     finishMatch(match);
     return;
@@ -364,6 +388,7 @@ export function useOrder(match, playerIdx, row, cardIdx, { target } = {}) {
   if (targetKind(card, 'order') !== 'none' && chosen === null) {
     throw new Error('No valid targets');
   }
+  emit(match, { type: 'order', player: playerIdx, uid: card.uid });
   applyOrder(match, card, playerIdx, chosen);
 
   if (isCharge) {

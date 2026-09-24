@@ -64,3 +64,62 @@ describe('Muster', () => {
     expect(match.players[0].board.melee).toHaveLength(1);
   });
 });
+
+describe('bookkeeping events', () => {
+  it('a spy play names its owner', () => {
+    const match = createMatch([unit('spy', 4, { spy: true })], [unit('x', 1)], 1);
+    playCard(match, 0, 'melee');
+    expect(match.events.find((e) => e.type === 'play')).toMatchObject({ player: 1, owner: 0 });
+  });
+
+  it('round resolution emits roundEnd with both powers', () => {
+    const match = createMatch([unit('a', 5)], [unit('b', 3)], 1);
+    playCard(match, 0, 'melee');
+    playCard(match, 0, 'melee');
+    pass(match);
+    pass(match);
+    expect(match.events.find((e) => e.type === 'roundEnd')).toEqual({ type: 'roundEnd', round: 1, result: 0, powers: [5, 3] });
+  });
+});
+
+describe('order event', () => {
+  it('useOrder emits an order event before the effect', async () => {
+    const { useOrder } = await import('./GwentMatch.js');
+    const match = createMatch([unit('x', 1)], [unit('y', 1)], 1);
+    const banner = createCard(unit('banner', 2, { hasOrder: true, orderEffect: 'boost_melee_row', orderParam: 1 }));
+    addUnit(match.players[0].board, 'melee', banner);
+    useOrder(match, 0, 'melee', 0);
+    expect(match.events[0]).toEqual({ type: 'order', player: 0, uid: banner.uid });
+  });
+});
+
+describe('permanent weather (boss rule)', () => {
+  it('stays through Clear Sky, the clear-weather leader and new rounds', async () => {
+    const { useLeader } = await import('./leaders.js');
+    const clear = { id: 'clear', type: 'special', effect: 'clear', row: 'melee', power: 0 };
+    const match = createMatch([clear, unit('a', 1)], [unit('x', 1), unit('y', 1)], 2, {
+      permanentWeather: ['ranged'], leaders: [{ id: 'l', ability: 'clear_weather' }, null],
+    });
+    expect([...match.weather]).toEqual(['ranged']);
+    match.weather.add('melee');
+    useLeader(match, 0);
+    expect([...match.weather]).toEqual(['ranged']);
+    playCard(match, 0, 'melee'); // Clear Sky
+    expect([...match.weather]).toEqual(['ranged']);
+    pass(match);
+    pass(match);
+    expect(match.round).toBe(2);
+    expect([...match.weather]).toEqual(['ranged']);
+  });
+});
+
+describe('boss start units', () => {
+  it('bossUnits are placed on player 1 board at the start of every round', () => {
+    const boss = unit('boss', 7, { type: 'hero' });
+    const match = createMatch([unit('a', 1), unit('b', 1)], [unit('x', 1), unit('y', 1)], 2, { bossUnits: [boss] });
+    expect(match.players[1].board.melee.map((c) => c.def.id)).toEqual(['boss']);
+    pass(match);
+    pass(match);
+    expect(match.players[1].board.melee.map((c) => c.def.id)).toEqual(['boss']);
+  });
+});

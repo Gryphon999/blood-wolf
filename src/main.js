@@ -4,6 +4,9 @@ import { BattleScene } from './scenes/BattleScene.js';
 import { DeckScene } from './scenes/DeckScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
 import { StoryScene } from './scenes/StoryScene.js';
+import { PackScene } from './scenes/PackScene.js';
+import { ProgressScene } from './scenes/ProgressScene.js';
+import { RankScene } from './scenes/RankScene.js';
 import { SCREEN } from './ui/layout.js';
 import { initYandex } from './sdk/yandex.js';
 
@@ -16,7 +19,7 @@ const game = new Phaser.Game({
   height: SCREEN.height,
   backgroundColor: '#14100c',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [MenuScene, BattleScene, DeckScene, ShopScene, StoryScene],
+  scene: [MenuScene, BattleScene, DeckScene, ShopScene, StoryScene, PackScene, ProgressScene, RankScene],
 });
 
 // Dev-only handle for local smoke tests

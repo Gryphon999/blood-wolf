@@ -16,6 +16,8 @@ export function createProfile() {
     deck: PLAYER_DECK.map((card) => card.id),
     faction: 'humans',
     story: { cleared: 0 },
+    freePacks: 0,
+    stats: {},
     leaders: {},
     difficulty: 'normal',
     lastChestAt: 0,
@@ -56,6 +58,34 @@ export function grantCard(profile, id) {
   if (!profile.collection[id]) {
     profile.collection[id] = { count: 1, level: 1 };
   }
+  return profile;
+}
+
+// A pack or reward copy: new cards join the collection, known ones gain a copy
+export function addCardCopy(profile, id) {
+  const owned = profile.collection[id];
+  if (owned) owned.count = (owned.count ?? 1) + 1;
+  else profile.collection[id] = { count: 1, level: 1 };
+  return profile;
+}
+
+// ── Golden cards: 3 copies merge into one golden card with +2 power ──
+export const GOLDEN_COPIES = 3;
+export const GOLDEN_BONUS = 2;
+
+export function canMakeGolden(profile, id) {
+  const owned = profile.collection[id];
+  if (!owned || owned.golden) return false;
+  if (getCard(id).type === 'special') return false;
+  return (owned.count ?? 1) >= GOLDEN_COPIES;
+}
+
+export function makeGolden(profile, id) {
+  if (!canMakeGolden(profile, id)) throw new Error(`Cannot make golden: ${id}`);
+  const owned = profile.collection[id];
+  owned.count -= GOLDEN_COPIES - 1;
+  owned.golden = true;
+  profile.stats = { ...(profile.stats ?? {}), goldenMade: (profile.stats?.goldenMade ?? 0) + 1 };
   return profile;
 }
 
@@ -124,8 +154,10 @@ export function isDeckValid(profile) {
 export function buildDeckCards(profile) {
   return profile.deck.map((id) => {
     const def = getCard(id);
-    const level = profile.collection[id]?.level ?? 1;
+    const owned = profile.collection[id];
+    const level = owned?.level ?? 1;
     const bonus = def.type === 'unit' ? level - 1 : 0;
+    if (owned?.golden) return { ...def, power: def.power + bonus + GOLDEN_BONUS, golden: true };
     return { ...def, power: def.power + bonus };
   });
 }

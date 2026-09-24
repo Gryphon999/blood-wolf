@@ -25,7 +25,7 @@ export function createCardView(scene, cardDef, options = {}) {
   const container = scene.add.container(0, 0);
   container.setPower = () => {};
   const fill = faceDown ? 0x3a2a1a : 0x24222b;
-  const strokeColor = selected ? 0xffd479 : rarityColor(cardDef.rarity);
+  const strokeColor = selected ? 0xffd479 : cardDef.golden ? 0xffd700 : rarityColor(cardDef.rarity);
 
   const bg = scene.add.rectangle(0, 0, CARD_W, CARD_H, fill)
     .setStrokeStyle(selected ? 4 : 2, strokeColor);
@@ -38,6 +38,11 @@ export function createCardView(scene, cardDef, options = {}) {
       // No portrait yet: a large faded glyph stands in for the art
       container.add(scene.add.text(0, -6, fallbackGlyph(cardDef), { fontSize: '40px' })
         .setOrigin(0.5).setAlpha(0.55));
+    }
+    if (cardDef.golden) {
+      container.add(scene.add.text(CARD_W / 2 - 4, -CARD_H / 2 + 24, '★', {
+        fontSize: '16px', color: '#ffd700', stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(1, 0));
     }
     const traits = traitIcons(cardDef);
     if (traits) {
@@ -92,7 +97,6 @@ export function createCardView(scene, cardDef, options = {}) {
         if (card.bleedStacks > 0) icon(`🩸${card.bleedStacks}`);
         if (card.controlled)      icon('👁', '#dd44ff');
         if (card.spy)             icon('🕵', '#dd88ff');
-        if (card.golden)          icon('★', '#ffd700');
 
         // Order ready: amber indicator top-right corner
         const hasOrderReady = card.def.hasOrder && !card.orderUsed && !card.locked

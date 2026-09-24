@@ -20,6 +20,10 @@ import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward } from '../economy/profile.js';
 import { showChest, showInterstitial, recordWin } from '../sdk/yandex.js';
 import { rewardFor } from '../economy/rewards.js';
+import { newSummary, accumulate } from '../economy/matchSummary.js';
+import { recordMatch } from '../economy/progress.js';
+import { toastAchievements } from '../ui/toast.js';
+import { cardName } from '../ui/cardText.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
@@ -82,7 +86,12 @@ export class BattleScene extends Phaser.Scene {
     this.revealed = null; // enemy cards shown by a peek ability
     this.difficulty = getProfile().difficulty ?? 'normal';
     this.chestClaimed = false;
-    this.match = createMatch(playerDeck, enemyDeck, 10, { rng: Math.random, pools, leaders });
+    this.summary = newSummary();
+    this.match = createMatch(playerDeck, enemyDeck, 10, {
+      rng: Math.random, pools, leaders,
+      permanentWeather: data?.rules?.permanentWeather ?? [],
+      bossUnits: data?.rules?.bossUnits ?? [],
+    });
 
     this.selectedIndex  = null;
     this.pendingPlay    = null;  // { handIndex, row, targets } while choosing a Deploy target
@@ -187,6 +196,13 @@ export class BattleScene extends Phaser.Scene {
 
   // ─── Turn flow ────────────────────────────────────────────────────────────
 
+  /** Drain engine events, counting them for quests/achievements. */
+  drain() {
+    const events = drainEvents(this.match);
+    accumulate(this.summary, events, 0);
+    return events;
+  }
+
   /** Run one engine action, animate what it did, then redraw. */
   async act(action) {
     if (this.busy) return;
@@ -197,7 +213,7 @@ export class BattleScene extends Phaser.Scene {
     } catch (e) {
       console.warn('Action failed:', e);
     }
-    await this.queue.play(drainEvents(this.match), { keepSpeed: true });
+    await this.queue.play(this.drain(), { keepSpeed: true });
     await this.beginTurnIfNeeded();
     this.queue.resetSpeed();
     this.animLayer.removeAll(true);
@@ -212,7 +228,7 @@ export class BattleScene extends Phaser.Scene {
     if (m.winner !== null || this._lastTurn === m.turn) return;
     this._lastTurn = m.turn;
     startTurn(m);
-    const events = drainEvents(m);
+    const events = this.drain();
     if (events.length > 0) {
       this.animLayer.removeAll(true);
       this.render();
@@ -322,16 +338,22 @@ export class BattleScene extends Phaser.Scene {
         addGold(profile, this.reward);
         if (this.rewardCardId) {
           grantCard(profile, this.rewardCardId);
-          this.rewardCardName = getCard(this.rewardCardId).name;
+          this.rewardCardName = cardName(getCard(this.rewardCardId));
         }
       }
-      profile.wins = (profile.wins ?? 0) + 1;
-      recordWin(profile);
-      persist();
       sfx.roundWin();
     } else if (m.winner !== 'draw') {
       sfx.roundLose();
     }
+    const profile = getProfile();
+    const result = m.winner === 0 ? 'win' : m.winner === 1 ? 'loss' : 'draw';
+    const { rankDelta, unlocked } = recordMatch(profile, {
+      result, summary: this.summary, difficulty: this.difficulty, arena: this.storyIndex === null,
+    });
+    this.rankDelta = this.storyIndex === null ? rankDelta : null;
+    if (this.storyIndex === null) recordWin(profile);
+    persist();
+    toastAchievements(this, unlocked);
   }
 
   // ─── Leader ───────────────────────────────────────────────────────────────
@@ -591,7 +613,8 @@ export class BattleScene extends Phaser.Scene {
     this.root.add(onLeftClick(
       this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, '‹ В меню', { fontSize: '24px', color: '#9fbfff' })
         .setOrigin(0.5),
-      () => showInterstitial(() => this.scene.start(this.returnScene)),
+      () => showInterstitial(() => this.scene.start(this.returnScene,
+        this.storyIndex !== null && w === 0 ? { outroIndex: this.storyIndex } : undefined)),
     ));
 
     if (w === 0 && !this.chestClaimed) {
@@ -619,6 +642,14 @@ export class BattleScene extends Phaser.Scene {
       this.root.add(
         this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 24, `+${this.reward} золота`, { fontSize: '26px', color: '#ffd479' })
           .setOrigin(0.5),
+      );
+    }
+    if (this.rankDelta !== null && this.rankDelta !== undefined) {
+      const sign = this.rankDelta >= 0 ? '+' : '−';
+      this.root.add(
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 - 50, t('rank.delta', { sign, n: Math.abs(this.rankDelta) }), {
+          fontSize: '20px', color: this.rankDelta >= 0 ? '#9fe3d0' : '#ff9f9f',
+        }).setOrigin(0.5),
       );
     }
     if (this.rewardCardName) {

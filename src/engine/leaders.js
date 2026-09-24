@@ -3,6 +3,7 @@ import { emit } from './events.js';
 import { boost, dealDamage } from './actions.js';
 import { drawCards } from './draw.js';
 import { shuffle } from './rng.js';
+import { resetWeather } from './GwentMatch.js';
 
 const allOnBoard = (board) => ROWS.flatMap((r) => board[r]);
 const nonHero = (c) => c.def.type !== 'hero';
@@ -17,7 +18,7 @@ export function canUseLeader(match, playerIdx) {
 
 const ABILITIES = {
   clear_weather(match) {
-    match.weather.clear();
+    resetWeather(match);
   },
   boost_row(match, p, param) {
     const board = match.players[p].board;
