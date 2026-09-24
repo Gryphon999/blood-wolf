@@ -63,6 +63,45 @@ async function projectile(scene, queue, sourceUid, target, color) {
   orb.destroy();
 }
 
+// Ranged hit: a thin arrow turned towards the target
+async function arrowShot(scene, queue, sx, sy, tx, ty) {
+  const angle = Math.atan2(ty - sy, tx - sx);
+  const arrow = scene.add.rectangle(sx, sy, 18, 3, 0xd4a060).setRotation(angle);
+  scene.animLayer.add(arrow);
+  await tweenP(scene, queue, { targets: arrow, x: tx, y: ty, duration: 200, ease: 'Quad.In' });
+  burst(scene, tx, ty, 0xd4a060, { count: 8 });
+  arrow.destroy();
+}
+
+// Siege / lightning hit: a zigzag bolt from the top edge down to the target
+async function lightningStrike(scene, queue, tx, ty) {
+  const g = scene.make.graphics({ add: true });
+  g.lineStyle(3, 0x99eeff, 0.9);
+  g.beginPath();
+  g.moveTo(tx, 0);
+  const segments = 6;
+  for (let i = 1; i <= segments; i++) {
+    const zig = i === segments ? 0 : (Math.random() - 0.5) * 60;
+    g.lineTo(tx + zig, ty * (i / segments));
+  }
+  g.strokePath();
+  scene.animLayer.add(g);
+  if (!scene.registry?.get('reduceMotion')) scene.cameras.main.flash(queue.dur(80), 200, 230, 255);
+  burst(scene, tx, ty, 0x99eeff, { count: 14 });
+  await waitP(scene, queue, 140);
+  await tweenP(scene, queue, { targets: g, alpha: 0, duration: 80 });
+  g.destroy();
+}
+
+// Which hit animation a damage source gets
+export function hitStyle(def) {
+  if (!def) return 'melee';
+  const effect = `${def.effect ?? ''} ${def.deployEffect ?? ''} ${def.orderEffect ?? ''}`;
+  if (def.row === 'siege' || /shock|lightning/.test(effect)) return 'lightning';
+  if (def.row === 'ranged') return 'arrow';
+  return 'melee';
+}
+
 async function shake(scene, queue, v) {
   const x0 = v.x;
   await tweenP(scene, queue, { targets: v, x: x0 + 6, duration: 40, yoyo: true, repeat: 1 });
@@ -150,7 +189,16 @@ export const ANIMATIONS = {
   async damage(scene, ev, queue) {
     const t = view(scene, ev.targetUid);
     if (!t) return;
-    await projectile(scene, queue, ev.sourceUid, t, 0xff5533);
+    const src = ev.sourceUid == null ? null : findCardByUid(scene.match, ev.sourceUid);
+    const style = hitStyle(src?.def);
+    if (style === 'arrow') {
+      const s = view(scene, ev.sourceUid);
+      await arrowShot(scene, queue, s?.x ?? t.x - 100, s?.y ?? t.y, t.x, t.y);
+    } else if (style === 'lightning') {
+      await lightningStrike(scene, queue, t.x, t.y);
+    } else {
+      await projectile(scene, queue, ev.sourceUid, t, 0xff5533); // melee (status ticks have no source)
+    }
     sfx.damage();
     const flash = overlay(scene, t, 0xff2222);
     floatText(scene, t.x, t.y - 30, `-${ev.amount}`, '#ff9f9f');
