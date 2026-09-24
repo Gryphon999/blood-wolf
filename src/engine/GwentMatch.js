@@ -20,7 +20,7 @@ function makePlayer(deck, handSize) {
   };
 }
 
-export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = null } = {}) {
+export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = null, leaders = null } = {}) {
   const order = (deck) => (rng ? shuffle(deck, rng) : deck);
   return {
     players: [makePlayer(order(deckA), handSize), makePlayer(order(deckB), handSize)],
@@ -34,6 +34,7 @@ export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = n
     events: [],
     rng: rng ?? Math.random,
     pools, // [poolA, poolB] of card defs, or null = no round draws
+    leaders: leaders ?? [null, null], // [leaderDefA, leaderDefB] ({ id, ability, param }) or nulls
   };
 }
 

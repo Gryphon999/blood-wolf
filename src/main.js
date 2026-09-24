@@ -9,7 +9,7 @@ import { initYandex } from './sdk/yandex.js';
 
 await initYandex();
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: SCREEN.width,
@@ -18,3 +18,6 @@ new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [MenuScene, BattleScene, DeckScene, ShopScene, StoryScene],
 });
+
+// Dev-only handle for local smoke tests
+if (import.meta.env.DEV) window.__bw = game;

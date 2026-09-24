@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { createCardView } from '../ui/CardView.js';
 import { getProfile, persist } from '../economy/session.js';
-import { canUpgrade, upgradeCard, upgradeCost, toggleDeckCard, isDeckValid } from '../economy/profile.js';
+import { canUpgrade, upgradeCard, upgradeCost, toggleDeckCard, isDeckValid, setLeader } from '../economy/profile.js';
+import { leadersOf, chosenLeader } from '../data/leaders.js';
+import { t } from '../i18n/index.js';
 import { getCard } from '../data/cardCatalog.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
@@ -28,6 +30,24 @@ export class DeckScene extends Phaser.Scene {
     return o;
   }
 
+  renderLeaderPicker(p) {
+    const faction = p.deck[0] ? getCard(p.deck[0]).faction : p.faction;
+    const current = chosenLeader(p, faction);
+    this.text(420, 52, t('leader.pick'), '#d8c9a8', '14px');
+    leadersOf(faction).forEach((leader, i) => {
+      const active = leader.id === current?.id;
+      const label = `${leader.icon} ${t(`leader.${leader.id}`)}`;
+      const btn = this.text(600 + i * 200, 52, label, active ? '#ffd479' : '#8a7a5a', '14px')
+        .setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', () => {
+        setLeader(p, faction, leader.id);
+        persist();
+        this.render();
+      });
+    });
+    if (current) this.text(600, 74, t(`leader.${current.id}.desc`), '#9fe3d0', '12px');
+  }
+
   render() {
     this.root.removeAll(true);
     const p = getProfile();
@@ -38,6 +58,7 @@ export class DeckScene extends Phaser.Scene {
     const back = this.text(SCREEN.width - 120, 16, '‹ В меню', '#9fbfff', '20px').setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('MenuScene'));
     this.text(20, 52, 'Клик по карте — в колоду / из колоды', '#9a8a6a', '14px');
+    this.renderLeaderPicker(p);
 
     const ids = Object.keys(p.collection);
     const cols = 6;

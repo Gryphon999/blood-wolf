@@ -16,7 +16,22 @@ export function createProfile() {
     deck: PLAYER_DECK.map((card) => card.id),
     faction: 'humans',
     story: { cleared: 0 },
+    leaders: {},
   };
+}
+
+// Fill fields added by later versions into an older saved profile
+export function normalizeProfile(profile) {
+  const fresh = createProfile();
+  for (const [key, value] of Object.entries(fresh)) {
+    if (profile[key] === undefined) profile[key] = value;
+  }
+  return profile;
+}
+
+export function setLeader(profile, faction, leaderId) {
+  profile.leaders = { ...(profile.leaders ?? {}), [faction]: leaderId };
+  return profile;
 }
 
 export function isNodeUnlocked(profile, index) {

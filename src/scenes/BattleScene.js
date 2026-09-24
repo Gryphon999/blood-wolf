@@ -6,6 +6,8 @@ import { drainEvents } from '../engine/events.js';
 import { getValidTargets, targetKind } from '../engine/targeting.js';
 import { chooseMove, chooseMulligan } from '../engine/ai/OpponentAI.js';
 import { t } from '../i18n/index.js';
+import { useLeader, canUseLeader } from '../engine/leaders.js';
+import { chosenLeader, getLeader, randomLeader } from '../data/leaders.js';
 import { rowPower } from '../engine/Board.js';
 import { createCardView } from '../ui/CardView.js';
 import {
@@ -69,7 +71,14 @@ export class BattleScene extends Phaser.Scene {
       buildFactionPool(playerDeck[0]?.faction ?? 'humans'),
       this.storyIndex !== null ? enemyDeck : buildFactionPool(enemyDeck[0]?.faction ?? 'monsters'),
     ];
-    this.match = createMatch(playerDeck, enemyDeck, 10, { rng: Math.random, pools });
+    const playerFaction = playerDeck[0]?.faction ?? 'humans';
+    const enemyFaction = enemyDeck[0]?.faction ?? 'monsters';
+    const leaders = [
+      chosenLeader(getProfile(), playerFaction),
+      data?.enemyLeaderId !== undefined ? getLeader(data.enemyLeaderId) : randomLeader(enemyFaction),
+    ];
+    this.revealed = null; // enemy cards shown by a peek ability
+    this.match = createMatch(playerDeck, enemyDeck, 10, { rng: Math.random, pools, leaders });
 
     this.selectedIndex  = null;
     this.pendingPlay    = null;  // { handIndex, row, targets } while choosing a Deploy target
@@ -229,6 +238,7 @@ export class BattleScene extends Phaser.Scene {
   render() {
     const m = this.match;
     this.root.removeAll(true);
+    this.showHint(null);
     this.viewsByUid = new Map();
     const [player, opp] = m.players;
 
@@ -259,6 +269,14 @@ export class BattleScene extends Phaser.Scene {
     // ── Graveyard panels (left column)
     this.renderGraveyardPane(opp.graveyard,    44,  'ИИ');
     this.renderGraveyardPane(player.graveyard, 478, 'Ты');
+
+    // ── Leaders
+    this.renderLeader(1, 60, 170);
+    this.renderLeader(0, 60, 596);
+    if (this.revealed?.length) {
+      this.addText(20, 206, t('leader.revealed'), '#dd88ff', '11px');
+      this.revealed.forEach((def, i) => this.addText(20, 220 + i * 13, (def.name ?? def.id).slice(0, 16), '#c8a8e8', '11px'));
+    }
 
     // ── Hand
     this.renderHand(player);
@@ -304,6 +322,43 @@ export class BattleScene extends Phaser.Scene {
     } else if (m.winner !== 'draw') {
       sfx.roundLose();
     }
+  }
+
+  // ─── Leader ───────────────────────────────────────────────────────────────
+
+  renderLeader(playerIdx, x, y) {
+    const leader = this.match.leaders[playerIdx];
+    if (!leader) return;
+    const used = this.match.players[playerIdx].leaderUsed;
+    const ready = playerIdx === 0 && this.canAct() && canUseLeader(this.match, 0);
+    const disc = this.add.circle(x, y, 26, used ? 0x1a1a1f : 0x2b2233)
+      .setStrokeStyle(ready ? 3 : 2, ready ? 0xffd479 : used ? 0x3a3a3a : 0x8a6d3b);
+    this.root.add(disc);
+    this.root.add(this.add.text(x, y, leader.icon ?? '♛', { fontSize: '24px' }).setOrigin(0.5).setAlpha(used ? 0.35 : 1));
+    const name = t(`leader.${leader.id}`) + (used ? ` (${t('leader.used')})` : '');
+    this.root.add(this.add.text(x, y + 32, name, {
+      fontSize: '10px', color: used ? '#666666' : '#d8c9a8', align: 'center', wordWrap: { width: 110 },
+    }).setOrigin(0.5, 0));
+    disc.setInteractive({ useHandCursor: ready });
+    disc.on('pointerover', () => this.showHint(`${t(`leader.${leader.id}`)}: ${t(`leader.${leader.id}.desc`)}`));
+    disc.on('pointerout', () => this.showHint(null));
+    if (ready) {
+      disc.on('pointerdown', (pointer) => {
+        if (pointer.rightButtonDown() || !this.canAct()) return;
+        this.showHint(null);
+        this.act(() => useLeader(this.match, 0));
+      });
+    }
+  }
+
+  showHint(text) {
+    this.hintText?.destroy();
+    this.hintText = null;
+    if (!text) return;
+    this.hintText = this.add.text(SCREEN.width / 2, BOARD_CENTER_Y + 22, text, {
+      fontSize: '14px', color: '#ffe9b0', backgroundColor: '#0d0b10', padding: { x: 8, y: 4 },
+      align: 'center', wordWrap: { width: 700 },
+    }).setOrigin(0.5).setDepth(300);
   }
 
   // ─── Row ──────────────────────────────────────────────────────────────────

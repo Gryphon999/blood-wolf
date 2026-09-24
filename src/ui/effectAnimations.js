@@ -105,7 +105,8 @@ export const ANIMATIONS = {
     const ownerIsPlayer = ev.spy ? ev.player === 1 : ev.player === 0;
     const startX = from ? from.x : ownerIsPlayer ? SCREEN.width - 70 : SCREEN.width / 2;
     const startY = from ? from.y : ownerIsPlayer ? HAND_Y : -80;
-    const label = ev.spy ? tr('anim.spy') : ev.muster ? tr('anim.muster') : ev.ambush ? tr('anim.ambush') : null;
+    const label = ev.spy ? tr('anim.spy') : ev.muster ? tr('anim.muster') : ev.ambush ? tr('anim.ambush')
+      : ev.resurrect ? tr('anim.resurrect') : null;
     from?.setVisible(false);
     const clone = createCardView(scene, ev.def).setScale(0.9).setPosition(startX, startY);
     scene.animLayer.add(clone);
@@ -266,6 +267,35 @@ export const ANIMATIONS = {
     await waitP(scene, queue, 400);
     await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 250 });
     await dealToHand(scene, ev, queue);
+  },
+
+  async leader(scene, ev, queue) {
+    const leader = scene.match.leaders[ev.player];
+    sfx.order();
+    const y = ev.player === 0 ? BOARD_CENTER_Y + 60 : BOARD_CENTER_Y - 60;
+    const banner = scene.add.text(SCREEN.width / 2, y, `${leader?.icon ?? '♛'} ${tr(`leader.${ev.leaderId}`)}`, {
+      fontSize: '34px', color: '#ffd479', stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setScale(0.5).setAlpha(0);
+    scene.animLayer.add(banner);
+    burst(scene, SCREEN.width / 2, y, 0xffd479, { count: 18 });
+    await tweenP(scene, queue, { targets: banner, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
+    await waitP(scene, queue, 450);
+    await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 200 });
+  },
+
+  async reveal(scene, ev, queue) {
+    if (ev.player === 0) return; // the AI peeking at us is not shown
+    scene.revealed = ev.defs;
+    const step = 120;
+    const x0 = SCREEN.width / 2 - ((ev.defs.length - 1) / 2) * step;
+    const views = ev.defs.map((def, i) => {
+      const cv = createCardView(scene, def).setPosition(x0 + i * step, BOARD_CENTER_Y).setScale(0.2).setAlpha(0);
+      scene.animLayer.add(cv);
+      return cv;
+    });
+    await tweenP(scene, queue, { targets: views, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
+    await waitP(scene, queue, 1200);
+    await tweenP(scene, queue, { targets: views, alpha: 0, duration: 250 });
   },
 
   async fizzle(scene, ev, queue) {

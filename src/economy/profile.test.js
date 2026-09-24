@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  normalizeProfile, setLeader,
   createProfile, addGold, upgradeCost, canUpgrade, upgradeCard,
   toggleDeckCard, isDeckValid, buildDeckCards, canBuy, buyCard,
   isNodeUnlocked, isNodeCleared, clearNode, grantCard, grantChestReward,
@@ -160,5 +161,20 @@ describe('grantChestReward', () => {
     expect(p.collection).toEqual(before);
     expect(p.gold).toBe(100);
     vi.restoreAllMocks();
+  });
+});
+
+describe('normalizeProfile / setLeader', () => {
+  it('fills missing fields of an old save without touching existing ones', () => {
+    const old = { gold: 77, wins: 3, collection: {}, deck: [] };
+    const p = normalizeProfile(old);
+    expect(p.gold).toBe(77);
+    expect(p.leaders).toEqual({});
+    expect(p.story).toEqual({ cleared: 0 });
+  });
+
+  it('stores the chosen leader per faction', () => {
+    const p = setLeader(createProfile(), 'humans', 'queen_elina');
+    expect(p.leaders.humans).toBe('queen_elina');
   });
 });
