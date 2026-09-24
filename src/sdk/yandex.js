@@ -67,3 +67,17 @@ export function showChest(onReward) {
     },
   });
 }
+
+// Yandex asks games to pause (ads, tab switch inside the app); returns nothing outside Yandex
+export function onSdkPause(onPause, onResume) {
+  if (!ysdk?.on) return;
+  try {
+    ysdk.on('game_api_pause', onPause);
+    ysdk.on('game_api_resume', onResume);
+  } catch { /* older SDK */ }
+}
+
+// Tell Yandex the game has loaded (required for moderation)
+export function gameReady() {
+  try { ysdk?.features?.LoadingAPI?.ready(); } catch { /* not in Yandex */ }
+}

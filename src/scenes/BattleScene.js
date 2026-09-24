@@ -27,6 +27,7 @@ import { cardName } from '../ui/cardText.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
+import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadBattleAssets } from '../ui/preloadAssets.js';
 import { sfx } from '../ui/SoundEngine.js';
 import { AnimationQueue } from '../ui/AnimationQueue.js';
@@ -60,6 +61,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(data) {
     drawBackground(this);
+    sceneFadeIn(this, 'battle');
     if (this.textures.exists('battle_bg')) {
       this.add.image(SCREEN.width / 2, SCREEN.height / 2, 'battle_bg')
         .setDisplaySize(SCREEN.width, SCREEN.height)
@@ -112,7 +114,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer) => {
       if (this.busy) {
         // Ignore the very click that started the action; later clicks speed things up
-        if (this.time.now - this.busyStartedAt > 50) this.queue.speedUp();
+        if (this.time.now - this.busyStartedAt > 50 && this.registry.get('speedUp') !== false) this.queue.speedUp();
         return;
       }
       if (pointer.rightButtonDown()) this.cancelTargeting();
@@ -271,10 +273,10 @@ export class BattleScene extends Phaser.Scene {
     this.grantRewardOnce();
 
     // ── Header
-    this.addText(20, 14, `Соперник — карт: ${opp.hand.length}   раунды: ${pips(opp.roundsWon)}`, '#d8c9a8');
-    const status = m.winner !== null ? '' : m.current === 0 ? 'Твой ход' : 'Ход ИИ…';
+    this.addText(20, 14, t('battle.enemyInfo', { n: opp.hand.length, rounds: pips(opp.roundsWon) }), '#d8c9a8');
+    const status = m.winner !== null ? '' : m.current === 0 ? t('battle.yourTurn') : t('battle.aiTurn');
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
-    onLeftClick(this.addText(SCREEN.width - 110, 14, '‹ Назад', '#9fbfff'),
+    onLeftClick(this.addText(SCREEN.width - 110, 14, t('battle.back'), '#9fbfff'),
       () => { if (!this.busy) showInterstitial(() => this.scene.start(this.returnScene)); });
 
     // ── Board rows
@@ -284,38 +286,38 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // ── Weather + score
-    const wLabel = m.weather.size ? `ПОГОДА: ${[...m.weather].join(', ')}` : 'ПОГОДА: —';
+    const wLabel = t('battle.weather', { rows: m.weather.size ? [...m.weather].map((r) => t(`row.${r}`)).join(', ') : '—' });
     this.addText(20, BOARD_CENTER_Y - 10, wLabel, '#9fe3d0');
 
     const totalYou = ROW_NAMES.reduce((s, r) => s + rowPower(player.board, r, m.weather), 0);
     const totalAi  = ROW_NAMES.reduce((s, r) => s + rowPower(opp.board,    r, m.weather), 0);
     const scoreCol = totalYou > totalAi ? '#7fff7f' : totalYou < totalAi ? '#ff9f9f' : '#ffd479';
-    this.addText(SCREEN.width - 260, BOARD_CENTER_Y - 10, `ИИ: ${totalAi}    ТЫ: ${totalYou}`, scoreCol);
+    this.addText(SCREEN.width - 260, BOARD_CENTER_Y - 10, t('battle.score', { ai: totalAi, you: totalYou }), scoreCol);
 
     // ── Graveyard panels (left column)
-    this.renderGraveyardPane(opp.graveyard,    44,  'ИИ');
-    this.renderGraveyardPane(player.graveyard, 478, 'Ты');
+    this.renderGraveyardPane(opp.graveyard,    44,  t('battle.ai'));
+    this.renderGraveyardPane(player.graveyard, 478, t('battle.you'));
 
     // ── Leaders
     this.renderLeader(1, 60, 170);
     this.renderLeader(0, 60, 596);
     if (this.revealed?.length) {
       this.addText(20, 206, t('leader.revealed'), '#dd88ff', '11px');
-      this.revealed.forEach((def, i) => this.addText(20, 220 + i * 13, (def.name ?? def.id).slice(0, 16), '#c8a8e8', '11px'));
+      this.revealed.forEach((def, i) => this.addText(20, 220 + i * 13, cardName(def).slice(0, 16), '#c8a8e8', '11px'));
     }
 
     // ── Hand
     this.renderHand(player);
 
     // ── Footer
-    this.addText(20, HAND_Y + 52, `Ты — раунды: ${pips(player.roundsWon)}`, '#d8c9a8');
-    onLeftClick(this.addText(SCREEN.width - 160, HAND_Y + 48, '[ ПАС ]', '#ffb3b3', '20px'),
+    this.addText(20, HAND_Y + 52, t('battle.youInfo', { rounds: pips(player.roundsWon) }), '#d8c9a8');
+    onLeftClick(this.addText(SCREEN.width - 160, HAND_Y + 48, t('battle.pass'), '#ffb3b3', '20px'),
       () => this.onPass());
 
     // ── Target-selection hint
     if (this.pendingPlay || this.pendingOrder) {
-      this.addText(SCREEN.width / 2 - 170, BOARD_CENTER_Y + 14, '🎯 Выберите цель   (ПКМ / Esc — отмена)', '#ffd479', '15px');
-      onLeftClick(this.addText(SCREEN.width / 2 + 180, BOARD_CENTER_Y + 14, '[отмена]', '#ff9f9f', '15px'),
+      this.addText(SCREEN.width / 2 - 170, BOARD_CENTER_Y + 14, t('battle.pickTarget'), '#ffd479', '15px');
+      onLeftClick(this.addText(SCREEN.width / 2 + 180, BOARD_CENTER_Y + 14, t('battle.cancel'), '#ff9f9f', '15px'),
         () => this.cancelTargeting());
     }
 
@@ -480,7 +482,7 @@ export class BattleScene extends Phaser.Scene {
   renderGraveyardPane(graveyard, yBase, label) {
     this.addText(6, yBase, `${label} ⚰${graveyard.length}`, '#6a5040', '12px');
     graveyard.slice(-4).reverse().forEach((card, i) => {
-      this.addText(6, yBase + 16 + i * 13, (card.def.name ?? card.def.id).slice(0, 14), '#4a3828', '10px');
+      this.addText(6, yBase + 16 + i * 13, cardName(card.def).slice(0, 14), '#4a3828', '10px');
     });
   }
 
@@ -602,7 +604,7 @@ export class BattleScene extends Phaser.Scene {
     this.root.add(overlay);
 
     const w = this.match.winner;
-    const label = w === 0 ? 'ПОБЕДА' : w === 1 ? 'ПОРАЖЕНИЕ' : 'НИЧЬЯ';
+    const label = w === 0 ? t('battle.victory') : w === 1 ? t('battle.defeat') : t('battle.draw');
     const col   = w === 0 ? '#ffd479' : w === 1 ? '#ff9f9f' : '#d8c9a8';
 
     this.root.add(
@@ -611,7 +613,7 @@ export class BattleScene extends Phaser.Scene {
     );
 
     this.root.add(onLeftClick(
-      this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, '‹ В меню', { fontSize: '24px', color: '#9fbfff' })
+      this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, t('common.back'), { fontSize: '24px', color: '#9fbfff' })
         .setOrigin(0.5),
       () => showInterstitial(() => this.scene.start(this.returnScene,
         this.storyIndex !== null && w === 0 ? { outroIndex: this.storyIndex } : undefined)),
@@ -640,7 +642,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.reward > 0) {
       this.root.add(
-        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 24, `+${this.reward} золота`, { fontSize: '26px', color: '#ffd479' })
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 24, t('battle.gold', { n: this.reward }), { fontSize: '26px', color: '#ffd479' })
           .setOrigin(0.5),
       );
     }
@@ -654,7 +656,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.rewardCardName) {
       this.root.add(
-        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 54, `Новая карта: ${this.rewardCardName}`, { fontSize: '22px', color: '#9fe3d0' })
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 54, t('battle.newCard', { name: this.rewardCardName }), { fontSize: '22px', color: '#9fe3d0' })
           .setOrigin(0.5),
       );
     }

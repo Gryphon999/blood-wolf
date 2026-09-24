@@ -1,7 +1,11 @@
+import { music } from './MusicEngine.js';
+
 // Smooth scene changes: fade to black, start the next scene, which fades itself in.
 const FADE_MS = 220;
 
-export function sceneFadeIn(scene) {
+// Also picks the background music theme for the scene
+export function sceneFadeIn(scene, theme = 'menu') {
+  music.play(theme);
   if (scene.registry.get('reduceMotion')) return;
   scene.cameras.main.fadeIn(FADE_MS, 0, 0, 0);
 }

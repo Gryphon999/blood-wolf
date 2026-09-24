@@ -4,6 +4,7 @@ import { tierOf, nextTier, RANK_TIERS, WIN_POINTS, LOSS_POINTS } from '../econom
 import { fetchLeaderboard } from '../sdk/yandex.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
+import { sceneFadeIn } from '../ui/transitions.js';
 import { t } from '../i18n/index.js';
 
 export class RankScene extends Phaser.Scene {
@@ -13,6 +14,7 @@ export class RankScene extends Phaser.Scene {
 
   create() {
     drawBackground(this);
+    sceneFadeIn(this);
     const p = getProfile();
     const points = p.rank?.points ?? 0;
     const tier = tierOf(points);

@@ -8,6 +8,7 @@ import { drawBackground } from '../ui/background.js';
 import { sceneFadeIn, goTo } from '../ui/transitions.js';
 import { sfx } from '../ui/SoundEngine.js';
 import { t } from '../i18n/index.js';
+import { cardName } from '../ui/cardText.js';
 
 const CHAPTER_SIZE = STORY_NODES.length;
 const COL_X = [SCREEN.width / 4 + 10, (SCREEN.width * 3) / 4 - 10];
@@ -18,7 +19,7 @@ function nodeRules(node) {
   if (node.enemyLeaderId) lines.push(t('story.rule.leader', { name: t(`leader.${node.enemyLeaderId}`) }));
   const weather = node.rules?.permanentWeather ?? [];
   if (weather.length) lines.push(t('story.rule.weather', { rows: weather.map((r) => t(`row.${r}`)).join(', ') }));
-  for (const unit of node.rules?.bossUnits ?? []) lines.push(t('story.rule.boss', { name: unit.name }));
+  for (const unit of node.rules?.bossUnits ?? []) lines.push(t('story.rule.boss', { name: cardName(unit) }));
   return lines;
 }
 

@@ -9,6 +9,7 @@ import { leadersOf, chosenLeader } from '../data/leaders.js';
 import { getCard } from '../data/cardCatalog.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
+import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadCardAssets } from '../ui/preloadAssets.js';
 import { t } from '../i18n/index.js';
 import { FACTION_PASSIVE } from '../engine/passives.js';
@@ -36,6 +37,7 @@ export class DeckScene extends Phaser.Scene {
 
   create() {
     drawBackground(this);
+    sceneFadeIn(this);
     this.root = this.add.container(0, 0);
     this.page = 0;
     this.render();

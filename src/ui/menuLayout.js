@@ -22,6 +22,6 @@ export const MENU_TARGETS = {
   packs: 'PackScene', quests: 'ProgressScene', settings: 'SettingsScene',
 };
 // Second column on the right
-export const MENU_EXTRA_IDS = ['packs', 'quests'];
+export const MENU_EXTRA_IDS = ['packs', 'quests', 'settings'];
 export const MENU_EXTRA_X = SCREEN.width - 190;
 export const MENU_INFO_X = 190;

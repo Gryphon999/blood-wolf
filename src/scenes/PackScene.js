@@ -4,6 +4,7 @@ import { getProfile, persist } from '../economy/session.js';
 import { openPack, canOpenPack, PACK_COST } from '../economy/packs.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
+import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadCardAssets } from '../ui/preloadAssets.js';
 import { rarityColor } from '../ui/rarity.js';
 import { ensureSparkTexture } from '../ui/effectAnimations.js';
@@ -27,6 +28,7 @@ export class PackScene extends Phaser.Scene {
 
   create() {
     drawBackground(this);
+    sceneFadeIn(this);
     ensureSparkTexture(this);
     this.root = this.add.container(0, 0);
     this.cards = null;     // [{ def, isNew }] of the pack being revealed

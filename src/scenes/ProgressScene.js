@@ -5,6 +5,7 @@ import { ACHIEVEMENTS } from '../economy/achievements.js';
 import { getCard } from '../data/cardCatalog.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
+import { sceneFadeIn } from '../ui/transitions.js';
 import { onAchievements } from '../ui/toast.js';
 import { sfx } from '../ui/SoundEngine.js';
 import { t } from '../i18n/index.js';
@@ -17,6 +18,7 @@ export class ProgressScene extends Phaser.Scene {
 
   create() {
     drawBackground(this);
+    sceneFadeIn(this);
     this.root = this.add.container(0, 0);
     this.render();
   }

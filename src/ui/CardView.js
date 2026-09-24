@@ -1,5 +1,7 @@
 import { CARD_W, CARD_H } from './layout.js';
 import { rarityColor } from './rarity.js';
+import { cardName } from './cardText.js';
+import { t } from '../i18n/index.js';
 
 const NAME_Y = -CARD_H / 2 + 8;
 const BADGE_Y = CARD_H / 2 - 20;
@@ -50,7 +52,7 @@ export function createCardView(scene, cardDef, options = {}) {
     }
 
     container.add(
-      scene.add.text(0, NAME_Y, cardDef.name ?? cardDef.id, {
+      scene.add.text(0, NAME_Y, cardName(cardDef), {
         fontSize: '11px', color: '#ffd479', align: 'center',
         wordWrap: { width: CARD_W - 8 }, stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5, 0),
@@ -58,7 +60,7 @@ export function createCardView(scene, cardDef, options = {}) {
 
     if (cardDef.type === 'special') {
       container.add(
-        scene.add.text(0, BADGE_Y, 'знак', { fontSize: '12px', color: '#9fe3d0' }).setOrigin(0.5),
+        scene.add.text(0, BADGE_Y, t('card.sign'), { fontSize: '12px', color: '#9fe3d0' }).setOrigin(0.5),
       );
     } else {
       const cur = card ? card.power : cardDef.power;

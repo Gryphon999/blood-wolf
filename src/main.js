@@ -8,7 +8,12 @@ import { PackScene } from './scenes/PackScene.js';
 import { ProgressScene } from './scenes/ProgressScene.js';
 import { RankScene } from './scenes/RankScene.js';
 import { SCREEN } from './ui/layout.js';
-import { initYandex } from './sdk/yandex.js';
+import { SettingsScene } from './scenes/SettingsScene.js';
+import { initYandex, onSdkPause, gameReady } from './sdk/yandex.js';
+import { getProfile } from './economy/session.js';
+import { applySettings } from './ui/applySettings.js';
+import { setAudioPaused, getCtx } from './ui/SoundEngine.js';
+import { music } from './ui/MusicEngine.js';
 
 await initYandex();
 
@@ -19,7 +24,31 @@ const game = new Phaser.Game({
   height: SCREEN.height,
   backgroundColor: '#14100c',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [MenuScene, BattleScene, DeckScene, ShopScene, StoryScene, PackScene, ProgressScene, RankScene],
+  scene: [MenuScene, BattleScene, DeckScene, ShopScene, StoryScene, PackScene, ProgressScene, RankScene, SettingsScene],
+});
+
+applySettings(game, getProfile());
+gameReady();
+
+// Autopause (Yandex Games requirement): hidden tab, lost focus or an SDK pause
+let externalPause = false;
+function setPaused(paused) {
+  setAudioPaused(paused);
+  if (!paused) music.resync();
+}
+document.addEventListener('visibilitychange', () => setPaused(document.hidden || externalPause));
+window.addEventListener('blur', () => setPaused(true));
+window.addEventListener('focus', () => setPaused(externalPause));
+onSdkPause(
+  () => { externalPause = true; setPaused(true); game.pause(); },
+  () => { externalPause = false; setPaused(false); game.resume(); },
+);
+// Browsers start audio only after a gesture
+window.addEventListener('pointerdown', () => {
+  if (!document.hidden && !externalPause) {
+    try { getCtx().resume(); } catch { /* no Web Audio */ }
+    setPaused(false);
+  }
 });
 
 // Dev-only handle for local smoke tests
