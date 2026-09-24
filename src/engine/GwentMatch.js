@@ -6,6 +6,7 @@ import { resolveTarget, targetKind } from './targeting.js';
 import { dealDamage, boost, addBleed, damageRow, destroy } from './actions.js';
 import { dealRandom, ROUND_DRAW, MAX_HAND } from './dealRandom.js';
 import { shuffle } from './rng.js';
+import { drawCards } from './draw.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -116,15 +117,39 @@ function applyEffect(match, card, row, target) {
   throw new Error(`Unknown effect: ${effect}`);
 }
 
+// Muster: every card of the same family in hand and deck joins the board (no Deploy)
+function musterFamily(match, playerIdx, family) {
+  const player = match.players[playerIdx];
+  const isKin = (c) => c.def.muster === family && c.def.type !== 'special';
+  const kin = [...player.hand.filter(isKin), ...player.deck.filter(isKin)];
+  player.hand = player.hand.filter((c) => !isKin(c));
+  player.deck = player.deck.filter((c) => !isKin(c));
+  for (const c of kin) {
+    const row = ROWS.includes(c.def.row) ? c.def.row : 'melee';
+    addUnit(player.board, row, c);
+    emit(match, { type: 'play', uid: c.uid, def: c.def, player: playerIdx, row, index: player.board[row].length - 1, special: false, muster: true });
+  }
+}
+
 function applyCard(match, card, row, target, fizzled) {
   const self = match.current;
   const special = card.def.type === 'special';
   if (special) {
     emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: null, special: true });
+  } else if (card.def.spy) {
+    // Spy: fights for the enemy, pays its owner with two cards
+    const side = 1 - self;
+    const board = match.players[side].board;
+    addUnit(board, row, card);
+    card.spy = true;
+    emit(match, { type: 'play', uid: card.uid, def: card.def, player: side, row, index: board[row].length - 1, special: false, spy: true });
+    drawCards(match, self, 2, 'spy');
+    return;
   } else {
     const board = match.players[self].board;
     addUnit(board, row, card);
     emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: board[row].length - 1, special: false });
+    if (card.def.muster) musterFamily(match, self, card.def.muster);
     // Non-Zeal Order cards can't act the turn they're played
     if (card.def.hasOrder && !card.def.zeal && card.def.chargeMax === 0) {
       card.orderUsed = true;
@@ -191,7 +216,7 @@ function startNextRound(match, lastResult) {
       const count = Math.max(0, Math.min(ROUND_DRAW, MAX_HAND - player.hand.length));
       const cards = dealRandom(match.pools[i], count, match.rng).map(createCard);
       player.hand.push(...cards);
-      emit(match, { type: 'draw', player: i, uids: cards.map((c) => c.uid) });
+      emit(match, { type: 'draw', player: i, uids: cards.map((c) => c.uid), reason: 'round' });
     });
   }
 }
@@ -241,11 +266,25 @@ export function hasLegalMove(match) {
   return !player.passed && player.hand.length > 0;
 }
 
+// Ambush: cards waiting in hand leap onto a random own row when their owner passes
+function springAmbush(match, playerIdx) {
+  const player = match.players[playerIdx];
+  const hidden = player.hand.filter((c) => c.def.ambush && c.def.type !== 'special');
+  if (hidden.length === 0) return;
+  player.hand = player.hand.filter((c) => !hidden.includes(c));
+  for (const card of hidden) {
+    const row = ROWS[Math.floor(match.rng() * ROWS.length) % ROWS.length];
+    addUnit(player.board, row, card);
+    emit(match, { type: 'play', uid: card.uid, def: card.def, player: playerIdx, row, index: player.board[row].length - 1, special: false, ambush: true });
+  }
+}
+
 export function pass(match) {
   if (match.winner !== null) {
     throw new Error('Match is over');
   }
   const player = match.players[match.current];
+  springAmbush(match, match.current);
   player.passed = true;
   if (match.players[1 - match.current].passed) {
     resolveRound(match);
