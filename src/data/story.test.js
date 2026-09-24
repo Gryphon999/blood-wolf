@@ -17,3 +17,31 @@ describe('story nodes', () => {
     expect(typeof STORY_NODES[STORY_NODES.length - 1].rewardCardId).toBe('string');
   });
 });
+
+describe('campaign (chapters 1-2)', async () => {
+  const { CAMPAIGN_NODES, CHAPTER_TWO_NODES } = await import('./story.js');
+  const { getLeader } = await import('./leaders.js');
+  const { getCard } = await import('./cardCatalog.js');
+  const { ru } = await import('../i18n/ru.js');
+
+  it('has 10 nodes with unique ids, all decks defined', () => {
+    expect(CAMPAIGN_NODES).toHaveLength(10);
+    expect(new Set(CAMPAIGN_NODES.map((n) => n.id)).size).toBe(10);
+    for (const node of CAMPAIGN_NODES) {
+      expect(node.enemyDeck.every(Boolean), node.id).toBe(true);
+      expect(node.enemyDeck.length).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it('chapter 2 bosses use real leaders, rules and reward cards; every node has dialogue', () => {
+    for (const node of CHAPTER_TWO_NODES) {
+      if (node.enemyLeaderId) expect(getLeader(node.enemyLeaderId), node.id).not.toBeNull();
+      if (node.rewardCardId) expect(getCard(node.rewardCardId)).toBeTruthy();
+    }
+    expect(CHAPTER_TWO_NODES.some((n) => n.rules?.permanentWeather?.length)).toBe(true);
+    expect(CHAPTER_TWO_NODES.some((n) => n.rules?.bossUnits?.length)).toBe(true);
+    for (const node of CAMPAIGN_NODES) {
+      expect(ru[`story.${node.id}.intro`], node.id).toBeTypeOf('string');
+    }
+  });
+});

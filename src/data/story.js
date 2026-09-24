@@ -1,4 +1,5 @@
 // Enemy decks for the PvE campaign. Original dark-fantasy content.
+import { SHOP_CARDS } from './shopCards.js';
 const u = (id, name, row, power) => ({
   id, name, faction: 'monsters', type: 'unit', row, power, effect: null, rarity: 'common', cost: 0, art: null,
 });
@@ -72,10 +73,63 @@ const bossWyrm = [
   hero('bw_wyrm', 'Древний змей', 'melee', 11),
 ];
 
+// Chapter 1 (the original five nodes)
 export const STORY_NODES = [
   { id: 'bandits', name: 'Разбойники на тракте', enemyDeck: bandits, rewardGold: 40 },
   { id: 'wolves', name: 'Стая в чаще', enemyDeck: wolves, rewardGold: 60 },
   { id: 'undead', name: 'Проклятое кладбище', enemyDeck: undead, rewardGold: 80 },
   { id: 'mercs', name: 'Наёмники тьмы', enemyDeck: darkMercs, rewardGold: 120 },
-  { id: 'boss', name: 'Босс: Древний змей', enemyDeck: bossWyrm, rewardGold: 250, rewardCardId: 'paladin' },
+  { id: 'boss', name: 'Босс: Древний змей', enemyDeck: bossWyrm, rewardGold: 250, rewardCardId: 'paladin', boss: true },
 ];
+
+// ── Chapter 2: bosses with unique rules ──────────────────────────────────────
+// rules.permanentWeather: rows that stay under weather all match (Clear Sky cannot lift it)
+// rules.bossUnits: units standing on the enemy board at the start of every round
+// enemyLeaderId: the enemy's leader (other nodes have none)
+const shop = (id) => SHOP_CARDS.find((c) => c.id === id);
+
+const fogMarsh = [
+  u('fm1', 'Болотник', 'melee', 5), u('fm2', 'Болотник', 'melee', 5), u('fm3', 'Трясинный тролль', 'siege', 6),
+  u('fm4', 'Трясинный тролль', 'siege', 6), shop('werewolf'), shop('wolf'), shop('serpent'),
+  u('fm5', 'Утопленник', 'melee', 4), u('fm6', 'Утопленник', 'melee', 4), spell('fm_horn', 'Зов топи', 'horn', 'melee'),
+];
+
+const boneCrypt = [
+  shop('necromancer'), shop('bloodsucker'), u('bc1', 'Костяной страж', 'melee', 6), u('bc2', 'Костяной страж', 'melee', 6),
+  u('bc3', 'Костяной лучник', 'ranged', 5), u('bc4', 'Костяной лучник', 'ranged', 5), u('bc5', 'Катафалк', 'siege', 7),
+  shop('forest_shade'), spell('bc_blight', 'Могильный тлен', 'sign_damage', 'melee'), hero('bc_hero', 'Хранитель склепа', 'melee', 9),
+];
+
+const bloodCourt = [
+  shop('vampire'), shop('blood_count'), shop('bloodsucker'), shop('seducer'), shop('blood_ritual'),
+  u('bl1', 'Кровавый страж', 'melee', 6), u('bl2', 'Кровавый страж', 'melee', 6), u('bl3', 'Летучая стая', 'ranged', 5),
+  u('bl4', 'Летучая стая', 'ranged', 5), hero('bl_hero', 'Графиня Вейра', 'ranged', 9),
+];
+
+const WOLF_KING = { ...hero('wk_king', 'Король волков', 'melee', 8), tags: ['beast', 'wolf'] };
+const wolfKing = [
+  shop('dire_wolf_a'), shop('dire_wolf_b'), shop('dire_wolf_c'), shop('werewolf'), shop('harpy_hunter'),
+  u('wk1', 'Волкодлак', 'melee', 6), u('wk2', 'Волкодлак', 'melee', 6), u('wk3', 'Воющий', 'ranged', 5),
+  spell('wk_howl', 'Вой стаи', 'horn', 'melee'), u('wk4', 'Матёрый вожак', 'siege', 7),
+];
+
+const BLOOD_WOLF = { ...hero('bwf_boss', 'Кровавый Волк', 'melee', 10), tags: ['beast', 'wolf'] };
+const bloodWolf = [
+  shop('chaos_demon'), shop('archdemon'), shop('regen_troll'), shop('doppelganger'), shop('ice_giant'),
+  shop('vampire'), u('bwf1', 'Кровавая гончая', 'melee', 7), u('bwf2', 'Кровавая гончая', 'melee', 7),
+  u('bwf3', 'Вестник луны', 'ranged', 6), spell('bwf_ritual', 'Кровавая луна', 'bleed_all_enemies', 'melee'),
+];
+
+export const CHAPTER_TWO_NODES = [
+  { id: 'fog_marsh', name: 'Топь ведьмы', enemyDeck: fogMarsh, rewardGold: 150,
+    enemyLeaderId: 'fog_witch', rules: { permanentWeather: ['ranged'] } },
+  { id: 'bone_crypt', name: 'Костяной склеп', enemyDeck: boneCrypt, rewardGold: 180, enemyLeaderId: 'bone_lord' },
+  { id: 'blood_court', name: 'Кровавый двор', enemyDeck: bloodCourt, rewardGold: 220, enemyLeaderId: 'brood_queen' },
+  { id: 'wolf_king', name: 'Босс: Король волков', enemyDeck: wolfKing, rewardGold: 280, boss: true,
+    rules: { bossUnits: [WOLF_KING] } },
+  { id: 'blood_wolf', name: 'Финал: Кровавый Волк', enemyDeck: bloodWolf, rewardGold: 500, rewardCardId: 'order_healer',
+    boss: true, enemyLeaderId: 'brood_queen', rules: { permanentWeather: ['siege'], bossUnits: [BLOOD_WOLF] } },
+];
+
+// The full campaign shown in StoryScene
+export const CAMPAIGN_NODES = [...STORY_NODES, ...CHAPTER_TWO_NODES];
