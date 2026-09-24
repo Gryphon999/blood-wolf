@@ -26,6 +26,7 @@ import { toastAchievements } from '../ui/toast.js';
 import { cardName } from '../ui/cardText.js';
 import { attachCardTooltip, attachLongPress, hideCardTooltip } from '../ui/tooltip.js';
 import { cardDescription } from '../ui/cardDescription.js';
+import { gemStates, lostGems, GEM_COUNT } from '../ui/gems.js';
 import { tutorialStep, isInfoStep, TUTORIAL_STEPS, TUTORIAL_ANCHOR_Y } from '../ui/tutorial.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
@@ -283,7 +284,8 @@ export class BattleScene extends Phaser.Scene {
     this.grantRewardOnce();
 
     // ── Header
-    this.addText(20, 14, t('battle.enemyInfo', { n: opp.hand.length, rounds: pips(opp.roundsWon) }), '#d8c9a8');
+    const enemyInfo = this.addText(20, 14, t('battle.enemyInfo', { n: opp.hand.length }), '#d8c9a8');
+    this.renderGems(1, enemyInfo.x + enemyInfo.width + 22, 23);
     const status = m.winner !== null ? '' : m.current === 0 ? t('battle.yourTurn') : t('battle.aiTurn');
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
     onLeftClick(this.addText(SCREEN.width - 110, 14, t('battle.back'), '#9fbfff'),
@@ -320,7 +322,8 @@ export class BattleScene extends Phaser.Scene {
     this.renderHand(player);
 
     // ── Footer
-    this.addText(20, HAND_Y + 52, t('battle.youInfo', { rounds: pips(player.roundsWon) }), '#d8c9a8');
+    const youInfo = this.addText(20, HAND_Y + 52, t('battle.youInfo'), '#d8c9a8');
+    this.renderGems(0, youInfo.x + youInfo.width + 22, HAND_Y + 61);
     // Big touch-friendly PASS button to the right of the player's rows (clear of the hand)
     const canPass = this.canAct();
     const passBtn = this.add.rectangle(SCREEN.width - 80, rowY('player', 'siege'), 130, 60, canPass ? 0x3a1c1c : 0x1a1a1f)
@@ -341,6 +344,34 @@ export class BattleScene extends Phaser.Scene {
     if (this.mulliganPicks) this.renderMulligan();
     if (m.winner !== null) this.renderResult();
     else if (this.tutorial) this.renderTutorial();
+  }
+
+  // ─── Round gems ───────────────────────────────────────────────────────────
+
+  /** Two diamonds per side; a newly lost one fades out once, then stays dark. */
+  renderGems(playerIdx, x, y) {
+    this.gemsLost = this.gemsLost ?? [0, 0];
+    const states = gemStates(this.match, playerIdx);
+    const lostNow = lostGems(this.match, playerIdx);
+    states.forEach((state, i) => {
+      const gx = x + i * 22;
+      const fresh = state === 'lost' && i >= GEM_COUNT - lostNow && i < GEM_COUNT - this.gemsLost[playerIdx];
+      const g = this.add.graphics({ x: gx, y });
+      const color = state === 'full' || fresh ? 0xffd479 : 0x2b2b33;
+      g.fillStyle(color, 1);
+      g.lineStyle(1, state === 'full' ? 0xfff0c0 : 0x4a4436, 1);
+      g.beginPath();
+      g.moveTo(0, -9); g.lineTo(7, 0); g.lineTo(0, 9); g.lineTo(-7, 0);
+      g.closePath();
+      g.fillPath();
+      g.strokePath();
+      this.root.add(g);
+      if (fresh) {
+        this.tweens.add({ targets: g, alpha: 0.15, duration: 450, ease: 'Sine.In' });
+        g.once('destroy', () => this.tweens.killTweensOf(g));
+      }
+    });
+    this.gemsLost[playerIdx] = lostNow;
   }
 
   // ─── Card zoom ────────────────────────────────────────────────────────────
@@ -775,8 +806,4 @@ export class BattleScene extends Phaser.Scene {
       );
     }
   }
-}
-
-function pips(won) {
-  return '●'.repeat(won) + '○'.repeat(Math.max(0, 2 - won));
 }
