@@ -5,20 +5,23 @@ import { getCtx, isAudioPaused } from './SoundEngine.js';
 const NOTE = (n) => 440 * 2 ** ((n - 69) / 12); // MIDI → Hz
 
 export const THEMES = {
-  // Slow, brooding: Am – F – Dm – E, one chord per 2 beats at 64 bpm
+  // Witcher-like tavern mood: Am – F – Dm – E at 52 bpm, slow arpeggio and a plucked lute melody
   menu: {
-    bpm: 64,
+    bpm: 52,
     chords: [[57, 60, 64], [53, 57, 60], [50, 53, 57], [52, 56, 59]],
-    arp: [0, 1, 2, 1],
+    arp: [0, 1, 2, 1, 0],
     arpOctave: 12,
     bass: true,
     pulse: false,
     padType: 'triangle',
     leadType: 'sine',
+    lute: true,
+    lutePattern: [2, 0, 1, 2, 1, 0, 2, 1], // chord-tone indices
+    luteOctave: 24,
   },
-  // Driving: Dm – Bb – C – A at 112 bpm with a pulse bass and a soft kick
+  // Tense: Dm – Bb – C – A at 96 bpm with a pulse bass, a soft kick and the lute
   battle: {
-    bpm: 112,
+    bpm: 96,
     chords: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 49, 52]],
     arp: [0, 2, 1, 2, 0, 2, 1, 2],
     arpOctave: 24,
@@ -26,6 +29,9 @@ export const THEMES = {
     pulse: true,
     padType: 'sawtooth',
     leadType: 'triangle',
+    lute: true,
+    lutePattern: [0, 2, 1, 0, 2],
+    luteOctave: 12,
   },
 };
 
@@ -43,6 +49,12 @@ export function barNotes(theme, barIndex) {
     for (let i = 0; i < hits; i++) notes.push({ at: (i * bar) / hits, dur: (bar / hits) * 0.8, midi: chord[0] - 12, kind: 'bass' });
   }
   if (theme.pulse) for (let i = 0; i < 4; i++) notes.push({ at: i * beat, dur: 0.18, midi: 0, kind: 'kick' });
+  if (theme.lute && theme.lutePattern) {
+    const luteStep = bar / theme.lutePattern.length;
+    theme.lutePattern.forEach((idx, i) => notes.push({
+      at: i * luteStep, dur: luteStep * 0.5, midi: chord[idx % chord.length] + theme.luteOctave, kind: 'lute',
+    }));
+  }
   return { notes, length: bar };
 }
 
@@ -53,12 +65,27 @@ let timer = null;
 let nextBarAt = 0;
 let barIndex = 0;
 
+// Cheap reverb: two feedback delay lines mixed back in as a wet signal
+function addReverb(c, input) {
+  const delay1 = c.createDelay(0.5);
+  const delay2 = c.createDelay(0.3);
+  delay1.delayTime.value = 0.37;
+  delay2.delayTime.value = 0.23;
+  const fb1 = c.createGain(); fb1.gain.value = 0.25;
+  const fb2 = c.createGain(); fb2.gain.value = 0.18;
+  const wetGain = c.createGain(); wetGain.gain.value = 0.28;
+  input.connect(delay1); delay1.connect(fb1); fb1.connect(delay1); delay1.connect(wetGain);
+  input.connect(delay2); delay2.connect(fb2); fb2.connect(delay2); delay2.connect(wetGain);
+  wetGain.connect(c.destination);
+}
+
 function musicBus() {
   const c = getCtx();
   if (!bus) {
     bus = c.createGain();
     bus.gain.value = volume * 0.35;
     bus.connect(c.destination);
+    addReverb(c, bus); // wet level follows the music volume because it taps the bus
   }
   return bus;
 }
@@ -67,6 +94,19 @@ function voice(c, note, t0) {
   const osc = c.createOscillator();
   const gain = c.createGain();
   const theme = THEMES[current];
+  if (note.kind === 'lute') {
+    // Plucked string: sharp attack, fast exponential decay
+    osc.type = 'triangle';
+    osc.frequency.value = NOTE(note.midi);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.linearRampToValueAtTime(0.18, t0 + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + note.dur * 0.7);
+    osc.connect(gain);
+    gain.connect(musicBus());
+    osc.start(t0);
+    osc.stop(t0 + note.dur + 0.05);
+    return;
+  }
   const peak = { pad: 0.05, lead: 0.07, bass: 0.12, kick: 0.25 }[note.kind];
   if (note.kind === 'kick') {
     osc.type = 'sine';
