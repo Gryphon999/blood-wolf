@@ -1,17 +1,51 @@
 let ctx = null;
+let sfxBus = null;
+let sfxVolume = 0.8;
 
-function getCtx() {
+// One AudioContext for effects and music
+export function getCtx() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
   return ctx;
 }
 
+function bus() {
+  const c = getCtx();
+  if (!sfxBus) {
+    sfxBus = c.createGain();
+    sfxBus.gain.value = sfxVolume;
+    sfxBus.connect(c.destination);
+  }
+  return sfxBus;
+}
+
+let paused = false;
+
+// Autopause (tab hidden / Yandex pause): silence everything until resumed
+export function setAudioPaused(value) {
+  paused = value;
+  if (!ctx) return;
+  if (value) ctx.suspend().catch(() => {});
+  else ctx.resume().catch(() => {});
+}
+
+export function isAudioPaused() {
+  return paused;
+}
+
+export function setSfxVolume(v) {
+  sfxVolume = v;
+  if (sfxBus) sfxBus.gain.value = v;
+}
+
 function tone(freq, type, dur, vol = 0.22, delay = 0) {
+  if (sfxVolume <= 0 || paused) return;
   try {
     const c = getCtx();
+    if (c.state === 'suspended') c.resume().catch(() => {});
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.connect(gain);
-    gain.connect(c.destination);
+    gain.connect(bus());
     osc.type = type;
     osc.frequency.value = freq;
     const t0 = c.currentTime + delay;
@@ -36,4 +70,8 @@ export const sfx = {
   weather:    () => { tone(75, 'sine', 0.95, 0.16); tone(115, 'sine', 0.65, 0.11, 0.12); },
   scorch:     () => { [180, 260, 340, 260, 180].forEach((f, i) => tone(f, 'sawtooth', 0.14, 0.28, i * 0.07)); },
   click:      () => tone(680, 'sine', 0.05, 0.06),
+  flip:       () => { tone(900, 'triangle', 0.04, 0.08); tone(500, 'triangle', 0.05, 0.06, 0.03); },
+  rare:       () => { tone(660, 'sine', 0.2, 0.14); tone(990, 'sine', 0.18, 0.1, 0.08); },
+  epic:       () => { [523, 784, 1047].forEach((f, i) => tone(f, 'triangle', 0.3, 0.14, i * 0.07)); },
+  legendary:  () => { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 'sine', 0.5, 0.16, i * 0.08)); },
 };

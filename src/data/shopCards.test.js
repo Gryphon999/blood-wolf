@@ -6,8 +6,8 @@ const REQUIRED_FIELDS = ['id', 'name', 'faction', 'type', 'row', 'power', 'rarit
   'tags', 'deployEffect', 'hasOrder', 'orderEffect', 'chargeMax', 'zeal', 'armor', 'resilience', 'doomed', 'immune'];
 
 describe('shopCards', () => {
-  it('has 36 buyable cards', () => {
-    expect(SHOP_CARDS.length).toBe(36);
+  it('has 51 buyable cards', () => {
+    expect(SHOP_CARDS.length).toBe(51);
   });
 
   it('every card has all required fields', () => {
@@ -56,5 +56,22 @@ describe('shopCards', () => {
   it('resilience and doomed cards are correctly flagged', () => {
     expect(SHOP_CARDS.find(c => c.id === 'paladin').resilience).toBe(true);
     expect(SHOP_CARDS.find(c => c.id === 'chaos_demon').doomed).toBe(true);
+  });
+});
+
+describe('layer 15 trait cards', () => {
+  const has = (trait) => SHOP_CARDS.filter((c) => c[trait]);
+  it('each faction-new trait has at least one card', () => {
+    for (const trait of ['spy', 'muster', 'bond', 'berserker', 'ambush', 'vampirism']) {
+      expect(has(trait).length, trait).toBeGreaterThan(0);
+    }
+  });
+  it('muster families have at least 3 members and bond pairs share a name', () => {
+    const families = {};
+    has('muster').forEach((c) => { families[c.muster] = (families[c.muster] ?? 0) + 1; });
+    Object.values(families).forEach((n) => expect(n).toBeGreaterThanOrEqual(3));
+    const names = {};
+    has('bond').forEach((c) => { names[c.name] = (names[c.name] ?? 0) + 1; });
+    Object.values(names).forEach((n) => expect(n).toBeGreaterThanOrEqual(2));
   });
 });

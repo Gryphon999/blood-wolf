@@ -19,6 +19,11 @@ export function effectivePower(card, row, board, weather) {
   if (weather.has(row)) {
     power = 1;
   }
+  if (card.def.bond) {
+    // Bond: power × number of same-name bond cards in this row
+    const kin = board[row].filter((c) => c.def.bond && c.def.name === card.def.name).length;
+    power *= Math.max(1, kin);
+  }
   if (board.horns.has(row)) {
     power = power * 2;
   }

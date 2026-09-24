@@ -14,3 +14,14 @@ export function menuButtonY(index) {
   }
   return FIRST_Y + index * GAP;
 }
+
+// Stable ids for MENU_ITEMS (labels come from i18n) and their target scenes
+export const MENU_IDS = ['battle', 'story', 'deck', 'shop', 'rank'];
+export const MENU_TARGETS = {
+  battle: 'BattleScene', story: 'StoryScene', deck: 'DeckScene', shop: 'ShopScene', rank: 'RankScene',
+  packs: 'PackScene', quests: 'ProgressScene', settings: 'SettingsScene',
+};
+// Second column on the right
+export const MENU_EXTRA_IDS = ['packs', 'quests', 'settings'];
+export const MENU_EXTRA_X = SCREEN.width - 190;
+export const MENU_INFO_X = 190;

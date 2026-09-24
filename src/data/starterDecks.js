@@ -18,9 +18,9 @@ const card = (id, name, faction, type, row, power, rarity, prov, opts = {}) => (
 });
 
 export const PLAYER_DECK = [
-  card('merc_a',    'Наёмник',     'humans',   'unit',    'melee',  4, 'common',    3, { art: 'merc',     tags: ['merc'], deployEffect: 'damage', deployParam: 1 }),
-  card('merc_b',    'Наёмник',     'humans',   'unit',    'melee',  4, 'common',    3, { art: 'merc',     tags: ['merc'], deployEffect: 'damage', deployParam: 1 }),
-  card('merc_c',    'Наёмник',     'humans',   'unit',    'melee',  4, 'common',    3, { art: 'merc',     tags: ['merc'], deployEffect: 'damage', deployParam: 1 }),
+  card('merc_a',    'Наёмник',     'humans',   'unit',    'melee',  4, 'common',    3, { art: 'merc',     tags: ['merc'], deployEffect: 'damage', deployParam: 2 }),
+  card('merc_b',    'Наёмник',     'humans',   'unit',    'melee',  4, 'common',    3, { art: 'merc',     tags: ['merc'], deployEffect: 'damage', deployParam: 2 }),
+  card('merc_c',    'Наёмник',     'humans',   'unit',    'melee',  4, 'common',    3, { art: 'merc',     tags: ['merc'], deployEffect: 'damage', deployParam: 2 }),
   card('knight',    'Рыцарь',      'humans',   'unit',    'melee',  6, 'common',    5, { art: 'knight',   tags: ['knight'], deployEffect: 'shield_self' }),
   card('archer_a',  'Лучник',      'humans',   'unit',    'ranged', 3, 'common',    3, { art: 'archer',   tags: ['archer'], deployEffect: 'damage', deployParam: 2 }),
   card('archer_b',  'Лучник',      'humans',   'unit',    'ranged', 3, 'common',    3, { art: 'archer',   tags: ['archer'], deployEffect: 'damage', deployParam: 2 }),

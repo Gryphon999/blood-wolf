@@ -14,7 +14,12 @@ export class AnimationQueue {
     return Math.max(1, Math.round(ms / this.speed));
   }
 
-  async play(events) {
+  resetSpeed() {
+    this.speed = 1;
+  }
+
+  // keepSpeed: a speed-up carries over into the next play() (e.g. status ticks after an action)
+  async play(events, { keepSpeed = false } = {}) {
     try {
       for (const event of events) {
         const animate = this.animations[event.type];
@@ -27,7 +32,7 @@ export class AnimationQueue {
         }
       }
     } finally {
-      this.speed = 1;
+      if (!keepSpeed) this.speed = 1;
     }
   }
 }

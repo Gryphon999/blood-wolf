@@ -1,21 +1,35 @@
 import Phaser from 'phaser';
-import { createMatch, playCard, pass, useOrder, startTurn } from '../engine/GwentMatch.js';
+import {
+  createMatch, playCard, pass, useOrder, startTurn, mulligan, canMulligan, MULLIGAN_MAX,
+} from '../engine/GwentMatch.js';
 import { drainEvents } from '../engine/events.js';
 import { getValidTargets, targetKind } from '../engine/targeting.js';
-import { chooseMove } from '../engine/ai/OpponentAI.js';
+import { chooseMove, chooseMulligan } from '../engine/ai/OpponentAI.js';
+import { t } from '../i18n/index.js';
+import { useLeader, canUseLeader } from '../engine/leaders.js';
+import { passiveOf } from '../engine/passives.js';
+import { chosenLeader, getLeader, randomLeader } from '../data/leaders.js';
 import { rowPower } from '../engine/Board.js';
 import { createCardView } from '../ui/CardView.js';
 import {
   SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, BOARD_CENTER_Y, boardCardX, BOARD_CARD_SCALE,
 } from '../ui/layout.js';
-import { AI_DECK } from '../data/starterDecks.js';
+import { AI_DECK, PLAYER_DECK } from '../data/starterDecks.js';
 import { buildFactionPool } from '../data/factionPool.js';
 import { getProfile, persist } from '../economy/session.js';
-import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward } from '../economy/profile.js';
+import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward, isDeckValid } from '../economy/profile.js';
 import { showChest, showInterstitial, recordWin } from '../sdk/yandex.js';
+import { rewardFor } from '../economy/rewards.js';
+import { newSummary, accumulate } from '../economy/matchSummary.js';
+import { recordMatch } from '../economy/progress.js';
+import { toastAchievements } from '../ui/toast.js';
+import { cardName } from '../ui/cardText.js';
+import { attachCardTooltip, attachLongPress, hideCardTooltip } from '../ui/tooltip.js';
+import { tutorialStep, isInfoStep, TUTORIAL_STEPS, TUTORIAL_ANCHOR_Y } from '../ui/tutorial.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
+import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadBattleAssets } from '../ui/preloadAssets.js';
 import { sfx } from '../ui/SoundEngine.js';
 import { AnimationQueue } from '../ui/AnimationQueue.js';
@@ -49,6 +63,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(data) {
     drawBackground(this);
+    sceneFadeIn(this, 'battle');
     if (this.textures.exists('battle_bg')) {
       this.add.image(SCREEN.width / 2, SCREEN.height / 2, 'battle_bg')
         .setDisplaySize(SCREEN.width, SCREEN.height)
@@ -61,12 +76,28 @@ export class BattleScene extends Phaser.Scene {
     this.rewardCardId = data?.rewardCardId ?? null;
     this.returnScene  = this.storyIndex !== null ? 'StoryScene' : 'MenuScene';
     const enemyDeck   = data?.enemyDeck ?? AI_DECK;
-    const playerDeck  = buildDeckCards(getProfile());
+    // An emptied or too-small deck falls back to the starter deck instead of an empty hand
+    const playerDeck  = isDeckValid(getProfile()) ? buildDeckCards(getProfile()) : PLAYER_DECK;
     const pools = [
       buildFactionPool(playerDeck[0]?.faction ?? 'humans'),
       this.storyIndex !== null ? enemyDeck : buildFactionPool(enemyDeck[0]?.faction ?? 'monsters'),
     ];
-    this.match = createMatch(playerDeck, enemyDeck, 10, { rng: Math.random, pools });
+    const playerFaction = playerDeck[0]?.faction ?? 'humans';
+    const enemyFaction = enemyDeck[0]?.faction ?? 'monsters';
+    const leaders = [
+      chosenLeader(getProfile(), playerFaction),
+      data?.enemyLeaderId !== undefined ? getLeader(data.enemyLeaderId) : randomLeader(enemyFaction),
+    ];
+    this.revealed = null; // enemy cards shown by a peek ability
+    this.difficulty = getProfile().difficulty ?? 'normal';
+    this.chestClaimed = false;
+    this.summary = newSummary();
+    this.tutorial = !getProfile().tutorialDone && this.storyIndex === null ? { seen: new Set() } : null;
+    this.match = createMatch(playerDeck, enemyDeck, 10, {
+      rng: Math.random, pools, leaders,
+      permanentWeather: data?.rules?.permanentWeather ?? [],
+      bossUnits: data?.rules?.bossUnits ?? [],
+    });
 
     this.selectedIndex  = null;
     this.pendingPlay    = null;  // { handIndex, row, targets } while choosing a Deploy target
@@ -87,15 +118,63 @@ export class BattleScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer) => {
       if (this.busy) {
         // Ignore the very click that started the action; later clicks speed things up
-        if (this.time.now - this.busyStartedAt > 50) this.queue.speedUp();
+        if (this.time.now - this.busyStartedAt > 50 && this.registry.get('speedUp') !== false) this.queue.speedUp();
         return;
       }
       if (pointer.rightButtonDown()) this.cancelTargeting();
     });
     this.input.keyboard?.on('keydown-ESC', () => this.cancelTargeting());
 
+    // Mulligan: the AI swaps silently, the player gets a picker before the first move
+    mulligan(this.match, 1, chooseMulligan(this.match, 1));
+    drainEvents(this.match);
+    this.mulliganPicks = canMulligan(this.match, 0) ? new Set() : null;
     this.render();
-    this.act(() => {}); // runs startTurn for whoever moves first
+    if (!this.mulliganPicks) this.act(() => {}); // runs startTurn for whoever moves first
+  }
+
+  confirmMulligan(keep) {
+    if (!this.mulliganPicks) return;
+    const picks = keep ? [] : [...this.mulliganPicks];
+    this.mulliganPicks = null;
+    mulligan(this.match, 0, picks);
+    drainEvents(this.match);
+    if (picks.length) sfx.cardSpecial();
+    this.render();
+    this.act(() => {});
+  }
+
+  renderMulligan() {
+    const hand = this.match.players[0].hand;
+    this.root.add(this.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, 0.75));
+    this.root.add(this.add.text(SCREEN.width / 2, 150, t('mulligan.title'), { fontSize: '34px', color: '#ffd479' }).setOrigin(0.5));
+    this.root.add(this.add.text(SCREEN.width / 2, 192, t('mulligan.hint', { n: MULLIGAN_MAX }), { fontSize: '16px', color: '#c8b88a' }).setOrigin(0.5));
+    const step = Math.min(118, (SCREEN.width - 120) / Math.max(1, hand.length));
+    const x0 = SCREEN.width / 2 - ((hand.length - 1) / 2) * step;
+    hand.forEach((card, i) => {
+      const picked = this.mulliganPicks.has(i);
+      const cv = createCardView(this, card.def, { selected: picked });
+      cv.setScale(1).setPosition(x0 + i * step, 340 + (picked ? -24 : 0));
+      if (picked) {
+        cv.add(this.add.text(0, 0, '↻', { fontSize: '48px', color: '#ff9f9f', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5));
+      }
+      onLeftClick(cv.list[0], () => {
+        if (picked) this.mulliganPicks.delete(i);
+        else if (this.mulliganPicks.size < MULLIGAN_MAX) this.mulliganPicks.add(i);
+        sfx.click();
+        this.render();
+      });
+      this.root.add(cv);
+    });
+    const n = this.mulliganPicks.size;
+    this.root.add(onLeftClick(
+      this.add.text(SCREEN.width / 2 - 120, 500, t('mulligan.replace', { n }), { fontSize: '24px', color: n ? '#9fe3d0' : '#666666' }).setOrigin(0.5),
+      () => { if (n) this.confirmMulligan(false); },
+    ));
+    this.root.add(onLeftClick(
+      this.add.text(SCREEN.width / 2 + 120, 500, t('mulligan.keep'), { fontSize: '24px', color: '#ffd479' }).setOrigin(0.5),
+      () => this.confirmMulligan(true),
+    ));
   }
 
   // ─── Utilities ────────────────────────────────────────────────────────────
@@ -108,7 +187,8 @@ export class BattleScene extends Phaser.Scene {
 
   canAct() {
     const m = this.match;
-    return m.current === 0 && m.winner === null && !this.busy && !this.pendingPlay && !this.pendingOrder;
+    return m.current === 0 && m.winner === null && !this.busy && !this.pendingPlay && !this.pendingOrder
+      && !this.mulliganPicks;
   }
 
   activeTargets() {
@@ -122,6 +202,13 @@ export class BattleScene extends Phaser.Scene {
 
   // ─── Turn flow ────────────────────────────────────────────────────────────
 
+  /** Drain engine events, counting them for quests/achievements. */
+  drain() {
+    const events = drainEvents(this.match);
+    accumulate(this.summary, events, 0);
+    return events;
+  }
+
   /** Run one engine action, animate what it did, then redraw. */
   async act(action) {
     if (this.busy) return;
@@ -132,8 +219,9 @@ export class BattleScene extends Phaser.Scene {
     } catch (e) {
       console.warn('Action failed:', e);
     }
-    await this.queue.play(drainEvents(this.match));
+    await this.queue.play(this.drain(), { keepSpeed: true });
     await this.beginTurnIfNeeded();
+    this.queue.resetSpeed();
     this.animLayer.removeAll(true);
     this.busy = false;
     this.render();
@@ -146,11 +234,11 @@ export class BattleScene extends Phaser.Scene {
     if (m.winner !== null || this._lastTurn === m.turn) return;
     this._lastTurn = m.turn;
     startTurn(m);
-    const events = drainEvents(m);
+    const events = this.drain();
     if (events.length > 0) {
       this.animLayer.removeAll(true);
       this.render();
-      await this.queue.play(events);
+      await this.queue.play(events, { keepSpeed: true });
     }
   }
 
@@ -158,10 +246,15 @@ export class BattleScene extends Phaser.Scene {
     if (this.match.winner !== null || this.match.current !== 1) return;
     this.time.delayedCall(400, () => this.act(() => {
       try {
-        const move = chooseMove(this.match, 1);
+        const move = chooseMove(this.match, 1, this.difficulty);
         if (move.type === 'pass') {
           pass(this.match);
           sfx.pass();
+        } else if (move.type === 'order') {
+          useOrder(this.match, 1, move.row, move.cardIdx, { target: move.target });
+          sfx.order();
+        } else if (move.type === 'leader') {
+          useLeader(this.match, 1);
         } else {
           playCard(this.match, move.cardIndex, move.row, { target: move.target });
         }
@@ -177,16 +270,18 @@ export class BattleScene extends Phaser.Scene {
   render() {
     const m = this.match;
     this.root.removeAll(true);
+    this.showHint(null);
+    hideCardTooltip(this);
     this.viewsByUid = new Map();
     const [player, opp] = m.players;
 
     this.grantRewardOnce();
 
     // ── Header
-    this.addText(20, 14, `Соперник — карт: ${opp.hand.length}   раунды: ${pips(opp.roundsWon)}`, '#d8c9a8');
-    const status = m.winner !== null ? '' : m.current === 0 ? 'Твой ход' : 'Ход ИИ…';
+    this.addText(20, 14, t('battle.enemyInfo', { n: opp.hand.length, rounds: pips(opp.roundsWon) }), '#d8c9a8');
+    const status = m.winner !== null ? '' : m.current === 0 ? t('battle.yourTurn') : t('battle.aiTurn');
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
-    onLeftClick(this.addText(SCREEN.width - 110, 14, '‹ Назад', '#9fbfff'),
+    onLeftClick(this.addText(SCREEN.width - 110, 14, t('battle.back'), '#9fbfff'),
       () => { if (!this.busy) showInterstitial(() => this.scene.start(this.returnScene)); });
 
     // ── Board rows
@@ -196,34 +291,103 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // ── Weather + score
-    const wLabel = m.weather.size ? `ПОГОДА: ${[...m.weather].join(', ')}` : 'ПОГОДА: —';
+    const wLabel = t('battle.weather', { rows: m.weather.size ? [...m.weather].map((r) => t(`row.${r}`)).join(', ') : '—' });
     this.addText(20, BOARD_CENTER_Y - 10, wLabel, '#9fe3d0');
 
     const totalYou = ROW_NAMES.reduce((s, r) => s + rowPower(player.board, r, m.weather), 0);
     const totalAi  = ROW_NAMES.reduce((s, r) => s + rowPower(opp.board,    r, m.weather), 0);
     const scoreCol = totalYou > totalAi ? '#7fff7f' : totalYou < totalAi ? '#ff9f9f' : '#ffd479';
-    this.addText(SCREEN.width - 260, BOARD_CENTER_Y - 10, `ИИ: ${totalAi}    ТЫ: ${totalYou}`, scoreCol);
+    this.addText(SCREEN.width - 260, BOARD_CENTER_Y - 10, t('battle.score', { ai: totalAi, you: totalYou }), scoreCol);
 
     // ── Graveyard panels (left column)
-    this.renderGraveyardPane(opp.graveyard,    44,  'ИИ');
-    this.renderGraveyardPane(player.graveyard, 478, 'Ты');
+    this.renderGraveyardPane(opp.graveyard,    44,  t('battle.ai'));
+    this.renderGraveyardPane(player.graveyard, 478, t('battle.you'));
+
+    // ── Leaders
+    this.renderLeader(1, 60, 170);
+    this.renderLeader(0, 60, 596);
+    if (this.revealed?.length) {
+      this.addText(20, 206, t('leader.revealed'), '#dd88ff', '11px');
+      this.revealed.forEach((def, i) => this.addText(20, 220 + i * 13, cardName(def).slice(0, 16), '#c8a8e8', '11px'));
+    }
 
     // ── Hand
     this.renderHand(player);
 
     // ── Footer
-    this.addText(20, HAND_Y + 52, `Ты — раунды: ${pips(player.roundsWon)}`, '#d8c9a8');
-    onLeftClick(this.addText(SCREEN.width - 160, HAND_Y + 48, '[ ПАС ]', '#ffb3b3', '20px'),
-      () => this.onPass());
+    this.addText(20, HAND_Y + 52, t('battle.youInfo', { rounds: pips(player.roundsWon) }), '#d8c9a8');
+    // Big touch-friendly PASS button to the right of the player's rows (clear of the hand)
+    const canPass = this.canAct();
+    const passBtn = this.add.rectangle(SCREEN.width - 80, rowY('player', 'siege'), 130, 60, canPass ? 0x3a1c1c : 0x1a1a1f)
+      .setStrokeStyle(2, canPass ? 0xffb3b3 : 0x3a3a3a);
+    this.root.add(passBtn);
+    this.root.add(this.add.text(SCREEN.width - 80, rowY('player', 'siege'), t('battle.pass'), {
+      fontSize: '20px', color: canPass ? '#ffb3b3' : '#666666',
+    }).setOrigin(0.5));
+    onLeftClick(passBtn, () => this.onPass());
 
     // ── Target-selection hint
     if (this.pendingPlay || this.pendingOrder) {
-      this.addText(SCREEN.width / 2 - 170, BOARD_CENTER_Y + 14, '🎯 Выберите цель   (ПКМ / Esc — отмена)', '#ffd479', '15px');
-      onLeftClick(this.addText(SCREEN.width / 2 + 180, BOARD_CENTER_Y + 14, '[отмена]', '#ff9f9f', '15px'),
+      this.addText(SCREEN.width / 2 - 170, BOARD_CENTER_Y + 14, t('battle.pickTarget'), '#ffd479', '15px');
+      onLeftClick(this.addText(SCREEN.width / 2 + 180, BOARD_CENTER_Y + 14, t('battle.cancel'), '#ff9f9f', '15px'),
         () => this.cancelTargeting());
     }
 
+    if (this.mulliganPicks) this.renderMulligan();
     if (m.winner !== null) this.renderResult();
+    else if (this.tutorial) this.renderTutorial();
+  }
+
+  // ─── Tutorial ─────────────────────────────────────────────────────────────
+
+  renderTutorial() {
+    const m = this.match;
+    const step = tutorialStep({
+      mulligan: Boolean(this.mulliganPicks),
+      selected: this.selectedIndex !== null,
+      pendingTarget: Boolean(this.pendingPlay || this.pendingOrder),
+      played: this.summary.cardsPlayed > 0,
+      myTurn: m.current === 0 && !this.busy,
+      seen: this.tutorial.seen,
+    });
+    if (step === 'done') {
+      this.finishTutorial();
+      return;
+    }
+    if (!step) return;
+    const y = TUTORIAL_ANCHOR_Y[step];
+    const panel = this.add.rectangle(SCREEN.width / 2, y, 980, 78, 0x120e16, 0.95).setStrokeStyle(2, 0x9fe3d0);
+    this.root.add(panel);
+    this.root.add(this.add.text(SCREEN.width / 2 - 470, y, t(`tutorial.${step}`), {
+      fontSize: '15px', color: '#e8f4ee', wordWrap: { width: 730 },
+    }).setOrigin(0, 0.5));
+    if (isInfoStep(step)) {
+      const last = step === TUTORIAL_STEPS[TUTORIAL_STEPS.length - 1];
+      this.root.add(onLeftClick(this.add.text(SCREEN.width / 2 + 400, y - 14, last ? t('tutorial.done') : t('tutorial.next'), {
+        fontSize: '18px', color: '#14100c', backgroundColor: '#9fe3d0', padding: { x: 10, y: 4 },
+      }).setOrigin(0.5), () => {
+        this.tutorial.seen.add(step);
+        sfx.click();
+        this.render();
+      }));
+    }
+    this.root.add(onLeftClick(this.add.text(SCREEN.width / 2 + 400, y + 22, t('tutorial.skip'), {
+      fontSize: '12px', color: '#9a8a6a',
+    }).setOrigin(0.5), () => this.finishTutorial()));
+    if (step === 'hand') {
+      const arrow = this.add.text(SCREEN.width / 2, HAND_Y - 90, '▼', { fontSize: '30px', color: '#9fe3d0' }).setOrigin(0.5);
+      this.root.add(arrow);
+      this.tweens.add({ targets: arrow, y: HAND_Y - 78, duration: 400, yoyo: true, repeat: -1 });
+      arrow.once('destroy', () => this.tweens.killTweensOf(arrow));
+    }
+  }
+
+  finishTutorial() {
+    if (!this.tutorial) return;
+    this.tutorial = null;
+    getProfile().tutorialDone = true;
+    persist();
+    this.render();
   }
 
   grantRewardOnce() {
@@ -233,24 +397,71 @@ export class BattleScene extends Phaser.Scene {
     if (m.winner === 0) {
       const profile = getProfile();
       if (this.storyIndex === null) {
-        addGold(profile, 50);
-        this.reward = 50;
+        this.reward = rewardFor(50, this.difficulty);
+        addGold(profile, this.reward);
       } else {
         clearNode(profile, this.storyIndex);
-        addGold(profile, this.rewardGold);
-        this.reward = this.rewardGold;
+        this.reward = rewardFor(this.rewardGold, this.difficulty);
+        addGold(profile, this.reward);
         if (this.rewardCardId) {
           grantCard(profile, this.rewardCardId);
-          this.rewardCardName = getCard(this.rewardCardId).name;
+          this.rewardCardName = cardName(getCard(this.rewardCardId));
         }
       }
-      profile.wins = (profile.wins ?? 0) + 1;
-      recordWin(profile);
-      persist();
       sfx.roundWin();
     } else if (m.winner !== 'draw') {
       sfx.roundLose();
     }
+    const profile = getProfile();
+    const result = m.winner === 0 ? 'win' : m.winner === 1 ? 'loss' : 'draw';
+    const { rankDelta, unlocked } = recordMatch(profile, {
+      result, summary: this.summary, difficulty: this.difficulty, arena: this.storyIndex === null,
+    });
+    this.rankDelta = this.storyIndex === null ? rankDelta : null;
+    if (this.storyIndex === null) recordWin(profile);
+    persist();
+    toastAchievements(this, unlocked);
+  }
+
+  // ─── Leader ───────────────────────────────────────────────────────────────
+
+  renderLeader(playerIdx, x, y) {
+    const leader = this.match.leaders[playerIdx];
+    if (!leader) return;
+    const used = this.match.players[playerIdx].leaderUsed;
+    const ready = playerIdx === 0 && this.canAct() && canUseLeader(this.match, 0);
+    const disc = this.add.circle(x, y, 26, used ? 0x1a1a1f : 0x2b2233)
+      .setStrokeStyle(ready ? 3 : 2, ready ? 0xffd479 : used ? 0x3a3a3a : 0x8a6d3b);
+    this.root.add(disc);
+    this.root.add(this.add.text(x, y, leader.icon ?? '♛', { fontSize: '24px' }).setOrigin(0.5).setAlpha(used ? 0.35 : 1));
+    const name = t(`leader.${leader.id}`) + (used ? ` (${t('leader.used')})` : '');
+    this.root.add(this.add.text(x, y + 32, name, {
+      fontSize: '10px', color: used ? '#666666' : '#d8c9a8', align: 'center', wordWrap: { width: 110 },
+    }).setOrigin(0.5, 0));
+    disc.setInteractive({ useHandCursor: ready });
+    const passive = passiveOf(this.match, playerIdx);
+    const passiveLine = passive
+      ? `\n${t('passive.label', { name: t(`passive.${passive}`), desc: t(`passive.${passive}.desc`) })}` : '';
+    attachLongPress(this, disc,
+      () => this.showHint(`${t(`leader.${leader.id}`)}: ${t(`leader.${leader.id}.desc`)}${passiveLine}`),
+      () => this.showHint(null));
+    if (ready) {
+      disc.on('pointerup', (pointer) => {
+        if (this.tooltipShown || pointer.rightButtonReleased?.() || !this.canAct()) return;
+        this.showHint(null);
+        this.act(() => useLeader(this.match, 0));
+      });
+    }
+  }
+
+  showHint(text) {
+    this.hintText?.destroy();
+    this.hintText = null;
+    if (!text) return;
+    this.hintText = this.add.text(SCREEN.width / 2, BOARD_CENTER_Y + 22, text, {
+      fontSize: '14px', color: '#ffe9b0', backgroundColor: '#0d0b10', padding: { x: 8, y: 4 },
+      align: 'center', wordWrap: { width: 700 },
+    }).setOrigin(0.5).setDepth(300);
   }
 
   // ─── Row ──────────────────────────────────────────────────────────────────
@@ -277,6 +488,10 @@ export class BattleScene extends Phaser.Scene {
       cv.setPosition(boardCardX(i), y);
       this.viewsByUid.set(card.uid, cv);
 
+      if (!targets) {
+        cv.list[0].setInteractive();
+        attachCardTooltip(this, cv.list[0], card.def, { y: sideName === 'player' ? 90 : HAND_Y - 20 });
+      }
       if (targets) {
         if (targets.includes(card)) {
           cv.list[0].setStrokeStyle(3, TARGET_STROKE);
@@ -328,6 +543,7 @@ export class BattleScene extends Phaser.Scene {
       cv.setPosition(handCardX(i, player.hand.length), HAND_Y);
       this.viewsByUid.set(card.uid, cv);
       onLeftClick(cv.list[0], () => this.onHandClick(i));
+      attachCardTooltip(this, cv.list[0], card.def, { y: BOARD_CENTER_Y });
       this.root.add(cv);
     });
   }
@@ -337,7 +553,7 @@ export class BattleScene extends Phaser.Scene {
   renderGraveyardPane(graveyard, yBase, label) {
     this.addText(6, yBase, `${label} ⚰${graveyard.length}`, '#6a5040', '12px');
     graveyard.slice(-4).reverse().forEach((card, i) => {
-      this.addText(6, yBase + 16 + i * 13, (card.def.name ?? card.def.id).slice(0, 14), '#4a3828', '10px');
+      this.addText(6, yBase + 16 + i * 13, cardName(card.def).slice(0, 14), '#4a3828', '10px');
     });
   }
 
@@ -352,6 +568,7 @@ export class BattleScene extends Phaser.Scene {
       if (def.effect === 'sign_damage') return sideName === 'opponent';
       return false;
     }
+    if (def.spy) return sideName === 'opponent' && rowName === def.row;
     return sideName === 'player' && rowName === def.row;
   }
 
@@ -378,6 +595,7 @@ export class BattleScene extends Phaser.Scene {
 
   onRowClick(rowName) {
     if (this.selectedIndex === null || this.busy) return;
+    this.tutorial?.seen.add('row');
     this.beginPlay(this.selectedIndex, rowName);
   }
 
@@ -413,6 +631,7 @@ export class BattleScene extends Phaser.Scene {
 
   onTargetClick(target) {
     if (this.busy) return;
+    this.tutorial?.seen.add('target');
     if (this.pendingPlay) {
       const { handIndex, row } = this.pendingPlay;
       this.pendingPlay = null;
@@ -458,7 +677,7 @@ export class BattleScene extends Phaser.Scene {
     this.root.add(overlay);
 
     const w = this.match.winner;
-    const label = w === 0 ? 'ПОБЕДА' : w === 1 ? 'ПОРАЖЕНИЕ' : 'НИЧЬЯ';
+    const label = w === 0 ? t('battle.victory') : w === 1 ? t('battle.defeat') : t('battle.draw');
     const col   = w === 0 ? '#ffd479' : w === 1 ? '#ff9f9f' : '#d8c9a8';
 
     this.root.add(
@@ -467,34 +686,50 @@ export class BattleScene extends Phaser.Scene {
     );
 
     this.root.add(onLeftClick(
-      this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, '‹ В меню', { fontSize: '24px', color: '#9fbfff' })
+      this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, t('common.back'), { fontSize: '24px', color: '#9fbfff' })
         .setOrigin(0.5),
-      () => showInterstitial(() => this.scene.start(this.returnScene)),
+      () => showInterstitial(() => this.scene.start(this.returnScene,
+        this.storyIndex !== null && w === 0 ? { outroIndex: this.storyIndex } : undefined)),
     ));
 
-    if (w === 0) {
+    if (w === 0 && !this.chestClaimed) {
       this.root.add(onLeftClick(
-        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, '🎁 Сундук', { fontSize: '22px', color: '#ffd479' })
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, t('chest.open'), { fontSize: '22px', color: '#ffd479' })
           .setOrigin(0.5),
         () => {
+          if (this.chestClaimed) return; // one chest per battle, even on fast double clicks
+          this.chestClaimed = true;
+          this.render();
           showChest(() => {
             grantChestReward(getProfile(), SHOP_CARDS);
             persist();
+            this.chestText = t('chest.got');
             this.render();
           });
         },
       ));
     }
+    if (this.chestText) {
+      this.root.add(this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, this.chestText, { fontSize: '18px', color: '#9fe3d0' }).setOrigin(0.5));
+    }
 
     if (this.reward > 0) {
       this.root.add(
-        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 24, `+${this.reward} золота`, { fontSize: '26px', color: '#ffd479' })
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 24, t('battle.gold', { n: this.reward }), { fontSize: '26px', color: '#ffd479' })
           .setOrigin(0.5),
+      );
+    }
+    if (this.rankDelta !== null && this.rankDelta !== undefined) {
+      const sign = this.rankDelta >= 0 ? '+' : '−';
+      this.root.add(
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 - 50, t('rank.delta', { sign, n: Math.abs(this.rankDelta) }), {
+          fontSize: '20px', color: this.rankDelta >= 0 ? '#9fe3d0' : '#ff9f9f',
+        }).setOrigin(0.5),
       );
     }
     if (this.rewardCardName) {
       this.root.add(
-        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 54, `Новая карта: ${this.rewardCardName}`, { fontSize: '22px', color: '#9fe3d0' })
+        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 54, t('battle.newCard', { name: this.rewardCardName }), { fontSize: '22px', color: '#9fe3d0' })
           .setOrigin(0.5),
       );
     }

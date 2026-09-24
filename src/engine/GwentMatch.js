@@ -6,6 +6,8 @@ import { resolveTarget, targetKind } from './targeting.js';
 import { dealDamage, boost, addBleed, damageRow, destroy } from './actions.js';
 import { dealRandom, ROUND_DRAW, MAX_HAND } from './dealRandom.js';
 import { shuffle } from './rng.js';
+import { drawCards } from './draw.js';
+import { keepsTurnAfterPlay, tieWinner } from './passives.js';
 
 function makePlayer(deck, handSize) {
   const cards = deck.map(createCard);
@@ -19,9 +21,11 @@ function makePlayer(deck, handSize) {
   };
 }
 
-export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = null } = {}) {
+export function createMatch(deckA, deckB, handSize = 10, {
+  rng = null, pools = null, leaders = null, factions = null, permanentWeather = [], bossUnits = [],
+} = {}) {
   const order = (deck) => (rng ? shuffle(deck, rng) : deck);
-  return {
+  const match = {
     players: [makePlayer(order(deckA), handSize), makePlayer(order(deckB), handSize)],
     current: 0,
     turn: 0,
@@ -33,7 +37,30 @@ export function createMatch(deckA, deckB, handSize = 10, { rng = null, pools = n
     events: [],
     rng: rng ?? Math.random,
     pools, // [poolA, poolB] of card defs, or null = no round draws
+    factions: factions ?? [deckA[0]?.faction ?? null, deckB[0]?.faction ?? null],
+    leaders: leaders ?? [null, null], // [leaderDefA, leaderDefB] ({ id, ability, param }) or nulls
+    permanentWeather: [...permanentWeather],
+    bossUnits,
   };
+  resetWeather(match);
+  placeBossUnits(match);
+  return match;
+}
+
+// Weather back to the boss rule's permanent rows (none by default)
+export function resetWeather(match) {
+  match.weather.clear();
+  for (const row of match.permanentWeather ?? []) match.weather.add(row);
+}
+
+// Boss rule: these units stand on player 1's board at the start of every round
+function placeBossUnits(match) {
+  const board = match.players[1].board;
+  for (const def of match.bossUnits ?? []) {
+    const row = ROWS.includes(def.row) ? def.row : 'melee';
+    if (board[row].some((c) => c.def === def)) continue;
+    addUnit(board, row, createCard(def));
+  }
 }
 
 function allOnBoard(board) {
@@ -63,7 +90,7 @@ function applyEffect(match, card, row, target) {
     return;
   }
   if (effect === 'clear') {
-    match.weather.clear();
+    resetWeather(match);
     return;
   }
   if (effect === 'horn') {
@@ -116,15 +143,39 @@ function applyEffect(match, card, row, target) {
   throw new Error(`Unknown effect: ${effect}`);
 }
 
+// Muster: every card of the same family in hand and deck joins the board (no Deploy)
+function musterFamily(match, playerIdx, family) {
+  const player = match.players[playerIdx];
+  const isKin = (c) => c.def.muster === family && c.def.type !== 'special';
+  const kin = [...player.hand.filter(isKin), ...player.deck.filter(isKin)];
+  player.hand = player.hand.filter((c) => !isKin(c));
+  player.deck = player.deck.filter((c) => !isKin(c));
+  for (const c of kin) {
+    const row = ROWS.includes(c.def.row) ? c.def.row : 'melee';
+    addUnit(player.board, row, c);
+    emit(match, { type: 'play', uid: c.uid, def: c.def, player: playerIdx, row, index: player.board[row].length - 1, special: false, muster: true });
+  }
+}
+
 function applyCard(match, card, row, target, fizzled) {
   const self = match.current;
   const special = card.def.type === 'special';
   if (special) {
     emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: null, special: true });
+  } else if (card.def.spy) {
+    // Spy: fights for the enemy, pays its owner with two cards
+    const side = 1 - self;
+    const board = match.players[side].board;
+    addUnit(board, row, card);
+    card.spy = true;
+    emit(match, { type: 'play', uid: card.uid, def: card.def, player: side, row, index: board[row].length - 1, special: false, spy: true, owner: self });
+    drawCards(match, self, 2, 'spy');
+    return;
   } else {
     const board = match.players[self].board;
     addUnit(board, row, card);
     emit(match, { type: 'play', uid: card.uid, def: card.def, player: self, row, index: board[row].length - 1, special: false });
+    if (card.def.muster) musterFamily(match, self, card.def.muster);
     // Non-Zeal Order cards can't act the turn they're played
     if (card.def.hasOrder && !card.def.zeal && card.def.chargeMax === 0) {
       card.orderUsed = true;
@@ -155,7 +206,7 @@ export function playCard(match, cardIndex, row, { target } = {}) {
   const fizzled = targetKind(card, 'deploy') !== 'none' && chosen === null;
   player.hand.splice(cardIndex, 1);
   applyCard(match, card, row, chosen, fizzled);
-  passTurn(match);
+  if (!keepsTurnAfterPlay(match, match.current)) passTurn(match);
   match.turn++;
 }
 
@@ -185,13 +236,14 @@ function startNextRound(match, lastResult) {
     ? 1 - match.roundStarter
     : 1 - lastResult;
   match.current = match.roundStarter;
-  match.weather.clear();
+  resetWeather(match);
+  placeBossUnits(match);
   if (match.pools) {
     match.players.forEach((player, i) => {
       const count = Math.max(0, Math.min(ROUND_DRAW, MAX_HAND - player.hand.length));
       const cards = dealRandom(match.pools[i], count, match.rng).map(createCard);
       player.hand.push(...cards);
-      emit(match, { type: 'draw', player: i, uids: cards.map((c) => c.uid) });
+      emit(match, { type: 'draw', player: i, uids: cards.map((c) => c.uid), reason: 'round' });
     });
   }
 }
@@ -220,17 +272,50 @@ function resolveRound(match) {
     p1.roundsWon++;
     result = 1;
   } else {
-    p0.roundsWon++;
-    p1.roundsWon++;
-    result = 'draw';
+    const winner = tieWinner(match);
+    if (winner === null) {
+      p0.roundsWon++;
+      p1.roundsWon++;
+      result = 'draw';
+    } else {
+      match.players[winner].roundsWon++;
+      result = winner;
+    }
   }
   match.lastRound = result;
-
+  emit(match, { type: 'roundEnd', round: match.round, result, powers: [power0, power1] });
   if (p0.roundsWon >= 2 || p1.roundsWon >= 2) {
     finishMatch(match);
     return;
   }
   startNextRound(match, result);
+}
+
+// ── Mulligan: before the first move, each player may swap up to 2 cards once ──
+export const MULLIGAN_MAX = 2;
+
+export function canMulligan(match, playerIdx) {
+  return match.winner === null && match.round === 1 && match.turn === 0
+    && !match.players[playerIdx].mulliganDone;
+}
+
+export function mulligan(match, playerIdx, handIndices = []) {
+  if (!canMulligan(match, playerIdx)) throw new Error('Mulligan is not available');
+  const picks = [...new Set(handIndices)].sort((a, b) => b - a);
+  if (picks.length > MULLIGAN_MAX) throw new Error(`At most ${MULLIGAN_MAX} cards`);
+  const player = match.players[playerIdx];
+  if (picks.some((i) => !player.hand[i])) throw new Error('Invalid hand index');
+  const fresh = player.deck.splice(0, picks.length);
+  const missing = picks.length - fresh.length;
+  if (missing > 0 && match.pools?.[playerIdx]) {
+    fresh.push(...dealRandom(match.pools[playerIdx], missing, match.rng).map(createCard));
+  }
+  // Without enough replacements the extra picks simply stay in hand
+  const returned = picks.slice(picks.length - fresh.length).map((i) => player.hand.splice(i, 1)[0]);
+  player.hand.push(...fresh);
+  player.deck.push(...returned);
+  player.mulliganDone = true;
+  emit(match, { type: 'mulligan', player: playerIdx, count: fresh.length, uids: fresh.map((c) => c.uid) });
 }
 
 export function hasLegalMove(match) {
@@ -241,11 +326,25 @@ export function hasLegalMove(match) {
   return !player.passed && player.hand.length > 0;
 }
 
+// Ambush: cards waiting in hand leap onto a random own row when their owner passes
+function springAmbush(match, playerIdx) {
+  const player = match.players[playerIdx];
+  const hidden = player.hand.filter((c) => c.def.ambush && c.def.type !== 'special');
+  if (hidden.length === 0) return;
+  player.hand = player.hand.filter((c) => !hidden.includes(c));
+  for (const card of hidden) {
+    const row = ROWS[Math.floor(match.rng() * ROWS.length) % ROWS.length];
+    addUnit(player.board, row, card);
+    emit(match, { type: 'play', uid: card.uid, def: card.def, player: playerIdx, row, index: player.board[row].length - 1, special: false, ambush: true });
+  }
+}
+
 export function pass(match) {
   if (match.winner !== null) {
     throw new Error('Match is over');
   }
   const player = match.players[match.current];
+  springAmbush(match, match.current);
   player.passed = true;
   if (match.players[1 - match.current].passed) {
     resolveRound(match);
@@ -289,6 +388,7 @@ export function useOrder(match, playerIdx, row, cardIdx, { target } = {}) {
   if (targetKind(card, 'order') !== 'none' && chosen === null) {
     throw new Error('No valid targets');
   }
+  emit(match, { type: 'order', player: playerIdx, uid: card.uid });
   applyOrder(match, card, playerIdx, chosen);
 
   if (isCharge) {

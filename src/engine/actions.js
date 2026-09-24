@@ -1,6 +1,7 @@
 import { createCard } from './Card.js';
 import { emit, locateOnBoard } from './events.js';
 import { MAX_HAND } from './dealRandom.js';
+import { ROWS } from './Board.js';
 
 const uidOf = (card) => card?.uid ?? null;
 const isHero = (card) => card.def.type === 'hero';
@@ -12,6 +13,14 @@ export function destroy(match, card, { exile = false } = {}) {
   owner.board[loc.row].splice(loc.index, 1);
   if (!exile && !card.def.doomed) owner.graveyard.push(card);
   emit(match, { type: 'destroy', uid: card.uid, player: loc.player, row: loc.row });
+  // Berserkers feed on every death on the battlefield
+  for (const pl of match.players) {
+    for (const row of ROWS) {
+      for (const c of pl.board[row]) {
+        if (c.def.berserker) boost(match, c, c, 1);
+      }
+    }
+  }
 }
 
 export function dealDamage(match, source, target, amount, { direct = false } = {}) {
@@ -31,12 +40,17 @@ export function dealDamage(match, source, target, amount, { direct = false } = {
       return;
     }
   }
+  const drained = Math.min(dmg, Math.max(0, target.power));
   target.power -= dmg;
   emit(match, {
     type: 'damage', sourceUid: uidOf(source), targetUid: target.uid,
     amount: dmg, powerAfter: Math.max(0, target.power),
   });
   if (target.power <= 0) destroy(match, target);
+  // Vampirism: the source drinks what it drained (only while it stands on the board)
+  if (source?.def?.vampirism && drained > 0 && locateOnBoard(match, source)) {
+    boost(match, source, source, drained);
+  }
 }
 
 export function heal(match, source, target, amount) {

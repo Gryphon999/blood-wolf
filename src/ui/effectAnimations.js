@@ -2,6 +2,7 @@ import { createCardView } from './CardView.js';
 import { floatText } from './FloatingText.js';
 import { sfx } from './SoundEngine.js';
 import { findCardByUid } from '../engine/events.js';
+import { t as tr } from '../i18n/index.js';
 import {
   SCREEN, HAND_Y, BOARD_CENTER_Y, CARD_W, CARD_H,
   rowY, handCardX, boardCardX, BOARD_CARD_SCALE,
@@ -80,13 +81,32 @@ function dropIcon(icon) {
   };
 }
 
+// Face-down cards fly from the deck corner to their hand slots
+function dealToHand(scene, ev, queue) {
+  const hand = scene.match.players[0].hand;
+  return Promise.all(ev.uids.map((uid, k) => {
+    const idx = hand.findIndex((c) => c.uid === uid);
+    const back = createCardView(scene, { rarity: 'common' }, { faceDown: true })
+      .setScale(0.9).setPosition(SCREEN.width - 70, HAND_Y);
+    scene.animLayer.add(back);
+    return tweenP(scene, queue, {
+      targets: back, x: handCardX(Math.max(0, idx), hand.length),
+      delay: queue.dur(120 * k), duration: 300, ease: 'Power2.Out',
+    });
+  }));
+}
+
 // ── One animation per engine event type ──────────────────────────────────────
 
 export const ANIMATIONS = {
   async play(scene, ev, queue) {
     const from = view(scene, ev.uid);
-    const startX = from ? from.x : SCREEN.width / 2;
-    const startY = from ? from.y : -80; // AI cards come from the top edge
+    // Mustered cards from the deck come from the deck corner; AI cards from the top edge
+    const ownerIsPlayer = ev.spy ? ev.player === 1 : ev.player === 0;
+    const startX = from ? from.x : ownerIsPlayer ? SCREEN.width - 70 : SCREEN.width / 2;
+    const startY = from ? from.y : ownerIsPlayer ? HAND_Y : -80;
+    const label = ev.spy ? tr('anim.spy') : ev.muster ? tr('anim.muster') : ev.ambush ? tr('anim.ambush')
+      : ev.resurrect ? tr('anim.resurrect') : null;
     from?.setVisible(false);
     const clone = createCardView(scene, ev.def).setScale(0.9).setPosition(startX, startY);
     scene.animLayer.add(clone);
@@ -99,12 +119,31 @@ export const ANIMATIONS = {
       scale: ev.special ? 0.9 : BOARD_CARD_SCALE,
       duration: 280, ease: 'Power2.Out',
     });
+    const calm = scene.registry?.get('reduceMotion');
+    if (ev.special && ev.def.effect === 'scorch' && !calm) {
+      scene.cameras.main.shake(queue.dur(320), 0.012);
+      scene.cameras.main.flash(queue.dur(200), 255, 90, 30);
+    }
+    if (ev.def.rarity === 'legendary') {
+      sfx.legendary();
+      if (!calm) {
+        burst(scene, toX, toY, 0xffd479, { count: 36 });
+        const ring = scene.add.circle(toX, toY, 20, 0xffd479, 0.25).setStrokeStyle(3, 0xffe9b0);
+        scene.animLayer.add(ring);
+        await tweenP(scene, queue, { targets: ring, scale: 4, alpha: 0, duration: 420, ease: 'Quad.Out' });
+        ring.destroy();
+      }
+    }
     if (ev.special) {
       await tweenP(scene, queue, { targets: clone, alpha: 0, scale: 1.2, duration: 220 });
       clone.destroy();
     } else {
       // The landed clone stands in for the card until the next render()
       scene.viewsByUid.set(ev.uid, clone);
+      if (label) {
+        floatText(scene, toX, toY - 40, label, ev.spy ? '#dd88ff' : '#ffd479', '16px');
+        if (ev.spy) burst(scene, toX, toY, 0xaa55ff, { count: 12 });
+      }
     }
   },
 
@@ -129,7 +168,7 @@ export const ANIMATIONS = {
     const ring = scene.add.circle(t.x, t.y, 48, 0x66aaff, 0.35).setStrokeStyle(3, 0x99ccff);
     scene.animLayer.add(ring);
     burst(scene, t.x, t.y, 0x88bbff, { count: 18 });
-    floatText(scene, t.x, t.y - 30, 'Щит!', '#99ccff');
+    floatText(scene, t.x, t.y - 30, tr('anim.shield'), '#99ccff');
     await tweenP(scene, queue, { targets: ring, scale: 1.5, alpha: 0, duration: 300 });
     ring.destroy();
   },
@@ -140,7 +179,7 @@ export const ANIMATIONS = {
     await projectile(scene, queue, ev.sourceUid, t, 0x8899aa);
     sfx.damage();
     const flash = overlay(scene, t, 0x8899aa);
-    floatText(scene, t.x, t.y - 30, 'Броня', '#c0c8d0');
+    floatText(scene, t.x, t.y - 30, tr('anim.armor'), '#c0c8d0');
     await shake(scene, queue, t);
     await tweenP(scene, queue, { targets: flash, alpha: 0, duration: 110 });
     flash.destroy();
@@ -151,7 +190,7 @@ export const ANIMATIONS = {
     if (!t) return;
     sfx.heal();
     burst(scene, t.x, t.y, 0xaaffee, { count: 12, rise: true });
-    floatText(scene, t.x, t.y - 30, 'Очищено', '#aaffee', '16px');
+    floatText(scene, t.x, t.y - 30, tr('anim.cleansed'), '#aaffee', '16px');
     await waitP(scene, queue, 300);
   },
 
@@ -234,25 +273,80 @@ export const ANIMATIONS = {
 
   async draw(scene, ev, queue) {
     if (ev.player !== 0) return; // the AI's hand is hidden; one banner is enough
-    const banner = scene.add.text(SCREEN.width / 2, BOARD_CENTER_Y, `Раунд ${scene.match.round}`, {
+    if (ev.reason !== 'round') return dealToHand(scene, ev, queue);
+    const banner = scene.add.text(SCREEN.width / 2, BOARD_CENTER_Y, tr('anim.round', { n: scene.match.round }), {
       fontSize: '56px', color: '#ffd479', stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5).setScale(0.4).setAlpha(0);
     scene.animLayer.add(banner);
     await tweenP(scene, queue, { targets: banner, scale: 1, alpha: 1, duration: 350, ease: 'Back.Out' });
     await waitP(scene, queue, 400);
     await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 250 });
+    await dealToHand(scene, ev, queue);
+  },
 
-    const hand = scene.match.players[0].hand;
-    await Promise.all(ev.uids.map((uid, k) => {
-      const idx = hand.findIndex((c) => c.uid === uid);
-      const back = createCardView(scene, { rarity: 'common' }, { faceDown: true })
-        .setScale(0.9).setPosition(SCREEN.width - 70, HAND_Y);
-      scene.animLayer.add(back);
-      return tweenP(scene, queue, {
-        targets: back, x: handCardX(idx, hand.length),
-        delay: queue.dur(120 * k), duration: 300, ease: 'Power2.Out',
-      });
-    }));
+  async leader(scene, ev, queue) {
+    const leader = scene.match.leaders[ev.player];
+    sfx.order();
+    const y = ev.player === 0 ? BOARD_CENTER_Y + 60 : BOARD_CENTER_Y - 60;
+    const banner = scene.add.text(SCREEN.width / 2, y, `${leader?.icon ?? '♛'} ${tr(`leader.${ev.leaderId}`)}`, {
+      fontSize: '34px', color: '#ffd479', stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setScale(0.5).setAlpha(0);
+    scene.animLayer.add(banner);
+    burst(scene, SCREEN.width / 2, y, 0xffd479, { count: 18 });
+    await tweenP(scene, queue, { targets: banner, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
+    await waitP(scene, queue, 450);
+    await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 200 });
+  },
+
+  async passive(scene, ev, queue) {
+    sfx.order();
+    const y = ev.player === 0 ? BOARD_CENTER_Y + 50 : BOARD_CENTER_Y - 50;
+    const banner = scene.add.text(SCREEN.width / 2, y, tr(`passive.${ev.passive}.fire`), {
+      fontSize: '28px', color: '#9fe3d0', stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setAlpha(0);
+    scene.animLayer.add(banner);
+    await tweenP(scene, queue, { targets: banner, alpha: 1, duration: 200 });
+    await waitP(scene, queue, 700);
+    await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 200 });
+  },
+
+  async reveal(scene, ev, queue) {
+    if (ev.player === 0) return; // the AI peeking at us is not shown
+    scene.revealed = ev.defs;
+    const step = 120;
+    const x0 = SCREEN.width / 2 - ((ev.defs.length - 1) / 2) * step;
+    const views = ev.defs.map((def, i) => {
+      const cv = createCardView(scene, def).setPosition(x0 + i * step, BOARD_CENTER_Y).setScale(0.2).setAlpha(0);
+      scene.animLayer.add(cv);
+      return cv;
+    });
+    await tweenP(scene, queue, { targets: views, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
+    await waitP(scene, queue, 1200);
+    await tweenP(scene, queue, { targets: views, alpha: 0, duration: 250 });
+  },
+
+  // Round result: the winner's half of the board glows, a banner names the result
+  async roundEnd(scene, ev, queue) {
+    const sides = ev.result === 'draw' ? ['player', 'opponent'] : [sideOf(ev.result)];
+    const color = ev.result === 0 ? 0xffd479 : ev.result === 1 ? 0xff5a4a : 0xaaaaaa;
+    const glows = sides.map((side) => {
+      const y = (rowY(side, 'melee') + rowY(side, 'siege')) / 2;
+      const glow = scene.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 3 * 76 + 6, color, 0.22)
+        .setStrokeStyle(4, color);
+      scene.animLayer.add(glow);
+      return glow;
+    });
+    if (ev.result === 0) sfx.roundWin();
+    else if (ev.result === 1) sfx.roundLose();
+    const key = ev.result === 0 ? 'anim.roundWon' : ev.result === 1 ? 'anim.roundLost' : 'anim.roundDraw';
+    const banner = scene.add.text(SCREEN.width / 2, BOARD_CENTER_Y, tr(key, { n: ev.round, a: ev.powers[0], b: ev.powers[1] }), {
+      fontSize: '36px', color: ev.result === 1 ? '#ff9f9f' : '#ffd479', stroke: '#000000', strokeThickness: 6,
+    }).setOrigin(0.5).setAlpha(0);
+    scene.animLayer.add(banner);
+    await tweenP(scene, queue, { targets: [banner, ...glows], alpha: 1, duration: 250 });
+    await tweenP(scene, queue, { targets: glows, alpha: 0.35, duration: 300, yoyo: true, repeat: 1 });
+    await waitP(scene, queue, 300);
+    await tweenP(scene, queue, { targets: [banner, ...glows], alpha: 0, duration: 250 });
   },
 
   async fizzle(scene, ev, queue) {
@@ -260,7 +354,7 @@ export const ANIMATIONS = {
     const x = s?.x ?? SCREEN.width / 2;
     const y = s?.y ?? BOARD_CENTER_Y;
     burst(scene, x, y, 0x888888, { count: 10 });
-    floatText(scene, x, y - 30, 'Нет цели', '#aaaaaa', '16px');
+    floatText(scene, x, y - 30, tr('anim.noTarget'), '#aaaaaa', '16px');
     await waitP(scene, queue, 250);
   },
 };

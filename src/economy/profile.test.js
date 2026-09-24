@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  normalizeProfile, setLeader, addCardCopy, canMakeGolden, makeGolden, GOLDEN_BONUS,
   createProfile, addGold, upgradeCost, canUpgrade, upgradeCard,
   toggleDeckCard, isDeckValid, buildDeckCards, canBuy, buyCard,
   isNodeUnlocked, isNodeCleared, clearNode, grantCard, grantChestReward,
@@ -160,5 +161,45 @@ describe('grantChestReward', () => {
     expect(p.collection).toEqual(before);
     expect(p.gold).toBe(100);
     vi.restoreAllMocks();
+  });
+});
+
+describe('normalizeProfile / setLeader', () => {
+  it('fills missing fields of an old save without touching existing ones', () => {
+    const old = { gold: 77, wins: 3, collection: {}, deck: [] };
+    const p = normalizeProfile(old);
+    expect(p.gold).toBe(77);
+    expect(p.leaders).toEqual({});
+    expect(p.story).toEqual({ cleared: 0 });
+  });
+
+  it('stores the chosen leader per faction', () => {
+    const p = setLeader(createProfile(), 'humans', 'queen_elina');
+    expect(p.leaders.humans).toBe('queen_elina');
+  });
+});
+
+describe('golden cards', () => {
+  it('3 copies of a unit merge into one golden card with +2 power in the deck', () => {
+    const p = createProfile();
+    expect(canMakeGolden(p, 'knight')).toBe(false);
+    addCardCopy(p, 'knight');
+    addCardCopy(p, 'knight');
+    expect(p.collection.knight.count).toBe(3);
+    expect(canMakeGolden(p, 'knight')).toBe(true);
+    makeGolden(p, 'knight');
+    expect(p.collection.knight).toMatchObject({ count: 1, golden: true });
+    expect(canMakeGolden(p, 'knight')).toBe(false);
+    const knight = buildDeckCards(p).find((c) => c.id === 'knight');
+    expect(knight.power).toBe(6 + GOLDEN_BONUS);
+    expect(knight.golden).toBe(true);
+  });
+
+  it('specials cannot become golden', () => {
+    const p = createProfile();
+    addCardCopy(p, 'frost');
+    addCardCopy(p, 'frost');
+    expect(canMakeGolden(p, 'frost')).toBe(false);
+    expect(() => makeGolden(p, 'frost')).toThrow();
   });
 });

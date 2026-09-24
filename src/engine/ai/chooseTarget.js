@@ -39,7 +39,8 @@ export function chooseTarget(match, playerIdx, card, slot) {
   switch (role) {
     case 'damage': {
       const open = sorted.filter((c) => !c.shielded);
-      return open.find((c) => c.power <= n) ?? open[0] ?? sorted[0];
+      // Armor soaks damage first: only count a kill if the hit gets through
+      return open.find((c) => c.power + (c.armorLeft ?? 0) <= n) ?? open[0] ?? sorted[0];
     }
     case 'heal':
       return [...targets].sort((a, b) => missing(b) - missing(a))[0];
@@ -64,7 +65,10 @@ export function effectValue(match, playerIdx, card, slot, target) {
   switch (role) {
     case 'damage':
       if (target.shielded) return 0;
-      return target.power <= n ? target.power : n;
+      {
+        const through = Math.max(0, n - (target.armorLeft ?? 0));
+        return target.power <= through ? target.power : through;
+      }
     case 'rowDamage':
       return match.players[1 - playerIdx].board[target].filter((c) => c.def.type !== 'hero').length * n;
     case 'heal':

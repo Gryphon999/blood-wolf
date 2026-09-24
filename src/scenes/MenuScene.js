@@ -1,12 +1,23 @@
 import Phaser from 'phaser';
 import { createButton } from '../ui/Button.js';
-import { MENU_ITEMS, menuButtonY, MENU_CENTER_X } from '../ui/menuLayout.js';
+import {
+  MENU_IDS, MENU_TARGETS, MENU_EXTRA_IDS, MENU_EXTRA_X, MENU_INFO_X, menuButtonY, MENU_CENTER_X,
+} from '../ui/menuLayout.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
 import { showChest } from '../sdk/yandex.js';
 import { getProfile, persist } from '../economy/session.js';
 import { grantChestReward } from '../economy/profile.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
+import { chestReadyIn, DIFFICULTY_MULT } from '../economy/rewards.js';
+import { tierOf } from '../economy/rank.js';
+import { ensureDailyQuests, canClaimQuest } from '../economy/quests.js';
+import { getCard } from '../data/cardCatalog.js';
+import { DIFFICULTIES } from '../engine/ai/OpponentAI.js';
+import { t } from '../i18n/index.js';
+import { sceneFadeIn, goTo } from '../ui/transitions.js';
+import { checkAchievements } from '../economy/achievements.js';
+import { toastAchievements } from '../ui/toast.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -15,29 +26,98 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     drawBackground(this);
+    sceneFadeIn(this);
     this.add.text(SCREEN.width / 2, 160, 'Blood Wolf', { fontSize: '56px', color: '#ffd479' }).setOrigin(0.5);
     this.add
-      .text(SCREEN.width / 2, 214, 'мрачная карточная дуэль', { fontSize: '18px', color: '#9a8a6a' })
+      .text(SCREEN.width / 2, 214, t('menu.subtitle'), { fontSize: '18px', color: '#9a8a6a' })
       .setOrigin(0.5);
 
-    MENU_ITEMS.forEach((label, i) => {
-      const target = { 'Бой': 'BattleScene', 'Сюжет': 'StoryScene', 'Колода': 'DeckScene', 'Магазин': 'ShopScene' }[label];
-      const enabled = Boolean(target);
-      const shown = enabled ? label : `${label} — скоро`;
-      createButton(this, MENU_CENTER_X, menuButtonY(i), shown, {
-        enabled,
-        onClick: () => this.scene.start(target),
+    const profile = getProfile();
+    const faction = profile.deck[0] ? getCard(profile.deck[0]).faction : profile.faction;
+    const quests = ensureDailyQuests(profile, faction);
+    const ready = quests.filter(canClaimQuest).length;
+
+    MENU_IDS.forEach((id, i) => {
+      createButton(this, MENU_CENTER_X, menuButtonY(i), t(`menu.${id}`), {
+        onClick: () => goTo(this, MENU_TARGETS[id]),
+      });
+    });
+    MENU_EXTRA_IDS.forEach((id, i) => {
+      const badge = id === 'quests' && ready > 0 ? ` (${ready}!)` : id === 'packs' && profile.freePacks > 0 ? ` (${profile.freePacks})` : '';
+      createButton(this, MENU_EXTRA_X, menuButtonY(i), t(`menu.${id}`) + badge, {
+        onClick: () => goTo(this, MENU_TARGETS[id]),
       });
     });
 
-    createButton(this, MENU_CENTER_X, 670, '🎁 Сундук', {
-      enabled: true,
+    // Catch achievements met outside a battle (packs, collection, older saves)
+    const unlocked = checkAchievements(profile);
+    persist();
+    toastAchievements(this, unlocked);
+    this.renderInfo(profile);
+    this.renderChest();
+    this.renderDifficulty();
+  }
+
+  renderInfo(profile) {
+    const points = profile.rank?.points ?? 0;
+    const tier = tierOf(points);
+    const x = MENU_INFO_X;
+    const y = menuButtonY(0) - 20;
+    this.add.rectangle(x, y + 70, 260, 170, 0x1c1a22, 0.8).setStrokeStyle(1, 0x3a2e1e);
+    this.add.text(x, y, t('rank.short', { icon: tier.icon, name: t(`rank.${tier.id}`), n: points }), {
+      fontSize: '17px', color: '#ffd479',
+    }).setOrigin(0.5);
+    const s = profile.stats ?? {};
+    const lines = [
+      t('menu.gold', { n: profile.gold }),
+      t('menu.wins', { n: profile.wins ?? 0, streak: s.winStreak ?? 0 }),
+      t('menu.cards', { n: Object.keys(profile.collection).length }),
+      t('menu.ach', { n: Object.keys(profile.achievements ?? {}).length }),
+    ];
+    lines.forEach((line, i) => this.add.text(x - 115, y + 30 + i * 26, line, { fontSize: '15px', color: '#c8b88a' }));
+  }
+
+  renderChest() {
+    this.chestButton?.destroy();
+    const wait = chestReadyIn(getProfile());
+    const label = wait > 0 ? t('chest.wait', { min: Math.ceil(wait / 60000) }) : t('chest.open');
+    this.chestButton = createButton(this, MENU_CENTER_X, 670, label, {
+      enabled: wait === 0 && !this.chestBusy,
       onClick: () => {
+        if (this.chestBusy || chestReadyIn(getProfile()) > 0) return;
+        this.chestBusy = true;
+        this.renderChest();
         showChest(() => {
-          grantChestReward(getProfile(), SHOP_CARDS);
+          const profile = getProfile();
+          grantChestReward(profile, SHOP_CARDS);
+          profile.lastChestAt = Date.now();
           persist();
+          this.chestBusy = false;
+          if (this.scene.isActive()) this.renderChest();
         });
       },
+    });
+    if (wait > 0) this.time.delayedCall(Math.min(wait, 30000), () => this.renderChest());
+  }
+
+  renderDifficulty() {
+    this.diffRoot?.destroy();
+    this.diffRoot = this.add.container(0, 0);
+    const profile = getProfile();
+    this.diffRoot.add(this.add.text(SCREEN.width - 380, 20, t('difficulty.label'), { fontSize: '14px', color: '#9a8a6a' }));
+    DIFFICULTIES.forEach((d, i) => {
+      const active = (profile.difficulty ?? 'normal') === d;
+      const label = `${t(`difficulty.${d}`)} ×${DIFFICULTY_MULT[d]}`;
+      const txt = this.add.text(SCREEN.width - 380 + i * 122, 42, label, {
+        fontSize: '14px', color: active ? '#ffd479' : '#6a5a40',
+        backgroundColor: active ? '#2b2233' : undefined, padding: { x: 4, y: 2 },
+      }).setInteractive({ useHandCursor: true });
+      txt.on('pointerdown', () => {
+        profile.difficulty = d;
+        persist();
+        this.renderDifficulty();
+      });
+      this.diffRoot.add(txt);
     });
   }
 }

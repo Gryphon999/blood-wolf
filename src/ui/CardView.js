@@ -1,8 +1,24 @@
 import { CARD_W, CARD_H } from './layout.js';
 import { rarityColor } from './rarity.js';
+import { cardName } from './cardText.js';
+import { t } from '../i18n/index.js';
 
 const NAME_Y = -CARD_H / 2 + 8;
 const BADGE_Y = CARD_H / 2 - 20;
+
+const TRAIT_ICONS = [
+  ['spy', '🕵'], ['muster', '📯'], ['bond', '🔗'], ['berserker', '🪓'], ['ambush', '🌲'], ['vampirism', '🦇'],
+];
+
+export function traitIcons(def) {
+  return TRAIT_ICONS.filter(([key]) => def[key]).map(([, icon]) => icon).join('');
+}
+
+function fallbackGlyph(def) {
+  const trait = TRAIT_ICONS.find(([key]) => def[key]);
+  if (trait) return trait[1];
+  return def.faction === 'monsters' ? '☠' : '⚔';
+}
 
 // options.card = live card instance (has .power, .shielded, etc.)
 export function createCardView(scene, cardDef, options = {}) {
@@ -11,7 +27,7 @@ export function createCardView(scene, cardDef, options = {}) {
   const container = scene.add.container(0, 0);
   container.setPower = () => {};
   const fill = faceDown ? 0x3a2a1a : 0x24222b;
-  const strokeColor = selected ? 0xffd479 : rarityColor(cardDef.rarity);
+  const strokeColor = selected ? 0xffd479 : cardDef.golden ? 0xffd700 : rarityColor(cardDef.rarity);
 
   const bg = scene.add.rectangle(0, 0, CARD_W, CARD_H, fill)
     .setStrokeStyle(selected ? 4 : 2, strokeColor);
@@ -20,10 +36,23 @@ export function createCardView(scene, cardDef, options = {}) {
   if (!faceDown) {
     if (cardDef.art && scene.textures.exists(cardDef.art)) {
       container.add(scene.add.image(0, 0, cardDef.art).setDisplaySize(CARD_W, CARD_H));
+    } else if (cardDef.type !== 'special') {
+      // No portrait yet: a large faded glyph stands in for the art
+      container.add(scene.add.text(0, -6, fallbackGlyph(cardDef), { fontSize: '40px' })
+        .setOrigin(0.5).setAlpha(0.55));
+    }
+    if (cardDef.golden) {
+      container.add(scene.add.text(CARD_W / 2 - 4, -CARD_H / 2 + 24, '★', {
+        fontSize: '16px', color: '#ffd700', stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(1, 0));
+    }
+    const traits = traitIcons(cardDef);
+    if (traits) {
+      container.add(scene.add.text(-CARD_W / 2 + 4, -CARD_H / 2 + 26, traits, { fontSize: '11px' }).setOrigin(0, 0));
     }
 
     container.add(
-      scene.add.text(0, NAME_Y, cardDef.name ?? cardDef.id, {
+      scene.add.text(0, NAME_Y, cardName(cardDef), {
         fontSize: '11px', color: '#ffd479', align: 'center',
         wordWrap: { width: CARD_W - 8 }, stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5, 0),
@@ -31,7 +60,7 @@ export function createCardView(scene, cardDef, options = {}) {
 
     if (cardDef.type === 'special') {
       container.add(
-        scene.add.text(0, BADGE_Y, 'знак', { fontSize: '12px', color: '#9fe3d0' }).setOrigin(0.5),
+        scene.add.text(0, BADGE_Y, t('card.sign'), { fontSize: '12px', color: '#9fe3d0' }).setOrigin(0.5),
       );
     } else {
       const cur = card ? card.power : cardDef.power;
@@ -69,6 +98,7 @@ export function createCardView(scene, cardDef, options = {}) {
         if (card.poisoned)        icon('☠', '#44ff88');
         if (card.bleedStacks > 0) icon(`🩸${card.bleedStacks}`);
         if (card.controlled)      icon('👁', '#dd44ff');
+        if (card.spy)             icon('🕵', '#dd88ff');
 
         // Order ready: amber indicator top-right corner
         const hasOrderReady = card.def.hasOrder && !card.orderUsed && !card.locked

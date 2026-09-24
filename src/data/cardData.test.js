@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { PLAYER_DECK, AI_DECK } from './starterDecks.js';
 import { SHOP_CARDS } from './shopCards.js';
 import {
-  DEPLOY_DESCRIPTIONS, ORDER_DESCRIPTIONS, SPECIAL_DESCRIPTIONS,
+  DEPLOY_DESCRIPTIONS, ORDER_DESCRIPTIONS, SPECIAL_DESCRIPTIONS, cardDescription,
 } from '../ui/cardDescription.js';
 
 const ALL = [...PLAYER_DECK, ...AI_DECK, ...SHOP_CARDS];
@@ -10,7 +10,8 @@ const ALL = [...PLAYER_DECK, ...AI_DECK, ...SHOP_CARDS];
 describe('card design invariants', () => {
   it('every unit and hero does something (Deploy or Order)', () => {
     for (const card of ALL.filter((c) => c.type !== 'special')) {
-      expect(Boolean(card.deployEffect) || card.hasOrder, `${card.id} has no action`).toBe(true);
+      const trait = card.spy || card.muster || card.bond || card.berserker || card.ambush || card.vampirism;
+      expect(Boolean(card.deployEffect) || card.hasOrder || Boolean(trait), `${card.id} has no action`).toBe(true);
     }
   });
 
@@ -23,6 +24,12 @@ describe('card design invariants', () => {
   it('every orderEffect has a description', () => {
     for (const card of ALL.filter((c) => c.hasOrder)) {
       expect(ORDER_DESCRIPTIONS[card.orderEffect], `${card.id}: ${card.orderEffect}`).toBeTypeOf('function');
+    }
+  });
+
+  it('every trait has a description line', () => {
+    for (const card of ALL.filter((c) => c.spy || c.muster || c.bond || c.berserker || c.ambush || c.vampirism)) {
+      expect(cardDescription(card), card.id).not.toBe('Единица без особых способностей');
     }
   });
 
