@@ -26,3 +26,17 @@ export function chooseMove(match, playerIndex) {
   if (best.target !== null) move.target = best.target;
   return move;
 }
+
+// Mulligan: swap the weakest units (never specials), as many as can be replaced
+export function chooseMulligan(match, playerIndex, max = 2) {
+  const player = match.players[playerIndex];
+  const supply = match.pools?.[playerIndex]?.length ? max : player.deck.length;
+  const n = Math.min(max, supply);
+  if (n <= 0) return [];
+  return player.hand
+    .map((card, i) => ({ card, i }))
+    .filter(({ card }) => card.def.type !== 'special')
+    .sort((a, b) => a.card.power - b.card.power)
+    .slice(0, n)
+    .map(({ i }) => i);
+}

@@ -258,6 +258,33 @@ function resolveRound(match) {
   startNextRound(match, result);
 }
 
+// ── Mulligan: before the first move, each player may swap up to 2 cards once ──
+export const MULLIGAN_MAX = 2;
+
+export function canMulligan(match, playerIdx) {
+  return match.winner === null && match.round === 1 && match.turn === 0
+    && !match.players[playerIdx].mulliganDone;
+}
+
+export function mulligan(match, playerIdx, handIndices = []) {
+  if (!canMulligan(match, playerIdx)) throw new Error('Mulligan is not available');
+  const picks = [...new Set(handIndices)].sort((a, b) => b - a);
+  if (picks.length > MULLIGAN_MAX) throw new Error(`At most ${MULLIGAN_MAX} cards`);
+  const player = match.players[playerIdx];
+  if (picks.some((i) => !player.hand[i])) throw new Error('Invalid hand index');
+  const fresh = player.deck.splice(0, picks.length);
+  const missing = picks.length - fresh.length;
+  if (missing > 0 && match.pools?.[playerIdx]) {
+    fresh.push(...dealRandom(match.pools[playerIdx], missing, match.rng).map(createCard));
+  }
+  // Without enough replacements the extra picks simply stay in hand
+  const returned = picks.slice(picks.length - fresh.length).map((i) => player.hand.splice(i, 1)[0]);
+  player.hand.push(...fresh);
+  player.deck.push(...returned);
+  player.mulliganDone = true;
+  emit(match, { type: 'mulligan', player: playerIdx, count: fresh.length, uids: fresh.map((c) => c.uid) });
+}
+
 export function hasLegalMove(match) {
   if (match.winner !== null) {
     return false;

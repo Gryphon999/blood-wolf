@@ -1,8 +1,11 @@
 import Phaser from 'phaser';
-import { createMatch, playCard, pass, useOrder, startTurn } from '../engine/GwentMatch.js';
+import {
+  createMatch, playCard, pass, useOrder, startTurn, mulligan, canMulligan, MULLIGAN_MAX,
+} from '../engine/GwentMatch.js';
 import { drainEvents } from '../engine/events.js';
 import { getValidTargets, targetKind } from '../engine/targeting.js';
-import { chooseMove } from '../engine/ai/OpponentAI.js';
+import { chooseMove, chooseMulligan } from '../engine/ai/OpponentAI.js';
+import { t } from '../i18n/index.js';
 import { rowPower } from '../engine/Board.js';
 import { createCardView } from '../ui/CardView.js';
 import {
@@ -94,8 +97,56 @@ export class BattleScene extends Phaser.Scene {
     });
     this.input.keyboard?.on('keydown-ESC', () => this.cancelTargeting());
 
+    // Mulligan: the AI swaps silently, the player gets a picker before the first move
+    mulligan(this.match, 1, chooseMulligan(this.match, 1));
+    drainEvents(this.match);
+    this.mulliganPicks = canMulligan(this.match, 0) ? new Set() : null;
     this.render();
-    this.act(() => {}); // runs startTurn for whoever moves first
+    if (!this.mulliganPicks) this.act(() => {}); // runs startTurn for whoever moves first
+  }
+
+  confirmMulligan(keep) {
+    if (!this.mulliganPicks) return;
+    const picks = keep ? [] : [...this.mulliganPicks];
+    this.mulliganPicks = null;
+    mulligan(this.match, 0, picks);
+    drainEvents(this.match);
+    if (picks.length) sfx.cardSpecial();
+    this.render();
+    this.act(() => {});
+  }
+
+  renderMulligan() {
+    const hand = this.match.players[0].hand;
+    this.root.add(this.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, 0.75));
+    this.root.add(this.add.text(SCREEN.width / 2, 150, t('mulligan.title'), { fontSize: '34px', color: '#ffd479' }).setOrigin(0.5));
+    this.root.add(this.add.text(SCREEN.width / 2, 192, t('mulligan.hint', { n: MULLIGAN_MAX }), { fontSize: '16px', color: '#c8b88a' }).setOrigin(0.5));
+    const step = Math.min(118, (SCREEN.width - 120) / Math.max(1, hand.length));
+    const x0 = SCREEN.width / 2 - ((hand.length - 1) / 2) * step;
+    hand.forEach((card, i) => {
+      const picked = this.mulliganPicks.has(i);
+      const cv = createCardView(this, card.def, { selected: picked });
+      cv.setScale(1).setPosition(x0 + i * step, 340 + (picked ? -24 : 0));
+      if (picked) {
+        cv.add(this.add.text(0, 0, '↻', { fontSize: '48px', color: '#ff9f9f', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5));
+      }
+      onLeftClick(cv.list[0], () => {
+        if (picked) this.mulliganPicks.delete(i);
+        else if (this.mulliganPicks.size < MULLIGAN_MAX) this.mulliganPicks.add(i);
+        sfx.click();
+        this.render();
+      });
+      this.root.add(cv);
+    });
+    const n = this.mulliganPicks.size;
+    this.root.add(onLeftClick(
+      this.add.text(SCREEN.width / 2 - 120, 500, t('mulligan.replace', { n }), { fontSize: '24px', color: n ? '#9fe3d0' : '#666666' }).setOrigin(0.5),
+      () => { if (n) this.confirmMulligan(false); },
+    ));
+    this.root.add(onLeftClick(
+      this.add.text(SCREEN.width / 2 + 120, 500, t('mulligan.keep'), { fontSize: '24px', color: '#ffd479' }).setOrigin(0.5),
+      () => this.confirmMulligan(true),
+    ));
   }
 
   // ─── Utilities ────────────────────────────────────────────────────────────
@@ -108,7 +159,8 @@ export class BattleScene extends Phaser.Scene {
 
   canAct() {
     const m = this.match;
-    return m.current === 0 && m.winner === null && !this.busy && !this.pendingPlay && !this.pendingOrder;
+    return m.current === 0 && m.winner === null && !this.busy && !this.pendingPlay && !this.pendingOrder
+      && !this.mulliganPicks;
   }
 
   activeTargets() {
@@ -223,6 +275,7 @@ export class BattleScene extends Phaser.Scene {
         () => this.cancelTargeting());
     }
 
+    if (this.mulliganPicks) this.renderMulligan();
     if (m.winner !== null) this.renderResult();
   }
 
