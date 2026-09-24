@@ -101,3 +101,33 @@ Starter-vs-collection matchups are intentionally lopsided (collection decks are 
   clear-weather leader and every new round), boss units placed on the enemy board at each round start
   (only if not already there), and an enemy leader. Old chapter-I nodes have no enemy leader.
   Saves with `story.cleared = 5` simply unlock node 6.
+
+## Phase D — polish and Yandex requirements
+
+- **Tutorial:** runs in the first *arena* battle only (story battles never show it), 6 steps; action steps
+  disappear once the player acts, info steps wait for «Далее». Skipping or finishing sets
+  `profile.tutorialDone`; Settings → «Пройти снова» clears it.
+- **i18n:** every UI string, card rules text (`desc.*`) and English card names (`cardname.<ru name>`)
+  live in `src/i18n/{ru,en}.js`. Card data keeps the Russian `name`; `cardName(def)` translates.
+  The portraits have Russian titles baked into the art, which cannot be translated.
+  Language: explicit choice in Settings, else Yandex `environment.i18n.lang` (ru/be/kk/uk/uz → ru,
+  anything else → en), else ru. Changing the language re-renders the current scene.
+- **Settings:** stored in `profile.settings` (so they sync through the cloud save). «Ускорение анимаций»
+  turns click-to-speed-up on/off; «Меньше движения» disables fades, camera shake and legendary bursts.
+- **Mobile:** the 1280×720 board is kept and scaled with `Scale.FIT`; a real portrait layout would need a
+  second battle layout, so portrait phones get the whole board letterboxed plus a «rotate your device»
+  hint. All hover hints also open on long-press (450 ms); a long-press never counts as a tap.
+- **Music:** two procedural themes on a Web Audio look-ahead scheduler (no files). Sound effects and music
+  share one AudioContext; autopause suspends it on `visibilitychange`, window `blur` and the Yandex
+  `game_api_pause` event (the Phaser loop is also paused for the SDK event). `LoadingAPI.ready()` is called
+  after boot.
+- **Juice:** legendary plays burst in gold with a ring and fanfare; Scorch shakes/flashes the camera; each
+  round ends with the winner's half of the board glowing and a score banner; scenes fade in/out.
+
+## Not done / known limits
+
+- No new card portraits (not allowed): the 15 new cards use a large trait glyph instead.
+- Hard AI is only ~54% vs Normal in AI-vs-AI; the difference is mostly in style (tempo passing,
+  holding heroes, leader timing).
+- Starter-vs-collection matchups stay lopsided by design; only the faction totals and mirror-type
+  matchups are held to 45–55%.

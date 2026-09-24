@@ -91,23 +91,33 @@ API:
 
 ---
 
-## 4. Раздача по раундам — `src/engine/cardPool.js`
+## 4. Раздача по раундам — `src/engine/dealRandom.js` + `src/data/factionPool.js`
 
-- Раунд 1: рука = 10 случайных карт из колоды игрока (колода перетасовывается через `rng`).
-- Перед раундами 2 и 3 (в `startNextRound`, после очистки поля) каждый игрок получает 5 карт из пула своей фракции.
-- **Потолок руки: 10.** Выдаётся `min(5, 10 − hand.length)` карт.
-- Событие `draw` на каждого игрока.
+> Обновлено в слое 15: модуль `cardPool.js` так и не появился — раздача живёт в `dealRandom.js`
+> (движок, без знания о данных), а пул фракции собирается в `data/factionPool.js`.
 
-`buildFactionPool(faction)` = все определения фракции из `starterDecks` + `shopCards`, без тега `leader`.
+- Раунд 1: рука = первые `handSize` (10) карт колоды; колода перетасовывается через `rng`, если он передан.
+- Перед раундами 2 и 3 (в `startNextRound`, после очистки поля) каждый игрок получает карты из пула своей фракции.
+- **Потолок руки: 10.** Выдаётся `min(ROUND_DRAW = 5, MAX_HAND − hand.length)` карт.
+- Событие `draw` на каждого игрока с полем `reason: 'round'`.
+
+`buildFactionPool(faction)` (`src/data/factionPool.js`) = все определения фракции из `starterDecks` + `shopCards`,
+без тега `leader`, по одному на имя (семьи Призыва и пары Уз попадают в пул один раз).
 - В сюжетных боях пул врага — его собственная сюжетная колода (сложность узла сохраняется).
 
-`dealRandom(pool, count, rng)`:
+`dealRandom(pool, count, rng)` (`src/engine/dealRandom.js`):
 - Веса: common 50 / rare 30 / epic 15 / legendary 5.
-- Максимум 1 legendary на раздачу. Повторная легендарка перебрасывается.
+- Максимум 1 legendary на раздачу: после первой легендарки остаток раздачи идёт без легендарок.
 - Дубликаты определений разрешены.
 
-`createMatch(deckA, deckB, { handSize = 10, rng = Math.random } = {})`: сигнатура меняется, все вызовы обновляются.
-Фракция игрока берётся из `deck[0].def.faction`.
+`drawCards(match, playerIdx, count, reason)` (`src/engine/draw.js`, слой 15) — добор по ходу боя
+(Шпион, лидер «Великий магистр»): сначала верх колоды, затем `dealRandom` из пула; потолок руки тот же;
+событие `draw` с `reason: 'spy' | 'leader'`. Мулиган берёт замену так же (колода, затем пул).
+
+Фактическая сигнатура:
+`createMatch(deckA, deckB, handSize = 10, { rng, pools, leaders, factions, permanentWeather, bossUnits } = {})`.
+`pools = [poolA, poolB]` или `null` (без раздач). Фракция игрока берётся из `deck[0].faction`
+(используется для пассивок фракций), если `factions` не передан.
 
 ---
 
