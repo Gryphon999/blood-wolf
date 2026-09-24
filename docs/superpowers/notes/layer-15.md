@@ -78,3 +78,26 @@ Balance changes:
 - Crossbowman (humans): power 4 → 5.
 
 Starter-vs-collection matchups are intentionally lopsided (collection decks are stronger).
+
+## Phase C — progression
+
+- **Packs:** 5 cards for 200 gold from all non-leader shop cards, weights common 60 / rare 28 / epic 9 /
+  legendary 3; the 5th card is always rare or better. Duplicates increase `collection[id].count`.
+  Free packs (quest rewards) are stored as `profile.freePacks` and spent before gold.
+- **Golden cards:** 3 copies → 1 golden (`count -= 2`, `golden: true`), +2 power on top of the old
+  level upgrade (both systems coexist). Specials cannot become golden. The flag is stored only when
+  true so existing `{ count, level }` entries stay unchanged.
+- **Daily quests:** 3 per *local* calendar day, chosen by a seed hashed from the date, so every device
+  shows the same quests; tag quests only for the deck's faction. First quest of the day pays a free
+  pack. Progress comes from engine events counted per battle (`matchSummary.js`), saved in the profile
+  (localStorage + Yandex cloud save).
+- **Achievements:** checked after every battle, pack, golden merge and when the menu opens
+  (retroactive for old saves); gold is paid automatically.
+- **Rank:** only arena battles (menu «Бой») count. Win +15/+25/+35 by difficulty, loss −15, floor 0.
+  The existing Yandex leaderboard `might` now receives rank points instead of the win count
+  (no new leaderboard has to be configured in the Yandex console).
+- **Story:** the original 5 nodes stay as chapter I (`STORY_NODES`, its tests unchanged); chapter II adds
+  5 nodes (`CAMPAIGN_NODES` = 10). Boss rules: permanent weather (re-applied after Clear Sky, the
+  clear-weather leader and every new round), boss units placed on the enemy board at each round start
+  (only if not already there), and an enemy leader. Old chapter-I nodes have no enemy leader.
+  Saves with `story.cleared = 5` simply unlock node 6.
