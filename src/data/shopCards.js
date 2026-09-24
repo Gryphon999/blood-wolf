@@ -33,7 +33,7 @@ const HUMAN_CARDS = [
   card('paladin',        'Паладин',           'humans', 'hero',    'melee',  5, 'epic',      10, { art: 'paladin',        tags: ['knight'], resilience: true, hasOrder: true, orderEffect: 'boost_knights', orderParam: 2 }),
   // Archers
   card('poison_arrow',   'Отравл. стрела',    'humans', 'unit',    'ranged', 3, 'rare',      5,  { art: 'poison_arrow',   tags: ['archer'], deployEffect: 'poison' }),
-  card('crossbow',       'Арбалетчик',        'humans', 'unit',    'ranged', 4, 'rare',      6,  { art: 'crossbow',       tags: ['archer'], deployEffect: 'damage', deployParam: 3 }),
+  card('crossbow',       'Арбалетчик',        'humans', 'unit',    'ranged', 5, 'rare',      6,  { art: 'crossbow',       tags: ['archer'], deployEffect: 'damage', deployParam: 3 }),
   card('sniper',         'Снайпер',           'humans', 'unit',    'ranged', 4, 'rare',      7,  { art: 'sniper',         tags: ['archer'], hasOrder: true, orderEffect: 'damage_one', orderParam: 2, chargeMax: 2 }),
   card('eagle_eye',      'Орлиный Глаз',      'humans', 'hero',    'ranged', 5, 'epic',      10, { art: 'eagle_eye',      tags: ['archer'], zeal: true, hasOrder: true, orderEffect: 'poison_two' }),
   // Medics
@@ -68,7 +68,7 @@ const MONSTER_CARDS = [
   card('vampire',        'Вампир',            'monsters', 'unit',    'melee',  4, 'rare',      6,  { art: 'vampire',        tags: ['undead'], deployEffect: 'bleed', deployParam: 2 }),
   card('bloodsucker',    'Кровопийца',        'monsters', 'unit',    'melee',  3, 'common',    5,  { art: 'bloodsucker',    tags: ['undead'], deployEffect: 'bleed_check_self' }),
   card('necromancer',    'Некромант',         'monsters', 'unit',    'melee',  3, 'rare',      7,  { art: 'necromancer',    tags: ['undead'], deployEffect: 'copy_enemy_graveyard' }),
-  card('lich',           'Лич',               'monsters', 'hero',    'melee',  6, 'legendary', 10, { art: 'lich',           tags: ['undead'], resilience: true, hasOrder: true, orderEffect: 'debuff_living', orderParam: 2 }),
+  card('lich',           'Лич',               'monsters', 'hero',    'melee',  6, 'legendary', 10, { art: 'lich',           tags: ['undead'], hasOrder: true, orderEffect: 'debuff_living', orderParam: 1 }),
   // Beasts
   card('wolf',           'Волк',              'monsters', 'unit',    'melee',  2, 'common',    3,  { art: 'wolf',           tags: ['beast', 'wolf'], deployEffect: 'wolf_pack' }),
   card('serpent',        'Серпент',           'monsters', 'unit',    'ranged', 3, 'common',    5,  { art: 'serpent',        tags: ['beast'], deployEffect: 'poison' }),
@@ -77,7 +77,7 @@ const MONSTER_CARDS = [
   // Demons
   card('fire_demon',     'Демон Огня',        'monsters', 'unit',    'siege',  5, 'rare',      7,  { art: 'fire_demon',     tags: ['demon'], deployEffect: 'damage_row', deployParam: 2 }),
   card('seducer',        'Соблазнитель',      'monsters', 'unit',    'ranged', 3, 'rare',      6,  { art: 'seducer',        tags: ['demon'], deployEffect: 'take_control' }),
-  card('archdemon',      'Архидемон',         'monsters', 'unit',    'siege',  6, 'epic',      8,  { art: 'archdemon',      tags: ['demon'], hasOrder: true, orderEffect: 'damage_row_choice', orderParam: 3 }),
+  card('archdemon',      'Архидемон',         'monsters', 'unit',    'siege',  6, 'epic',      8,  { art: 'archdemon',      tags: ['demon'], hasOrder: true, orderEffect: 'damage_row_choice', orderParam: 2 }),
   card('chaos_demon',    'Демон Хаоса',       'monsters', 'hero',    'siege',  9, 'legendary', 12, { art: 'chaos_demon',    tags: ['demon'], doomed: true, deployEffect: 'damage_all_rows', deployParam: 5 }),
   // Giants
   card('ice_giant',      'Ледяной Гигант',    'monsters', 'unit',    'siege',  6, 'rare',      8,  { art: 'ice_giant',      tags: ['giant'], deployEffect: 'frost_weather_bonus', deployParam: 3 }),
