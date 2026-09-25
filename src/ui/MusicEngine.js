@@ -1,11 +1,21 @@
 import { getCtx, isAudioPaused } from './SoundEngine.js';
 
-// Procedural background music: a look-ahead scheduler plays short synth notes.
-// Two themes; each is a chord loop with a pad, a bass line and an arpeggio.
+/**
+ * Gwent-style orchestral background music.
+ * No percussion, no beats. Two moods:
+ *   menu   — slow, calm, tavern lute + string pad (52 BPM, D minor / Dorian)
+ *   battle — tense, dark, Phrygian mood (62 BPM, D Phrygian) — still no drums
+ *
+ * Instruments:
+ *   lute   — Karplus-Strong pluck (sharp attack, exponential decay + LP resonance)
+ *   pad    — slow bowed strings (triangle/sine, soft attack 400ms)
+ *   bass   — cello pizzicato (similar to lute, one octave down)
+ *   lead   — flute/violin solo (sine with gentle vibrato)
+ */
 const NOTE = (n) => 440 * 2 ** ((n - 69) / 12); // MIDI → Hz
 
 export const THEMES = {
-  // Witcher-like tavern mood: Am – F – Dm – E at 52 bpm, slow arpeggio and a plucked lute melody
+  // Am – F – Dm – Em: slow 52 BPM, Dorian warmth, tavern-like
   menu: {
     bpm: 52,
     chords: [[57, 60, 64], [53, 57, 60], [50, 53, 57], [52, 56, 59]],
@@ -16,18 +26,18 @@ export const THEMES = {
     padType: 'triangle',
     leadType: 'sine',
     lute: true,
-    lutePattern: [2, 0, 1, 2, 1, 0, 2, 1], // chord-tone indices
+    lutePattern: [2, 0, 1, 2, 1, 0, 2, 1],
     luteOctave: 24,
   },
-  // Tense: Dm – Bb – C – A at 96 bpm with a pulse bass, a soft kick and the lute
+  // Dm – Bb – Gm – A: 62 BPM, Phrygian darkness — NO kick, NO pulse
   battle: {
-    bpm: 96,
-    chords: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 49, 52]],
-    arp: [0, 2, 1, 2, 0, 2, 1, 2],
-    arpOctave: 24,
+    bpm: 62,
+    chords: [[50, 53, 57], [46, 50, 53], [43, 47, 50], [45, 49, 52]],
+    arp: [0, 2, 1, 2, 0],
+    arpOctave: 12,
     bass: true,
-    pulse: true,
-    padType: 'sawtooth',
+    pulse: false,
+    padType: 'sine',
     leadType: 'triangle',
     lute: true,
     lutePattern: [0, 2, 1, 0, 2],
@@ -45,10 +55,9 @@ export function barNotes(theme, barIndex) {
   const step = bar / theme.arp.length;
   theme.arp.forEach((idx, i) => notes.push({ at: i * step, dur: step * 0.9, midi: chord[idx] + theme.arpOctave, kind: 'lead' }));
   if (theme.bass) {
-    const hits = theme.pulse ? 8 : 2;
-    for (let i = 0; i < hits; i++) notes.push({ at: (i * bar) / hits, dur: (bar / hits) * 0.8, midi: chord[0] - 12, kind: 'bass' });
+    // Two slow cello bass hits per bar (no pulse, no machine-gun)
+    for (let i = 0; i < 2; i++) notes.push({ at: (i * bar) / 2, dur: (bar / 2) * 0.8, midi: chord[0] - 12, kind: 'bass' });
   }
-  if (theme.pulse) for (let i = 0; i < 4; i++) notes.push({ at: i * beat, dur: 0.18, midi: 0, kind: 'kick' });
   if (theme.lute && theme.lutePattern) {
     const luteStep = bar / theme.lutePattern.length;
     theme.lutePattern.forEach((idx, i) => notes.push({
@@ -60,23 +69,36 @@ export function barNotes(theme, barIndex) {
 
 let bus = null;
 let volume = 0.5;
-let current = null;   // theme name
+let current = null;
 let timer = null;
 let nextBarAt = 0;
 let barIndex = 0;
 
-// Cheap reverb: two feedback delay lines mixed back in as a wet signal
-function addReverb(c, input) {
-  const delay1 = c.createDelay(0.5);
-  const delay2 = c.createDelay(0.3);
-  delay1.delayTime.value = 0.37;
-  delay2.delayTime.value = 0.23;
-  const fb1 = c.createGain(); fb1.gain.value = 0.25;
-  const fb2 = c.createGain(); fb2.gain.value = 0.18;
-  const wetGain = c.createGain(); wetGain.gain.value = 0.28;
-  input.connect(delay1); delay1.connect(fb1); fb1.connect(delay1); delay1.connect(wetGain);
-  input.connect(delay2); delay2.connect(fb2); fb2.connect(delay2); delay2.connect(wetGain);
+// Room reverb via ConvolverNode with a synthetic impulse response
+// (no audio files needed, works offline)
+let _convolver = null;
+function buildImpulse(c, durationSec, decay) {
+  const rate = c.sampleRate;
+  const len = Math.floor(rate * durationSec);
+  const buf = c.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay * 4);
+    }
+  }
+  return buf;
+}
+
+function getReverb(c) {
+  if (_convolver) return _convolver;
+  _convolver = c.createConvolver();
+  _convolver.buffer = buildImpulse(c, 2.2, 0.65);
+  const wetGain = c.createGain();
+  wetGain.gain.value = 0.32;
+  _convolver.connect(wetGain);
   wetGain.connect(c.destination);
+  return _convolver;
 }
 
 function musicBus() {
@@ -85,45 +107,94 @@ function musicBus() {
     bus = c.createGain();
     bus.gain.value = volume * 0.35;
     bus.connect(c.destination);
-    addReverb(c, bus); // wet level follows the music volume because it taps the bus
+    bus.connect(getReverb(c));
   }
   return bus;
 }
 
-function voice(c, note, t0) {
+// Karplus-Strong lute pluck: noise burst → LP filter → exponential decay
+function karplusPluck(c, freq, t0, vol = 0.20) {
+  try {
+    const period = Math.max(2, Math.round(c.sampleRate / freq));
+    const noise = c.createBuffer(1, period, c.sampleRate);
+    const nd = noise.getChannelData(0);
+    for (let i = 0; i < period; i++) nd[i] = Math.random() * 2 - 1;
+
+    const src = c.createBufferSource();
+    src.buffer = noise;
+    src.loop = false;
+
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.min(freq * 6, 8000);
+    lp.Q.value = 0.4;
+
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(vol, t0);
+    // Decay time: higher notes decay faster (like a real string)
+    const decayTime = 0.3 + 50 / freq;
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decayTime);
+
+    src.connect(lp);
+    lp.connect(gain);
+    gain.connect(musicBus());
+
+    src.start(t0);
+    src.stop(t0 + decayTime + 0.05);
+  } catch { /* context not available */ }
+}
+
+// Bowed string (pad, lead, bass) with vibrato on 'lead'
+function bowedString(c, note, t0) {
+  const theme = THEMES[current];
+  const freq = NOTE(note.midi);
   const osc = c.createOscillator();
   const gain = c.createGain();
-  const theme = THEMES[current];
-  if (note.kind === 'lute') {
-    // Plucked string: sharp attack, fast exponential decay
-    osc.type = 'triangle';
-    osc.frequency.value = NOTE(note.midi);
+
+  if (note.kind === 'lead') {
+    // Flute/violin solo: sine + gentle vibrato LFO
+    osc.type = theme.leadType;
+    osc.frequency.value = freq;
+    const lfo = c.createOscillator();
+    lfo.frequency.value = 5.0;
+    const lfoGain = c.createGain();
+    lfoGain.gain.value = freq * 0.006;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfo.start(t0);
+    lfo.stop(t0 + note.dur + 0.1);
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.linearRampToValueAtTime(0.18, t0 + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + note.dur * 0.7);
-    osc.connect(gain);
-    gain.connect(musicBus());
-    osc.start(t0);
-    osc.stop(t0 + note.dur + 0.05);
-    return;
-  }
-  const peak = { pad: 0.05, lead: 0.07, bass: 0.12, kick: 0.25 }[note.kind];
-  if (note.kind === 'kick') {
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(120, t0);
-    osc.frequency.exponentialRampToValueAtTime(40, t0 + note.dur);
+    gain.gain.linearRampToValueAtTime(0.07, t0 + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + note.dur);
+  } else if (note.kind === 'pad') {
+    // String pad: very slow attack, sustained, quiet
+    osc.type = theme.padType;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.linearRampToValueAtTime(0.045, t0 + Math.min(0.45, note.dur * 0.4));
+    gain.gain.setValueAtTime(0.045, t0 + note.dur - 0.4);
+    gain.gain.linearRampToValueAtTime(0.0001, t0 + note.dur);
   } else {
-    osc.type = note.kind === 'pad' ? theme.padType : note.kind === 'bass' ? 'square' : theme.leadType;
-    osc.frequency.value = NOTE(note.midi);
+    // Bass: short cello pizzicato (low, warm)
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.linearRampToValueAtTime(0.10, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + note.dur * 0.7);
   }
-  const attack = note.kind === 'pad' ? 0.4 : 0.01;
-  gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(attack, note.dur / 2));
-  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + note.dur);
+
   osc.connect(gain);
   gain.connect(musicBus());
   osc.start(t0);
-  osc.stop(t0 + note.dur + 0.05);
+  osc.stop(t0 + note.dur + 0.1);
+}
+
+function voice(c, note, t0) {
+  if (note.kind === 'lute') {
+    karplusPluck(c, NOTE(note.midi), t0, 0.18);
+  } else {
+    bowedString(c, note, t0);
+  }
 }
 
 function schedule() {
@@ -156,7 +227,6 @@ export const music = {
     volume = v;
     if (bus) bus.gain.value = v * 0.35;
   },
-  // After a pause the clock jumped: restart bars from "now"
   resync() {
     try { nextBarAt = getCtx().currentTime + 0.1; } catch { /* no Web Audio */ }
   },

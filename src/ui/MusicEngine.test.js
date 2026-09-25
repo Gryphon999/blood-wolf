@@ -15,8 +15,8 @@ describe('procedural music', () => {
     }
   });
 
-  it('only the battle theme has a kick pulse', () => {
-    expect(barNotes(THEMES.battle, 0).notes.some((n) => n.kind === 'kick')).toBe(true);
+  it('neither theme has a kick pulse (orchestral, no drums)', () => {
+    expect(barNotes(THEMES.battle, 0).notes.some((n) => n.kind === 'kick')).toBe(false);
     expect(barNotes(THEMES.menu, 0).notes.some((n) => n.kind === 'kick')).toBe(false);
   });
 });

@@ -381,6 +381,7 @@ export const ru = {
   'settings.title': 'Настройки',
   'settings.volume': 'Громкость звуков',
   'settings.music': 'Громкость музыки',
+  'settings.voice': 'Озвучка карт',
   'settings.speedUp': 'Ускорение анимаций по клику',
   'settings.reduceMotion': 'Меньше движения (без тряски и переходов)',
   'settings.lang': 'Язык',

@@ -1,10 +1,11 @@
 // Player settings, stored in the profile (and so in the Yandex cloud save)
 export const DEFAULT_SETTINGS = {
-  volume: 0.8,        // sound effects 0..1
-  music: 0.5,         // background music 0..1
-  speedUp: true,      // a click during animations speeds them up
+  volume: 0.8,         // sound effects 0..1
+  music: 0.5,          // background music 0..1
+  voice: 0.9,          // card voiceover volume 0..1
+  speedUp: true,       // a click during animations speeds them up
   reduceMotion: false, // no screen shake, fades or particles bursts on legendaries
-  lang: null,         // null = follow the Yandex SDK language
+  lang: null,          // null = follow the Yandex SDK language
 };
 
 const RU_LANGS = ['ru', 'be', 'kk', 'uk', 'uz'];

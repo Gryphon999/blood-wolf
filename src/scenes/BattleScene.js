@@ -34,6 +34,7 @@ import { drawBackground } from '../ui/background.js';
 import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadBattleAssets } from '../ui/preloadAssets.js';
 import { sfx } from '../ui/SoundEngine.js';
+import { speakCard } from '../ui/VoiceEngine.js';
 import { AnimationQueue } from '../ui/AnimationQueue.js';
 import { ANIMATIONS, ensureSparkTexture } from '../ui/effectAnimations.js';
 
@@ -653,6 +654,7 @@ export class BattleScene extends Phaser.Scene {
       this.selectedIndex = null;
       if (def.effect.startsWith('weather_')) sfx.weather();
       if (def.effect === 'scorch') sfx.scorch();
+      speakCard(def);
       this.act(() => playCard(this.match, i, 'melee'));
       return;
     }
@@ -677,6 +679,7 @@ export class BattleScene extends Phaser.Scene {
     const targets = getValidTargets(this.match, 0, card, 'deploy');
     if (targetKind(card, 'deploy') === 'none' || targets.length === 0) {
       this.render(); // drop selection visuals; hand view is re-registered for the play animation
+      speakCard(card.def);
       this.act(() => playCard(this.match, handIndex, row)); // no choice needed (or it fizzles)
       return;
     }
@@ -709,6 +712,7 @@ export class BattleScene extends Phaser.Scene {
       this.pendingPlay = null;
       this.selectedIndex = null;
       this.render();
+      speakCard(this.match.players[0].hand[handIndex]?.def ?? {});
       this.act(() => playCard(this.match, handIndex, row, { target }));
       return;
     }

@@ -72,23 +72,24 @@ export class SettingsScene extends Phaser.Scene {
 
     this.volumeRow(160, 'settings.volume', 'volume', s);
     this.volumeRow(240, 'settings.music', 'music', s);
-    this.toggleRow(320, 'settings.speedUp', 'speedUp', s);
-    this.toggleRow(400, 'settings.reduceMotion', 'reduceMotion', s);
+    this.volumeRow(320, 'settings.voice', 'voice', s);
+    this.toggleRow(400, 'settings.speedUp', 'speedUp', s);
+    this.toggleRow(480, 'settings.reduceMotion', 'reduceMotion', s);
 
-    this.label(480, 'settings.lang');
+    this.label(560, 'settings.lang');
     LANG_OPTIONS.forEach((lang, i) => {
-      this.chip(SCREEN.width / 2 + 40 + i * 130, 480, t(`settings.lang.${lang ?? 'auto'}`), s.lang === lang, () => this.set({ lang }));
+      this.chip(SCREEN.width / 2 + 40 + i * 130, 560, t(`settings.lang.${lang ?? 'auto'}`), s.lang === lang, () => this.set({ lang }));
     });
 
-    this.label(560, 'settings.tutorial');
-    this.chip(SCREEN.width / 2 + 160, 560, t('settings.tutorial.reset'), false, () => {
+    this.label(640, 'settings.tutorial');
+    this.chip(SCREEN.width / 2 + 160, 640, t('settings.tutorial.reset'), false, () => {
       p.tutorialDone = false;
       persist();
       sfx.click();
       this.render();
     });
     if (!p.tutorialDone) {
-      this.root.add(this.add.text(SCREEN.width / 2, 610, t('settings.tutorial.pending'), { fontSize: '15px', color: '#9fe3d0' }).setOrigin(0.5));
+      this.root.add(this.add.text(SCREEN.width / 2, 690, t('settings.tutorial.pending'), { fontSize: '15px', color: '#9fe3d0' }).setOrigin(0.5));
     }
   }
 }

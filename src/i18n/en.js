@@ -381,6 +381,7 @@ export const en = {
   'settings.title': 'Settings',
   'settings.volume': 'Sound volume',
   'settings.music': 'Music volume',
+  'settings.voice': 'Card voiceovers',
   'settings.speedUp': 'Click to speed up animations',
   'settings.reduceMotion': 'Reduce motion (no shake or fades)',
   'settings.lang': 'Language',

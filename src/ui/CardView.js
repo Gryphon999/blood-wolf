@@ -2,6 +2,7 @@ import { CARD_W, CARD_H } from './layout.js';
 import { rarityColor } from './rarity.js';
 import { cardName } from './cardText.js';
 import { t } from '../i18n/index.js';
+import { ensureCardArt } from './CardArtGenerator.js';
 
 const NAME_Y = -CARD_H / 2 + 8;
 const BADGE_Y = CARD_H / 2 - 20;
@@ -34,10 +35,10 @@ export function createCardView(scene, cardDef, options = {}) {
   container.add(bg);
 
   if (!faceDown) {
-    if (cardDef.art && scene.textures.exists(cardDef.art)) {
-      container.add(scene.add.image(0, 0, cardDef.art).setDisplaySize(CARD_W, CARD_H));
+    const artKey = ensureCardArt(scene, cardDef);
+    if (artKey && scene.textures.exists(artKey)) {
+      container.add(scene.add.image(0, 0, artKey).setDisplaySize(CARD_W, CARD_H));
     } else if (cardDef.type !== 'special') {
-      // No portrait yet: a large faded glyph stands in for the art
       container.add(scene.add.text(0, -6, fallbackGlyph(cardDef), { fontSize: '40px' })
         .setOrigin(0.5).setAlpha(0.55));
     }
