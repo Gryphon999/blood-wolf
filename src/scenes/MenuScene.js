@@ -4,7 +4,7 @@ import {
   MENU_IDS, MENU_TARGETS, MENU_EXTRA_IDS, MENU_EXTRA_X, MENU_INFO_X, menuButtonY, MENU_CENTER_X,
 } from '../ui/menuLayout.js';
 import { SCREEN } from '../ui/layout.js';
-import { drawBackground } from '../ui/background.js';
+import { drawMenuBackground } from '../ui/background.js';
 import { showChest } from '../sdk/yandex.js';
 import { getProfile, persist } from '../economy/session.js';
 import { grantChestReward } from '../economy/profile.js';
@@ -25,11 +25,19 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create() {
-    drawBackground(this);
+    drawMenuBackground(this);
     sceneFadeIn(this);
-    this.add.text(SCREEN.width / 2, 160, 'Blood Wolf', { fontSize: '56px', color: '#ffd479' }).setOrigin(0.5);
+
+    // Title with blood-red drop shadow
+    this.add.text(SCREEN.width / 2 + 3, 163, 'Blood Wolf', {
+      fontSize: '58px', color: '#6b0000',
+    }).setOrigin(0.5);
+    this.add.text(SCREEN.width / 2, 160, 'Blood Wolf', {
+      fontSize: '58px', color: '#e8c060',
+      stroke: '#3a1000', strokeThickness: 4,
+    }).setOrigin(0.5);
     this.add
-      .text(SCREEN.width / 2, 214, t('menu.subtitle'), { fontSize: '18px', color: '#9a8a6a' })
+      .text(SCREEN.width / 2, 216, t('menu.subtitle'), { fontSize: '17px', color: '#8a7860' })
       .setOrigin(0.5);
 
     const profile = getProfile();

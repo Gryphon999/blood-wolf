@@ -41,6 +41,8 @@ import { ANIMATIONS, ensureSparkTexture } from '../ui/effectAnimations.js';
 const ROW_TINT = { melee: 0x261a1a, ranged: 0x1a2620, siege: 0x1a1f2a };
 const WEATHER_OVERLAY = { melee: 0x4488ee, ranged: 0x88aacc, siege: 0x224488 };
 const WEATHER_LABEL   = { melee: '❄', ranged: '🌫', siege: '🌧' };
+const ROW_ROLE_LABEL  = { melee: '⚔ Натиск', ranged: '🏹 Охота', siege: '💣 Осада' };
+const ROW_ROLE_COLOR  = { melee: '#c06060', ranged: '#60a060', siege: '#6080c0' };
 // Specials that affect the whole board: one click on the card plays them
 const INSTANT_SPECIALS = new Set(['weather_frost', 'weather_fog', 'weather_rain', 'clear', 'scorch',
   'blessing_humans', 'order_ready', 'fog_frost_combo', 'bleed_all_enemies']);
@@ -77,6 +79,7 @@ export class BattleScene extends Phaser.Scene {
     this.storyIndex   = data?.storyIndex ?? null;
     this.rewardGold   = data?.rewardGold ?? 0;
     this.rewardCardId = data?.rewardCardId ?? null;
+    this.isReplay     = data?.isReplay ?? false;
     this.returnScene  = this.storyIndex !== null ? 'StoryScene' : 'MenuScene';
     const enemyDeck   = data?.enemyDeck ?? AI_DECK;
     // An emptied or too-small deck falls back to the starter deck instead of an empty hand
@@ -295,10 +298,13 @@ export class BattleScene extends Phaser.Scene {
       () => { if (!this.busy) showInterstitial(() => this.scene.start(this.returnScene)); });
 
     // ── Board rows
+    this._deferredOrderBtns = [];
     for (const rowName of ROW_NAMES) {
       this.renderRow(opp, 'opponent', rowName);
       this.renderRow(player, 'player', rowName);
     }
+    // Order buttons must be added after all row backgrounds so they render on top
+    for (const btn of this._deferredOrderBtns) this.root.add(btn);
 
     // ── Weather + score
     const wLabel = t('battle.weather', { rows: m.weather.size ? [...m.weather].map((r) => t(`row.${r}`)).join(', ') : '—' });
@@ -470,6 +476,9 @@ export class BattleScene extends Phaser.Scene {
       if (this.storyIndex === null) {
         this.reward = rewardFor(50, this.difficulty);
         addGold(profile, this.reward);
+      } else if (this.isReplay) {
+        // Replay: no gold/card reward, node already cleared
+        this.reward = 0;
       } else {
         clearNode(profile, this.storyIndex);
         this.reward = rewardFor(this.rewardGold, this.difficulty);
@@ -583,7 +592,8 @@ export class BattleScene extends Phaser.Scene {
           fontSize: '14px', color: '#ffdd44', stroke: '#000', strokeThickness: 2,
         }).setOrigin(0.5);
         onLeftClick(obtn, () => this.onOrderButtonClick(rowName, i));
-        this.root.add(obtn);
+        // Defer adding until after all rows so it renders above row backgrounds
+        this._deferredOrderBtns.push(obtn);
       }
     });
 
@@ -598,6 +608,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.addText(SCREEN.width - 300, y - 10, `[${rowPower(side.board, rowName, m.weather)}]`, '#ffd479');
+    this.addText(SCREEN.width - 295, y + 8, ROW_ROLE_LABEL[rowName], ROW_ROLE_COLOR[rowName], '11px');
 
     if (targets && sideName === 'opponent' && targets.includes(rowName)) {
       bg.setStrokeStyle(3, TARGET_STROKE);

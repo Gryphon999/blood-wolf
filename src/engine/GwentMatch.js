@@ -1,5 +1,5 @@
 import { createCard } from './Card.js';
-import { createBoard, addUnit, totalPower, ROWS } from './Board.js';
+import { createBoard, addUnit, totalPower, frontmostRow, ROWS } from './Board.js';
 import { applyDeploy, applyOrder } from './effects.js';
 import { emit } from './events.js';
 import { resolveTarget, targetKind } from './targeting.js';
@@ -356,6 +356,25 @@ export function pass(match) {
 }
 
 export function startTurn(match) {
+  // Siege bombardment: current player's siege row fires 1 damage at weakest unit
+  // on the enemy's frontmost occupied row
+  const siegeUnits = match.players[match.current].board.siege;
+  if (siegeUnits.length > 0) {
+    const enemyBoard = match.players[1 - match.current].board;
+    const front = frontmostRow(enemyBoard);
+    if (front) {
+      const row = enemyBoard[front];
+      // pick the weakest non-hero unit in that row
+      const target = row
+        .filter((c) => c.def.type !== 'hero')
+        .reduce((weakest, c) => (!weakest || c.power < weakest.power ? c : weakest), null);
+      if (target) {
+        emit(match, { type: 'siegeBombard', player: match.current, targetRow: front });
+        dealDamage(match, null, target, 1);
+      }
+    }
+  }
+
   // Status ticks: bleed + poison, straight to power (shield/armor don't stop them)
   for (const player of match.players) {
     for (const card of allOnBoard(player.board)) {

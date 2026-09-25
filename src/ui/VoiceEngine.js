@@ -7,20 +7,18 @@ import { sfx } from './SoundEngine.js';
 
 // ── Beast card → animal sound routing ────────────────────────────────────
 
-// Cards in this map play an animal sound instead of TTS
+// Keys are card `art` values (shared by cards with _a/_b/_c suffixes).
+// Lookup uses cardDef.art ?? cardDef.id, so troll_a → art:troll → growl, etc.
 const ANIMAL_SOUND = {
   wolf:         'wolfHowl',
-  dire_wolf_a:  'wolfHowl',
-  dire_wolf_b:  'wolfHowl',
-  dire_wolf_c:  'wolfHowl',
+  dire_wolf:    'wolfHowl',  // dire_wolf_a/b/c all share art:'dire_wolf'
   werewolf:     'growl',
   beast:        'growl',
-  troll:        'growl',
+  troll:        'growl',     // troll_a/b share art:'troll'
   regen_troll:  'growl',
   ice_giant:    'growl',
-  gargoyle_a:   'growl',
-  gargoyle_b:   'growl',
-  harpy:        'screech',
+  gargoyle:     'growl',     // gargoyle_a/b share art:'gargoyle'
+  harpy:        'screech',   // harpy_a/b share art:'harpy'
   harpy_hunter: 'screech',
   serpent:      'hiss',
 };
@@ -96,92 +94,58 @@ const LINES = {
   fang_darkness:  'Тьма Клыков пришла!',
 };
 
-// ── Voice selection ───────────────────────────────────────────────────────
+// ── Audio file playback ───────────────────────────────────────────────────
 
-let _voices = [];
 let _voiceEnabled = true;
 let _voiceVolume = 0.9;
 
-function loadVoices() {
-  _voices = speechSynthesis.getVoices();
-}
+// Cache pre-loaded Audio objects to avoid re-fetch on each play
+const _audioCache = new Map();
 
-if (typeof speechSynthesis !== 'undefined') {
-  loadVoices();
-  speechSynthesis.onvoiceschanged = loadVoices;
-}
-
-function pickVoice(faction) {
-  if (!_voices.length) return null;
-  const ru = _voices.filter((v) => v.lang.startsWith('ru'));
-  if (!ru.length) return _voices.find((v) => v.lang.startsWith('en')) ?? null;
-
-  // Neural AI voices (Google WaveNet/Chirp in Chrome) are marked non-local
-  const neural = ru.find((v) => !v.localService);
-
-  if (faction === 'monsters') {
-    // Deep male voice for monsters — Pavel if available, else neural
-    const pavel = ru.find((v) => v.name.includes('Pavel'));
-    return pavel ?? neural ?? ru[0];
+function getAudio(id) {
+  if (!_audioCache.has(id)) {
+    _audioCache.set(id, new Audio(`/audio/voices/${id}.mp3`));
   }
+  return _audioCache.get(id);
+}
 
-  // Humans / specials: neural AI voice preferred
-  return neural ?? ru[0];
+// Fallback to Web Speech API when MP3 is unavailable
+function speakFallback(cardDef) {
+  if (typeof speechSynthesis === 'undefined') return;
+  const key = cardDef.art ?? cardDef.id;
+  const text = LINES[key] ?? LINES[cardDef.id] ?? cardDef.name ?? '';
+  if (!text) return;
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.volume = _voiceVolume;
+  utt.rate   = cardDef.faction === 'monsters' ? 0.72 : 0.90;
+  utt.pitch  = cardDef.faction === 'monsters' ? 0.45 : 1.10;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utt);
 }
 
 // ── Speak ─────────────────────────────────────────────────────────────────
-
-let _queue = [];
-let _speaking = false;
-
-function processQueue() {
-  if (_speaking || _queue.length === 0) return;
-  const utt = _queue.shift();
-  _speaking = true;
-  speechSynthesis.speak(utt);
-}
 
 export function speakCard(cardDef) {
   if (!_voiceEnabled) return;
   if (_voiceVolume <= 0) return;
 
-  // Beast cards use synthesized animal sounds, not TTS
-  const animalFn = ANIMAL_SOUND[cardDef.id];
-  if (animalFn && sfx[animalFn]) {
-    sfx[animalFn]();
-    return;
-  }
+  const artKey = cardDef.art ?? cardDef.id;
 
-  if (typeof speechSynthesis === 'undefined') return;
+  // Beast cards → synthesized animal sound
+  const animalFn = ANIMAL_SOUND[artKey];
+  if (animalFn && sfx[animalFn]) { sfx[animalFn](); return; }
 
-  const text = LINES[cardDef.id] ?? cardDef.name ?? '';
-  if (!text) return;
+  // For cards with per-instance lines (militia_a/b/c, oath_brother_a/b) the art key
+  // has no entry in LINES, so we fall back to the id as the audio file key. Also
+  // handles art:'scorch_art' → file is 'scorch.mp3' = card id.
+  const audioKey = LINES[artKey] !== undefined ? artKey
+    : LINES[cardDef.id] !== undefined ? cardDef.id
+    : artKey;
 
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.volume = _voiceVolume;
-
-  if (cardDef.faction === 'monsters') {
-    utt.rate  = 0.72;
-    utt.pitch = 0.45;
-  } else {
-    utt.rate  = 0.90;
-    utt.pitch = 1.10;
-  }
-
-  const v = pickVoice(cardDef.faction);
-  if (v) utt.voice = v;
-
-  utt.onend = () => {
-    _speaking = false;
-    processQueue();
-  };
-  utt.onerror = () => {
-    _speaking = false;
-    processQueue();
-  };
-
-  _queue = [utt];
-  if (!_speaking) processQueue();
+  const audio = getAudio(audioKey);
+  audio.volume = _voiceVolume;
+  audio.currentTime = 0;
+  audio.play().catch(() => speakFallback(cardDef));
 }
 
 export function setVoiceEnabled(v) { _voiceEnabled = v; }

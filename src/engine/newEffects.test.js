@@ -62,7 +62,7 @@ describe('Vampirism', () => {
     const foe = createCard(unit('foe', 2));
     addUnit(match.players[1].board, 'melee', foe);
     dealDamage(match, vamp, foe, 3);
-    expect(vamp.power).toBe(6); // only 2 power was actually drained
+    expect(vamp.power).toBe(7); // vampirism +2 (drained 2) + bloodlust +1 (melee kill)
   });
 
   it('gains nothing when the hit is absorbed by a shield', () => {

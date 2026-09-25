@@ -40,3 +40,11 @@ export function rowPower(board, row, weather = new Set()) {
 export function totalPower(board, weather = new Set()) {
   return ROWS.reduce((sum, row) => sum + rowPower(board, row, weather), 0);
 }
+
+// Returns the first occupied row ('melee' → 'ranged' → 'siege'), or null if board is empty.
+export function frontmostRow(board) {
+  for (const row of ROWS) {
+    if (board[row].length > 0) return row;
+  }
+  return null;
+}

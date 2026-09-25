@@ -1,5 +1,5 @@
 export function preloadCardAssets(scene) {
-  const cards = [
+  const jpgCards = [
     // Starter deck art
     'knight', 'archer', 'merc', 'catapult', 'champion',
     'warhorn', 'frost', 'medic',
@@ -18,9 +18,21 @@ export function preloadCardAssets(scene) {
     'ice_giant', 'regen_troll',
     'darkness', 'blood_ritual',
     'fang_darkness',
+    // AI-generated portraits (jpg)
+    'spy_scout',
   ];
-  for (const key of cards) {
+  for (const key of jpgCards) {
     scene.load.image(key, `/assets/cards/${key}.jpg`);
+  }
+
+  const pngCards = [
+    // AI-generated portraits (png) — Layer 15 cards
+    'militia', 'berserker', 'oath_brother',
+    'doppelganger', 'dire_wolf', 'forest_shade',
+    'blood_count', 'gargoyle', 'scorch_art',
+  ];
+  for (const key of pngCards) {
+    scene.load.image(key, `/assets/cards/${key}.png`);
   }
 }
 

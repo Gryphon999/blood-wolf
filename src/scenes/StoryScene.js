@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMPAIGN_NODES, STORY_NODES } from '../data/story.js';
+import { CAMPAIGN_NODES, STORY_NODES, CHAPTER_TWO_NODES, CHAPTER_THREE_NODES } from '../data/story.js';
 import { getLeader } from '../data/leaders.js';
 import { getProfile } from '../economy/session.js';
 import { isNodeUnlocked, isNodeCleared } from '../economy/profile.js';
@@ -10,7 +10,12 @@ import { sfx } from '../ui/SoundEngine.js';
 import { t } from '../i18n/index.js';
 import { cardName } from '../ui/cardText.js';
 
-const CHAPTER_SIZE = STORY_NODES.length;
+const CHAPTER_SIZE = STORY_NODES.length; // 5
+// Chapters: [nodes, startIndex, colTitles]
+const CHAPTERS = [
+  { nodes: [...STORY_NODES, ...CHAPTER_TWO_NODES], startIndex: 0, titles: ['story.chapter1', 'story.chapter2'] },
+  { nodes: CHAPTER_THREE_NODES, startIndex: STORY_NODES.length + CHAPTER_TWO_NODES.length, titles: ['story.chapter3', null] },
+];
 const COL_X = [SCREEN.width / 4 + 10, (SCREEN.width * 3) / 4 - 10];
 const BOX_W = 590;
 
@@ -31,6 +36,7 @@ export class StoryScene extends Phaser.Scene {
   create(data) {
     drawBackground(this);
     sceneFadeIn(this);
+    this.chapterPage = 0;
     this.root = this.add.container(0, 0);
     this.render();
     // Returning from a won story battle: play that node's outro
@@ -49,46 +55,69 @@ export class StoryScene extends Phaser.Scene {
   render() {
     this.root.removeAll(true);
     const p = getProfile();
+    const chapter = CHAPTERS[this.chapterPage];
 
     this.text(20, 16, t('common.gold', { n: p.gold }), '#ffd479', '22px');
     this.text(SCREEN.width / 2, 30, t('story.title'), '#d8c9a8', '22px').setOrigin(0.5);
     const back = this.text(SCREEN.width - 140, 16, t('common.back'), '#9fbfff', '20px').setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => goTo(this, 'MenuScene'));
-    this.text(COL_X[0], 70, t('story.chapter1'), '#9a8a6a', '18px').setOrigin(0.5);
-    this.text(COL_X[1], 70, t('story.chapter2'), '#c86a6a', '18px').setOrigin(0.5);
 
-    CAMPAIGN_NODES.forEach((node, index) => {
-      const col = index < CHAPTER_SIZE ? 0 : 1;
+    // Chapter navigation tabs
+    CHAPTERS.forEach((ch, pi) => {
+      const label = t(`story.page${pi + 1}`);
+      const active = pi === this.chapterPage;
+      const tx = this.text(SCREEN.width / 2 + (pi - 0.5) * 200, 62, label,
+        active ? '#ffd479' : '#666666', '17px').setOrigin(0.5);
+      if (!active) {
+        tx.setInteractive({ useHandCursor: true });
+        tx.on('pointerdown', () => { this.chapterPage = pi; this.render(); });
+      }
+    });
+
+    // Column titles for this chapter page
+    chapter.titles.forEach((key, ci) => {
+      if (key) this.text(COL_X[ci], 88, t(key), ci === 0 ? '#9a8a6a' : '#c86a6a', '16px').setOrigin(0.5);
+    });
+
+    const half = Math.ceil(chapter.nodes.length / 2);
+    chapter.nodes.forEach((node, localIdx) => {
+      const globalIdx = chapter.startIndex + localIdx;
+      const col = localIdx < half ? 0 : 1;
+      const row = localIdx % half;
       const x = COL_X[col];
-      const y = 140 + (index % CHAPTER_SIZE) * 116;
-      const cleared = isNodeCleared(p, index);
-      const unlocked = isNodeUnlocked(p, index);
-      const playable = unlocked && !cleared;
+      const y = 140 + row * 116;
+      const cleared = isNodeCleared(p, globalIdx);
+      const unlocked = isNodeUnlocked(p, globalIdx);
+      const isReplay = cleared;
+      // Cleared nodes can be replayed; locked nodes show but can't be clicked
+      const playable = unlocked;
 
-      const mark = cleared ? '✓' : unlocked ? '▶' : '🔒';
+      const mark = cleared ? '↩' : unlocked ? '▶' : '🔒';
       const color = cleared ? '#8fce8f' : playable ? '#ffd479' : '#666666';
-      const stroke = playable ? (node.boss ? 0xff6a4a : 0xffd479) : 0x3a3a3a;
+      const stroke = playable && !cleared ? (node.boss ? 0xff6a4a : 0xffd479)
+        : cleared ? 0x4a7a4a : 0x3a3a3a;
       const bg = this.add.rectangle(x, y, BOX_W, 100, node.boss ? 0x241618 : 0x1c1a22).setStrokeStyle(2, stroke);
       this.root.add(bg);
 
-      this.text(x - BOX_W / 2 + 14, y - 40, `${mark}  ${index + 1}. ${t(`story.${node.id}.name`)}`, color, '19px');
-      const reward = node.rewardCardId
-        ? t('story.rewardCard', { gold: node.rewardGold })
-        : t('story.reward', { gold: node.rewardGold });
-      this.text(x - BOX_W / 2 + 14, y - 12, reward, '#9a8a6a', '14px');
+      const numLabel = `${mark}  ${globalIdx + 1}. ${t(`story.${node.id}.name`)}`;
+      this.text(x - BOX_W / 2 + 14, y - 40, numLabel, color, '19px');
+      const rewardKey = isReplay ? 'story.replayLabel'
+        : node.rewardCardId ? 'story.rewardCard' : 'story.reward';
+      const rewardVal = isReplay ? {} : { gold: node.rewardGold };
+      this.text(x - BOX_W / 2 + 14, y - 12, t(rewardKey, rewardVal), '#9a8a6a', '14px');
       nodeRules(node).forEach((line, i) => this.text(x - BOX_W / 2 + 14, y + 8 + i * 16, line, '#c88a8a', '12px'));
 
       if (playable) {
         bg.setInteractive({ useHandCursor: true });
         bg.on('pointerdown', () => {
           sfx.click();
-          this.showDialogue(t(`story.${node.id}.intro`), () => this.startBattle(node, index));
+          this.showDialogue(t(`story.${node.id}.intro`), () => this.startBattle(node, globalIdx, isReplay));
         });
       }
     });
   }
 
-  startBattle(node, index) {
+  startBattle(node, index, isReplay = false) {
     goTo(this, 'BattleScene', {
       enemyDeck: node.enemyDeck,
       storyIndex: index,
@@ -96,6 +125,7 @@ export class StoryScene extends Phaser.Scene {
       rewardCardId: node.rewardCardId ?? null,
       enemyLeaderId: node.enemyLeaderId ?? null,
       rules: node.rules ?? null,
+      isReplay,
     });
   }
 

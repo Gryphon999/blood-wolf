@@ -48,15 +48,15 @@ const HUMAN_CARDS = [
   card('lightning',      'Небесный Огонь',    'humans', 'special', 'ranged', 0, 'rare',      5,  { art: 'lightning',      effect: 'lightning', deployParam: 4 }),
   card('blessing',       'Благословение',     'humans', 'special', 'melee',  0, 'rare',      5,  { art: 'blessing',       effect: 'blessing_humans' }),
   card('battle_order',   'Боевой Приказ',     'humans', 'special', 'melee',  0, 'common',    4,  { art: 'battle_order',   effect: 'order_ready' }),
-  card('scorch',         'Скорч',             'humans', 'special', 'melee',  0, 'epic',      7,  { effect: 'scorch' }),
-  // Layer 15 traits (no portrait yet: CardView falls back to name + badge)
-  card('spy_scout',      'Лазутчик',          'humans', 'unit',    'melee',  4, 'rare',      6,  { tags: ['spy'], spy: true }),
-  card('militia_a',      'Ополченец',         'humans', 'unit',    'melee',  3, 'common',    4,  { tags: ['militia'], muster: 'militia' }),
-  card('militia_b',      'Ополченец',         'humans', 'unit',    'melee',  3, 'common',    4,  { tags: ['militia'], muster: 'militia' }),
-  card('militia_c',      'Ополченец',         'humans', 'unit',    'melee',  3, 'common',    4,  { tags: ['militia'], muster: 'militia' }),
-  card('berserker',      'Берсерк',           'humans', 'unit',    'melee',  3, 'rare',      7,  { tags: ['knight'], berserker: true }),
-  card('oath_brother_a', 'Брат по клятве',    'humans', 'unit',    'ranged', 3, 'common',    4,  { tags: ['archer'], bond: true }),
-  card('oath_brother_b', 'Брат по клятве',    'humans', 'unit',    'ranged', 3, 'common',    4,  { tags: ['archer'], bond: true }),
+  card('scorch',         'Скорч',             'humans', 'special', 'melee',  0, 'epic',      7,  { art: 'scorch_art', effect: 'scorch' }),
+  // Layer 15 traits — AI-generated portraits
+  card('spy_scout',      'Лазутчик',          'humans', 'unit',    'melee',  4, 'rare',      6,  { art: 'spy_scout',    tags: ['spy'], spy: true }),
+  card('militia_a',      'Ополченец',         'humans', 'unit',    'melee',  3, 'common',    4,  { art: 'militia',      tags: ['militia'], muster: 'militia' }),
+  card('militia_b',      'Ополченец',         'humans', 'unit',    'melee',  3, 'common',    4,  { art: 'militia',      tags: ['militia'], muster: 'militia' }),
+  card('militia_c',      'Ополченец',         'humans', 'unit',    'melee',  3, 'common',    4,  { art: 'militia',      tags: ['militia'], muster: 'militia' }),
+  card('berserker',      'Берсерк',           'humans', 'unit',    'melee',  3, 'rare',      7,  { art: 'berserker',    tags: ['knight'], berserker: true }),
+  card('oath_brother_a', 'Брат по клятве',    'humans', 'unit',    'ranged', 3, 'common',    4,  { art: 'oath_brother', tags: ['archer'], bond: true }),
+  card('oath_brother_b', 'Брат по клятве',    'humans', 'unit',    'ranged', 3, 'common',    4,  { art: 'oath_brother', tags: ['archer'], bond: true }),
   // Leader
   card('king_raven',     'Король Рэйвен',     'humans', 'hero',    'melee',  5, 'legendary', 0,  { art: 'king_raven',     tags: ['leader', 'knight'], cost: 0, deployEffect: 'shield_self', hasOrder: true, orderEffect: 'boost_knights', orderParam: 1, chargeMax: 2 }),
 ];
@@ -85,15 +85,15 @@ const MONSTER_CARDS = [
   // Specials
   card('darkness',       'Тьма',             'monsters', 'special', 'melee',  0, 'rare',      5,  { art: 'darkness',       effect: 'fog_frost_combo' }),
   card('blood_ritual',   'Кровавый Ритуал',  'monsters', 'special', 'melee',  0, 'rare',      5,  { art: 'blood_ritual',   effect: 'bleed_all_enemies' }),
-  // Layer 15 traits (no portrait yet)
-  card('doppelganger',   'Двуликий',          'monsters', 'unit',  'melee',  4, 'rare',      6,  { tags: ['demon', 'spy'], spy: true }),
-  card('dire_wolf_a',    'Лютый волк',        'monsters', 'unit',  'melee',  3, 'common',    4,  { tags: ['beast'], muster: 'dire_wolf' }),
-  card('dire_wolf_b',    'Лютый волк',        'monsters', 'unit',  'melee',  3, 'common',    4,  { tags: ['beast'], muster: 'dire_wolf' }),
-  card('dire_wolf_c',    'Лютый волк',        'monsters', 'unit',  'melee',  3, 'common',    4,  { tags: ['beast'], muster: 'dire_wolf' }),
-  card('forest_shade',   'Лесная тень',       'monsters', 'unit',  'ranged', 5, 'rare',      6,  { tags: ['undead'], ambush: true }),
-  card('blood_count',    'Кровавый граф',     'monsters', 'unit',  'melee',  4, 'epic',      9,  { tags: ['undead'], vampirism: true, deployEffect: 'damage', deployParam: 3 }),
-  card('gargoyle_a',     'Горгулья',          'monsters', 'unit',  'siege',  4, 'common',    4,  { tags: ['demon'], bond: true }),
-  card('gargoyle_b',     'Горгулья',          'monsters', 'unit',  'siege',  4, 'common',    4,  { tags: ['demon'], bond: true }),
+  // Layer 15 traits — AI-generated portraits
+  card('doppelganger',   'Двуликий',          'monsters', 'unit',  'melee',  4, 'rare',      6,  { art: 'doppelganger', tags: ['demon', 'spy'], spy: true }),
+  card('dire_wolf_a',    'Лютый волк',        'monsters', 'unit',  'melee',  3, 'common',    4,  { art: 'dire_wolf',    tags: ['beast'], muster: 'dire_wolf' }),
+  card('dire_wolf_b',    'Лютый волк',        'monsters', 'unit',  'melee',  3, 'common',    4,  { art: 'dire_wolf',    tags: ['beast'], muster: 'dire_wolf' }),
+  card('dire_wolf_c',    'Лютый волк',        'monsters', 'unit',  'melee',  3, 'common',    4,  { art: 'dire_wolf',    tags: ['beast'], muster: 'dire_wolf' }),
+  card('forest_shade',   'Лесная тень',       'monsters', 'unit',  'ranged', 5, 'rare',      6,  { art: 'forest_shade', tags: ['undead'], ambush: true }),
+  card('blood_count',    'Кровавый граф',     'monsters', 'unit',  'melee',  4, 'epic',      9,  { art: 'blood_count',  tags: ['undead'], vampirism: true, deployEffect: 'damage', deployParam: 3 }),
+  card('gargoyle_a',     'Горгулья',          'monsters', 'unit',  'siege',  4, 'common',    4,  { art: 'gargoyle',     tags: ['demon'], bond: true }),
+  card('gargoyle_b',     'Горгулья',          'monsters', 'unit',  'siege',  4, 'common',    4,  { art: 'gargoyle',     tags: ['demon'], bond: true }),
   // Leader
   card('fang_darkness',  'Тьма Клыков',      'monsters', 'hero',    'melee',  6, 'legendary', 0,  { art: 'fang_darkness',  tags: ['leader'], cost: 0, deployEffect: 'shield_self', hasOrder: true, orderEffect: 'boost_all_faction', orderParam: 1, chargeMax: 2 }),
 ];

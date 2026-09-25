@@ -48,10 +48,19 @@ export function dealDamage(match, source, target, amount, { direct = false, stat
     amount: dmg, powerAfter: Math.max(0, target.power),
     ...(status ? { status } : {}),
   });
-  if (target.power <= 0) destroy(match, target);
+  const killed = target.power <= 0;
+  if (killed) destroy(match, target);
   // Vampirism: the source drinks what it drained (only while it stands on the board)
   if (source?.def?.vampirism && drained > 0 && locateOnBoard(match, source)) {
     boost(match, source, source, drained);
+  }
+  // Bloodlust: melee killers gain +1 power on kill
+  if (killed && source && !direct) {
+    const srcLoc = locateOnBoard(match, source);
+    if (srcLoc?.row === 'melee') {
+      boost(match, source, source, 1);
+      emit(match, { type: 'bloodlust', uid: source.uid });
+    }
   }
 }
 

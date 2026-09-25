@@ -131,5 +131,104 @@ export const CHAPTER_TWO_NODES = [
     boss: true, enemyLeaderId: 'brood_queen', rules: { permanentWeather: ['siege'], bossUnits: [BLOOD_WOLF] } },
 ];
 
+// ── Chapter 3: Проклятие не снято ───────────────────────────────────────────
+// Story: Rein discovers the ritual that created the Blood Wolf opened a rift
+// to the Lich Emperor — an ancient evil now reclaiming the Hollow Lands.
+
+const frozenKeep = [
+  u('fk1', 'Ледяной стражник', 'melee', 5), u('fk2', 'Ледяной стражник', 'melee', 5),
+  u('fk3', 'Морозный лучник', 'ranged', 5), u('fk4', 'Морозный лучник', 'ranged', 5),
+  u('fk5', 'Ледяная пушка', 'siege', 6), u('fk6', 'Ледяная пушка', 'siege', 6),
+  shop('ice_giant'), spell('fk_frost', 'Вечная стужа', 'weather_frost', 'melee'),
+  hero('fk_hero', 'Хранитель льда', 'melee', 8), u('fk7', 'Ледяной щитоносец', 'melee', 4),
+];
+
+const shadowThieves = [
+  shop('doppelganger'), shop('spy_scout'), shop('forest_shade'), shop('seducer'),
+  u('st1', 'Ночной лазутчик', 'melee', 4), u('st2', 'Ночной лазутчик', 'melee', 4),
+  u('st3', 'Теневой стрелок', 'ranged', 5), u('st4', 'Теневой стрелок', 'ranged', 5),
+  u('st5', 'Мастер теней', 'ranged', 6), hero('st_hero', 'Призрак Клинка', 'ranged', 7),
+];
+
+const plagueHorde = [
+  shop('vampire'), shop('bloodsucker'), shop('serpent'),
+  u('ph1', 'Заражённый', 'melee', 4), u('ph2', 'Заражённый', 'melee', 4),
+  u('ph3', 'Заражённый', 'melee', 5), u('ph4', 'Чумной лучник', 'ranged', 4),
+  u('ph5', 'Чумной лучник', 'ranged', 4), spell('ph_blight', 'Мор', 'bleed_all_enemies', 'melee'),
+  hero('ph_hero', 'Повелитель чумы', 'melee', 9),
+];
+
+const serpentCult = [
+  shop('serpent'), shop('serpent'), shop('necromancer'), shop('blood_ritual'),
+  u('sc1', 'Адепт культа', 'melee', 5), u('sc2', 'Адепт культа', 'melee', 5),
+  u('sc3', 'Жрец змея', 'ranged', 6), u('sc4', 'Жрец змея', 'ranged', 6),
+  spell('sc_fog', 'Змеиный туман', 'weather_fog', 'ranged'), hero('sc_hero', 'Верховный жрец', 'siege', 9),
+];
+
+const FALLEN_KNIGHT = { ...hero('fln_boss', 'Падший Рыцарь', 'melee', 9), tags: ['knight'] };
+const fallenKnight = [
+  shop('shield_knight'), shop('berserker'), shop('king_raven'),
+  u('fln1', 'Павший воин', 'melee', 6), u('fln2', 'Павший воин', 'melee', 6),
+  u('fln3', 'Проклятый лучник', 'ranged', 5), u('fln4', 'Проклятый лучник', 'ranged', 5),
+  u('fln5', 'Осквернённая баллиста', 'siege', 7), spell('fln_horn', 'Падший клич', 'horn', 'melee'),
+  FALLEN_KNIGHT,
+];
+
+const bloodTide = [
+  shop('vampire'), shop('blood_count'), shop('bloodsucker'), shop('bloodsucker'),
+  u('bt1', 'Кровяной пес', 'melee', 5), u('bt2', 'Кровяной пес', 'melee', 5),
+  u('bt3', 'Ночной упырь', 'ranged', 5), u('bt4', 'Ночной упырь', 'ranged', 5),
+  spell('bt_ritual', 'Кровавый прилив', 'bleed_all_enemies', 'melee'), hero('bt_hero', 'Граф Крови', 'melee', 9),
+];
+
+const stormPeak = [
+  shop('lightning'), shop('lightning'), shop('darkness'),
+  u('sp1', 'Маг бури', 'ranged', 5), u('sp2', 'Маг бури', 'ranged', 5),
+  u('sp3', 'Громовой страж', 'melee', 5), u('sp4', 'Громовой страж', 'melee', 5),
+  u('sp5', 'Штормовая пушка', 'siege', 7), u('sp6', 'Штормовая пушка', 'siege', 7),
+  hero('sp_hero', 'Лорд Бури', 'ranged', 8),
+];
+
+const golemArmy = [
+  shop('engineer'), shop('ballista'),
+  u('ga1', 'Боевой голем', 'melee', 7), u('ga2', 'Боевой голем', 'melee', 7),
+  u('ga3', 'Осадный голем', 'siege', 8), u('ga4', 'Осадный голем', 'siege', 8),
+  u('ga5', 'Стальной лучник', 'ranged', 5), u('ga6', 'Стальной лучник', 'ranged', 5),
+  spell('ga_horn', 'Механический клич', 'horn', 'siege'), hero('ga_hero', 'Голем-Император', 'siege', 10),
+];
+
+const chaosGate = [
+  shop('chaos_demon'), shop('archdemon'), shop('fire_demon'), shop('blood_ritual'), shop('darkness'),
+  u('cg1', 'Хаотический бес', 'melee', 5), u('cg2', 'Хаотический бес', 'melee', 5),
+  u('cg3', 'Разрыв реальности', 'ranged', 6), u('cg4', 'Разрыв реальности', 'ranged', 6),
+  hero('cg_hero', 'Страж разлома', 'siege', 9),
+];
+
+const LICH_EMPEROR = { ...hero('le_boss', 'Лич-Император', 'melee', 12), tags: ['undead'] };
+const lichEmperor = [
+  shop('lich'), shop('necromancer'), shop('chaos_demon'), shop('archdemon'), shop('regen_troll'),
+  shop('bloodsucker'), u('le1', 'Костяной рыцарь', 'melee', 7), u('le2', 'Костяной лучник', 'ranged', 6),
+  spell('le_fog', 'Вечная тьма', 'fog_frost_combo', 'melee'), spell('le_blight', 'Мор вечности', 'bleed_all_enemies', 'melee'),
+];
+
+export const CHAPTER_THREE_NODES = [
+  { id: 'frozen_keep', name: 'Замёрзший форт', enemyDeck: frozenKeep, rewardGold: 160,
+    rules: { permanentWeather: ['melee'] } },
+  { id: 'shadow_thieves', name: 'Воры теней', enemyDeck: shadowThieves, rewardGold: 180 },
+  { id: 'plague_horde', name: 'Чумная орда', enemyDeck: plagueHorde, rewardGold: 200 },
+  { id: 'serpent_cult', name: 'Культ Змея', enemyDeck: serpentCult, rewardGold: 220,
+    rules: { permanentWeather: ['ranged'] } },
+  { id: 'fallen_knight', name: 'Босс: Падший Рыцарь', enemyDeck: fallenKnight, rewardGold: 300,
+    boss: true, rules: { bossUnits: [FALLEN_KNIGHT] } },
+  { id: 'blood_tide', name: 'Кровавый прилив', enemyDeck: bloodTide, rewardGold: 260, rewardCardId: 'blood_count' },
+  { id: 'storm_peak', name: 'Грозовой пик', enemyDeck: stormPeak, rewardGold: 280,
+    rules: { permanentWeather: ['siege'] } },
+  { id: 'golem_army', name: 'Армия Големов', enemyDeck: golemArmy, rewardGold: 320 },
+  { id: 'chaos_gate', name: 'Врата Хаоса', enemyDeck: chaosGate, rewardGold: 360,
+    rules: { permanentWeather: ['melee', 'ranged'] } },
+  { id: 'lich_emperor', name: 'Финал: Лич-Император', enemyDeck: lichEmperor, rewardGold: 700,
+    rewardCardId: 'lich', boss: true, rules: { permanentWeather: ['ranged'], bossUnits: [LICH_EMPEROR] } },
+];
+
 // The full campaign shown in StoryScene
-export const CAMPAIGN_NODES = [...STORY_NODES, ...CHAPTER_TWO_NODES];
+export const CAMPAIGN_NODES = [...STORY_NODES, ...CHAPTER_TWO_NODES, ...CHAPTER_THREE_NODES];

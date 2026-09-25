@@ -67,6 +67,10 @@ export function barNotes(theme, barIndex) {
   return { notes, length: bar };
 }
 
+// Audio files (placed in public/audio/) — used when available; procedural fallback otherwise
+const AUDIO_FILES = { battle: '/audio/battle.webm', menu: '/audio/menu.webm' };
+let _audioEl = null;
+
 let bus = null;
 let volume = 0.5;
 let current = null;
@@ -208,23 +212,43 @@ function schedule() {
   }
 }
 
+function _stopAudio() {
+  if (_audioEl) { _audioEl.pause(); _audioEl.src = ''; _audioEl = null; }
+}
+
+function _playProcedural(theme) {
+  barIndex = 0;
+  try {
+    const c = getCtx();
+    nextBarAt = c.currentTime + 0.1;
+    if (!timer) timer = setInterval(schedule, 150);
+    schedule();
+  } catch { /* no Web Audio */ }
+}
+
 export const music = {
   play(theme) {
     if (!THEMES[theme] || current === theme) return;
+    this.stop();
     current = theme;
-    barIndex = 0;
-    try {
-      const c = getCtx();
-      nextBarAt = c.currentTime + 0.1;
-      if (!timer) timer = setInterval(schedule, 150);
-      schedule();
-    } catch { /* no Web Audio */ }
+
+    const src = AUDIO_FILES[theme];
+    if (src) {
+      const el = new Audio(src);
+      el.loop = true;
+      el.volume = Math.min(1, volume * 0.7);
+      el.play().then(() => { _audioEl = el; }).catch(() => _playProcedural(theme));
+      return;
+    }
+    _playProcedural(theme);
   },
   stop() {
     current = null;
+    _stopAudio();
   },
   setVolume(v) {
     volume = v;
+    if (_audioEl) _audioEl.volume = Math.min(1, v * 0.7);
     if (bus) bus.gain.value = v * 0.35;
   },
   resync() {
