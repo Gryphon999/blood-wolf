@@ -263,6 +263,8 @@ export class BattleScene extends Phaser.Scene {
         } else if (move.type === 'leader') {
           useLeader(this.match, 1);
         } else {
+          const aiCard = this.match.players[1].hand[move.cardIndex];
+          if (aiCard) speakCard(aiCard.def);
           playCard(this.match, move.cardIndex, move.row, { target: move.target });
         }
       } catch (e) {
@@ -652,14 +654,20 @@ export class BattleScene extends Phaser.Scene {
 
     if (def.type === 'special' && INSTANT_SPECIALS.has(def.effect)) {
       this.selectedIndex = null;
-      if (def.effect.startsWith('weather_')) sfx.weather();
-      if (def.effect === 'scorch') sfx.scorch();
+      if (def.effect === 'weather_frost')     sfx.weatherFrost();
+      else if (def.effect === 'weather_fog')  sfx.weatherFog();
+      else if (def.effect === 'weather_rain') sfx.weatherRain();
+      else if (def.effect === 'fog_frost_combo') sfx.darkness();
+      else if (def.effect.startsWith('weather_')) sfx.weather();
+      if (def.effect === 'scorch')            sfx.scorch();
+      if (def.effect === 'bleed_all_enemies') sfx.bloodRitual();
       speakCard(def);
       this.act(() => playCard(this.match, i, 'melee'));
       return;
     }
     // Targeted specials (e.g. lightning) skip row selection
     if (def.type === 'special' && targetKind(card, 'deploy') !== 'none') {
+      if (def.effect === 'lightning') sfx.lightning();
       this.beginPlay(i, 'melee');
       return;
     }

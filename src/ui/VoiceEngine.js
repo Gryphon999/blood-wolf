@@ -1,8 +1,29 @@
 /**
  * Card voiceover lines via Web Speech API.
- * Each card has a short Russian flavor phrase spoken when played.
- * Humans: confident/noble voice. Monsters: slow/guttural (adjusted via pitch/rate).
+ * Humans / non-beast monsters: Russian TTS phrase.
+ * Beast cards (wolf, harpy, troll, etc.): synthesized animal sound via SoundEngine.
  */
+import { sfx } from './SoundEngine.js';
+
+// ── Beast card → animal sound routing ────────────────────────────────────
+
+// Cards in this map play an animal sound instead of TTS
+const ANIMAL_SOUND = {
+  wolf:         'wolfHowl',
+  dire_wolf_a:  'wolfHowl',
+  dire_wolf_b:  'wolfHowl',
+  dire_wolf_c:  'wolfHowl',
+  werewolf:     'growl',
+  beast:        'growl',
+  troll:        'growl',
+  regen_troll:  'growl',
+  ice_giant:    'growl',
+  gargoyle_a:   'growl',
+  gargoyle_b:   'growl',
+  harpy:        'screech',
+  harpy_hunter: 'screech',
+  serpent:      'hiss',
+};
 
 // ── Voice lines per card id ───────────────────────────────────────────────
 
@@ -92,10 +113,20 @@ if (typeof speechSynthesis !== 'undefined') {
 
 function pickVoice(faction) {
   if (!_voices.length) return null;
+  const ru = _voices.filter((v) => v.lang.startsWith('ru'));
+  if (!ru.length) return _voices.find((v) => v.lang.startsWith('en')) ?? null;
 
-  // Prefer Russian voices; monsters: lower rate/pitch via utterance settings
-  const ruVoice = _voices.find((v) => v.lang.startsWith('ru'));
-  return ruVoice ?? _voices.find((v) => v.lang.startsWith('en')) ?? null;
+  // Neural AI voices (Google WaveNet/Chirp in Chrome) are marked non-local
+  const neural = ru.find((v) => !v.localService);
+
+  if (faction === 'monsters') {
+    // Deep male voice for monsters — Pavel if available, else neural
+    const pavel = ru.find((v) => v.name.includes('Pavel'));
+    return pavel ?? neural ?? ru[0];
+  }
+
+  // Humans / specials: neural AI voice preferred
+  return neural ?? ru[0];
 }
 
 // ── Speak ─────────────────────────────────────────────────────────────────
@@ -111,8 +142,17 @@ function processQueue() {
 }
 
 export function speakCard(cardDef) {
-  if (!_voiceEnabled || typeof speechSynthesis === 'undefined') return;
+  if (!_voiceEnabled) return;
   if (_voiceVolume <= 0) return;
+
+  // Beast cards use synthesized animal sounds, not TTS
+  const animalFn = ANIMAL_SOUND[cardDef.id];
+  if (animalFn && sfx[animalFn]) {
+    sfx[animalFn]();
+    return;
+  }
+
+  if (typeof speechSynthesis === 'undefined') return;
 
   const text = LINES[cardDef.id] ?? cardDef.name ?? '';
   if (!text) return;
@@ -121,11 +161,11 @@ export function speakCard(cardDef) {
   utt.volume = _voiceVolume;
 
   if (cardDef.faction === 'monsters') {
-    utt.rate  = 0.78;
-    utt.pitch = 0.55;
+    utt.rate  = 0.72;
+    utt.pitch = 0.45;
   } else {
-    utt.rate  = 0.92;
-    utt.pitch = 1.05;
+    utt.rate  = 0.90;
+    utt.pitch = 1.10;
   }
 
   const v = pickVoice(cardDef.faction);
@@ -140,7 +180,6 @@ export function speakCard(cardDef) {
     processQueue();
   };
 
-  // Replace queue with this line (don't pile up stale lines)
   _queue = [utt];
   if (!_speaking) processQueue();
 }
