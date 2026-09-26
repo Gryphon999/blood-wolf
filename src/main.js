@@ -15,23 +15,31 @@ import { applySettings } from './ui/applySettings.js';
 import { setAudioPaused, getCtx } from './ui/SoundEngine.js';
 import { music } from './ui/MusicEngine.js';
 import { t } from './i18n/index.js';
+import { loadFonts } from './ui/fonts.js';
+import { initRender, installCameraHook } from './ui/render.js';
 
 await initYandex();
+await loadFonts();
+const R = initRender();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  width: SCREEN.width,
-  height: SCREEN.height,
+  // Logical layout is 1280x720; the canvas is R times bigger so nothing is upscaled (see ui/render.js)
+  width: SCREEN.width * R,
+  height: SCREEN.height * R,
   backgroundColor: '#14100c',
   // FIT keeps the 16:9 board whole on any screen; portrait phones get a rotate hint (index.html)
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   input: { activePointers: 2 },
   disableContextMenu: true,
+  callbacks: { postBoot: (g) => installCameraHook(g) },
   scene: [MenuScene, BattleScene, DeckScene, ShopScene, StoryScene, PackScene, ProgressScene, RankScene, SettingsScene],
 });
 
 applySettings(game, getProfile());
+// Test/screenshot hook: open the game with ?debug to reach the Phaser instance from scripts
+if (new URLSearchParams(location.search).has('debug')) window.__game = game;
 const rotateHint = document.getElementById('rotate-hint');
 if (rotateHint) rotateHint.textContent = t('app.rotate');
 // Re-fit when the phone rotates or the browser chrome resizes the viewport

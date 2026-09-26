@@ -1,4 +1,6 @@
+import { preloadBackgrounds } from './background.js';
 export function preloadCardAssets(scene) {
+  preloadBackgrounds(scene);
   const jpgCards = [
     // Starter deck art
     'knight', 'archer', 'merc', 'catapult', 'champion',
@@ -20,20 +22,15 @@ export function preloadCardAssets(scene) {
     'fang_darkness',
     // AI-generated portraits (jpg)
     'spy_scout',
+    // AI-generated portraits, Layer 15 cards
+    'militia', 'berserker', 'oath_brother',
+    'doppelganger', 'dire_wolf', 'forest_shade',
+    'blood_count', 'gargoyle', 'scorch_art',
   ];
   for (const key of jpgCards) {
     scene.load.image(key, `./assets/cards/${key}.jpg`);
   }
 
-  const pngCards = [
-    // AI-generated portraits (png) — Layer 15 cards
-    'militia', 'berserker', 'oath_brother',
-    'doppelganger', 'dire_wolf', 'forest_shade',
-    'blood_count', 'gargoyle', 'scorch_art',
-  ];
-  for (const key of pngCards) {
-    scene.load.image(key, `./assets/cards/${key}.png`);
-  }
 }
 
 export function preloadBattleAssets(scene) {

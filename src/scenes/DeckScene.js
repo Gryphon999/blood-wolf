@@ -81,7 +81,7 @@ export class DeckScene extends Phaser.Scene {
     this.text(20, 16, t('common.gold', { n: p.gold }), '#ffd479', '22px');
     const ok = isDeckValid(p);
     this.text(SCREEN.width / 2 - 130, 16, t('deck.size', { n: p.deck.length }) + (ok ? '' : ` ${t('deck.min')}`), ok ? '#d8c9a8' : '#ff9d9d', '20px');
-    this.button(SCREEN.width - 140, 16, t('common.back'), '#9fbfff', '20px', () => this.scene.start('MenuScene'));
+    this.button(SCREEN.width - 140, 16, t('common.back'), '#e8c98a', '20px', () => this.scene.start('MenuScene'));
     this.text(20, 52, t('deck.hint', { n: GOLDEN_COPIES, bonus: GOLDEN_BONUS }), '#9a8a6a', '14px');
     this.renderLeaderPicker(p);
 
@@ -94,8 +94,8 @@ export class DeckScene extends Phaser.Scene {
 
     const navY = SCREEN.height - 34;
     this.text(SCREEN.width / 2 - 30, navY, `${this.page + 1} / ${pages}`, '#7a6a4a', '18px');
-    if (this.page > 0) this.button(SCREEN.width / 2 - 160, navY, t('common.prev'), '#9fbfff', '18px', () => { this.page--; this.render(); });
-    if (this.page < pages - 1) this.button(SCREEN.width / 2 + 80, navY, t('common.next'), '#9fbfff', '18px', () => { this.page++; this.render(); });
+    if (this.page > 0) this.button(SCREEN.width / 2 - 160, navY, t('common.prev'), '#e8c98a', '18px', () => { this.page--; this.render(); });
+    if (this.page < pages - 1) this.button(SCREEN.width / 2 + 80, navY, t('common.next'), '#e8c98a', '18px', () => { this.page++; this.render(); });
   }
 
   renderCard(p, id, x, y) {

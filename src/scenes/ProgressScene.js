@@ -37,7 +37,7 @@ export class ProgressScene extends Phaser.Scene {
     persist();
 
     this.text(20, 16, t('common.gold', { n: p.gold }), '#ffd479', '22px');
-    const back = this.text(SCREEN.width - 140, 16, t('common.back'), '#9fbfff', '20px').setInteractive({ useHandCursor: true });
+    const back = this.text(SCREEN.width - 140, 16, t('common.back'), '#e8c98a', '20px').setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('MenuScene'));
 
     // ── Quests
@@ -45,12 +45,12 @@ export class ProgressScene extends Phaser.Scene {
     quests.forEach((q, i) => {
       const y = 170 + i * 110;
       const done = q.progress >= q.target;
-      this.root.add(this.add.rectangle(290, y, 500, 92, 0x1c1a22).setStrokeStyle(2, done ? 0xffd479 : 0x3a3a3a));
+      this.root.add(this.add.rectangle(290, y, 500, 92, 0x1f1610).setStrokeStyle(2, done ? 0xffd479 : 0x4a3a28));
       this.text(56, y - 34, t(`quest.${q.id}`, { n: q.target }), '#e8dcc0', '17px');
       const reward = q.reward.packs ? t('quest.reward.packs') : t('quest.reward.gold', { n: q.reward.gold });
       this.text(56, y - 8, `🎁 ${reward}`, '#9fe3d0', '14px');
       // progress bar
-      this.root.add(this.add.rectangle(56 + 150, y + 22, 300, 10, 0x2b2b33).setOrigin(0.5));
+      this.root.add(this.add.rectangle(56 + 150, y + 22, 300, 10, 0x33261a).setOrigin(0.5));
       const w = Math.max(2, 300 * (q.progress / q.target));
       this.root.add(this.add.rectangle(56, y + 22, w, 10, done ? 0xffd479 : 0x8a6d3b).setOrigin(0, 0.5));
       this.text(370, y + 14, `${q.progress}/${q.target}`, '#9a8a6a', '14px');
@@ -81,7 +81,7 @@ export class ProgressScene extends Phaser.Scene {
       const x = 620 + col * 215;
       const y = 120 + row * 112;
       const unlocked = Boolean(got[a.id]);
-      this.root.add(this.add.rectangle(x + 100, y + 44, 205, 100, unlocked ? 0x2b2233 : 0x16141a)
+      this.root.add(this.add.rectangle(x + 100, y + 44, 205, 100, unlocked ? 0x2f2014 : 0x16100b)
         .setStrokeStyle(2, unlocked ? 0xffd479 : 0x2a2a2a));
       this.text(x + 8, y + 4, a.icon, '#ffffff', '28px').setAlpha(unlocked ? 1 : 0.3);
       this.text(x + 50, y + 8, t(`ach.${a.id}`), unlocked ? '#ffd479' : '#777777', '14px');

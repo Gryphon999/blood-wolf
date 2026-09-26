@@ -59,7 +59,7 @@ export class StoryScene extends Phaser.Scene {
 
     this.text(20, 16, t('common.gold', { n: p.gold }), '#ffd479', '22px');
     this.text(SCREEN.width / 2, 30, t('story.title'), '#d8c9a8', '22px').setOrigin(0.5);
-    const back = this.text(SCREEN.width - 140, 16, t('common.back'), '#9fbfff', '20px').setInteractive({ useHandCursor: true });
+    const back = this.text(SCREEN.width - 140, 16, t('common.back'), '#e8c98a', '20px').setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => goTo(this, 'MenuScene'));
 
     // Chapter navigation tabs
@@ -95,8 +95,8 @@ export class StoryScene extends Phaser.Scene {
       const mark = cleared ? '↩' : unlocked ? '▶' : '🔒';
       const color = cleared ? '#8fce8f' : playable ? '#ffd479' : '#666666';
       const stroke = playable && !cleared ? (node.boss ? 0xff6a4a : 0xffd479)
-        : cleared ? 0x4a7a4a : 0x3a3a3a;
-      const bg = this.add.rectangle(x, y, BOX_W, 100, node.boss ? 0x241618 : 0x1c1a22).setStrokeStyle(2, stroke);
+        : cleared ? 0x4a7a4a : 0x4a3a28;
+      const bg = this.add.rectangle(x, y, BOX_W, 100, node.boss ? 0x241618 : 0x1f1610).setStrokeStyle(2, stroke);
       this.root.add(bg);
 
       const numLabel = `${mark}  ${globalIdx + 1}. ${t(`story.${node.id}.name`)}`;
@@ -136,13 +136,13 @@ export class StoryScene extends Phaser.Scene {
     const layer = this.add.container(0, 0).setDepth(500);
     const shade = this.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, 0.7)
       .setInteractive();
-    const panel = this.add.rectangle(SCREEN.width / 2, SCREEN.height - 160, SCREEN.width - 160, 180, 0x16121a, 0.96)
+    const panel = this.add.rectangle(SCREEN.width / 2, SCREEN.height - 160, SCREEN.width - 160, 180, 0x16100b, 0.96)
       .setStrokeStyle(2, 0x8a6d3b);
     const speaker = this.add.text(120, SCREEN.height - 236, '', { fontSize: '20px', color: '#ffd479' });
     const body = this.add.text(120, SCREEN.height - 200, '', {
       fontSize: '18px', color: '#e8dcc0', wordWrap: { width: SCREEN.width - 260 },
     });
-    const hint = this.add.text(SCREEN.width - 110, SCREEN.height - 96, '', { fontSize: '16px', color: '#9fbfff' }).setOrigin(1, 0.5);
+    const hint = this.add.text(SCREEN.width - 110, SCREEN.height - 96, '', { fontSize: '16px', color: '#e8c98a' }).setOrigin(1, 0.5);
     layer.add([shade, panel, speaker, body, hint]);
     const skip = this.add.text(SCREEN.width - 110, 40, t('story.skip'), { fontSize: '16px', color: '#9a8a6a' })
       .setOrigin(1, 0.5).setInteractive({ useHandCursor: true });

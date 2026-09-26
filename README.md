@@ -38,3 +38,15 @@ node scripts/simulate.js 400     # баланс: ИИ против ИИ, вин�
 - `src/i18n/` — все строки интерфейса (ru, en).
 - `src/ui/`, `src/scenes/` — отрисовка, анимации, звук и сцены Phaser.
 - `docs/superpowers/` — спеки, планы и заметки по слоям (`notes/layer-15.md` — допущения слоя 15).
+
+## Graphics and UI (ui-overhaul)
+
+- **Crisp rendering.** The layout stays 1280x720 but the canvas is `R` times bigger (`src/ui/render.js`: `R` from `devicePixelRatio` and the window size, between 1 and 2), the camera zoom maps the world onto it and every Phaser `Text` is rasterised at `R`. Nothing is stretched by CSS any more.
+- **Fonts.** Cormorant SC (titles, buttons, card names) and Alegreya (body text), both OFL with Cyrillic, bundled via `@fontsource` (`src/ui/fonts.js`). No CDN calls.
+- **Cards.** `src/ui/CardView.js` draws every card face in code (name plate, cover-fit art window, row/cost plate, power badge). `zoom` draws a card larger and sharp instead of scaling a bitmap. `src/ui/cardLayout.js` holds the pure layout maths (tested).
+- **Card art.** `node scripts/prepare-card-art.mjs` cuts illustrations out of the 12 starter cards that had frame and text baked into the picture (originals in `assets-src/cards-original/`) and shrinks the square PNG portraits. New paintings live in `assets-src/cards-new/`.
+- **Backgrounds.** Painted 3:2 sources in `assets-src/backgrounds/`; `node scripts/prepare-backgrounds.mjs` writes the 16:9 files in `public/assets/bg/` (`bg_menu`, `bg_hall` for every menu scene, `bg_field` for battle). Vignette, torch flicker and embers are drawn in code (`src/ui/background.js`).
+- **Battle board.** `src/ui/battleBoard.js`: lanes as strips of ground with emblems, score shields and a palisade across no-man's-land.
+- **Buttons.** `src/ui/Button.js`: oak plaque in iron bands with heraldic icons.
+- **Arena.** `src/data/opponents.js` builds a random faction, leader and 12-card deck per fight (difficulty and rank scale rarity, no immediate repeat).
+- **Screenshots and tests.** Open the game with `?debug` to reach the Phaser instance as `window.__game` (used by screenshot scripts). All asset paths are relative so the build works from a sub-folder (GitHub Pages).

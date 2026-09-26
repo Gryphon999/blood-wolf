@@ -1,7 +1,8 @@
+import Phaser from 'phaser';
 import { SCREEN } from './layout.js';
 
 // Generic dark background used by battle and other scenes.
-export function drawBackground(scene) {
+function drawFallbackBackground(scene) {
   const g = scene.add.graphics();
   g.fillGradientStyle(0x241b14, 0x241b14, 0x0b0908, 0x0b0908, 1);
   g.fillRect(0, 0, SCREEN.width, SCREEN.height);
@@ -14,7 +15,7 @@ export function drawBackground(scene) {
 }
 
 // Atmospheric menu background: blood moon, forest silhouettes, blood drips.
-export function drawMenuBackground(scene) {
+function drawFallbackMenuBackground(scene) {
   const W = SCREEN.width;
   const H = SCREEN.height;
   const g = scene.add.graphics();
@@ -111,4 +112,86 @@ export function drawMenuBackground(scene) {
   g.fillRect(W - 28, 0, 28, H);
 
   return g;
+}
+
+// ─── Painted backgrounds (public/assets/bg, produced by scripts/prepare-backgrounds.mjs) ─────────────────────────────
+export const BG = { menu: 'bg_menu', hall: 'bg_hall', field: 'bg_field' };
+// Darkening laid over each painting so panels and text stay readable
+const BG_DIM = { menu: 0.18, hall: 0.5, field: 0.3 };
+
+/** Queue the three backgrounds in a scene's preload(); already loaded ones are skipped. */
+export function preloadBackgrounds(scene) {
+  for (const key of Object.values(BG)) {
+    if (!scene.textures.exists(key)) scene.load.image(key, `./assets/bg/${key}.jpg`);
+  }
+}
+
+function coverImage(scene, key) {
+  const img = scene.add.image(SCREEN.width / 2, SCREEN.height / 2, key);
+  img.setScale(Math.max(SCREEN.width / img.width, SCREEN.height / img.height));
+  return img;
+}
+
+// Soft dark edges on all four sides, drawn with alpha gradients
+function drawVignette(scene, strength = 0.7) {
+  const W = SCREEN.width;
+  const H = SCREEN.height;
+  const g = scene.add.graphics();
+  const edge = 150;
+  g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, strength, strength, 0, 0).fillRect(0, 0, W, edge);
+  g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0, 0, strength, strength).fillRect(0, H - edge, W, edge);
+  g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, strength, 0, strength, 0).fillRect(0, 0, edge, H);
+  g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0, strength, 0, strength).fillRect(W - edge, 0, edge, H);
+  return g;
+}
+
+function ensureEmberTexture(scene) {
+  if (scene.textures.exists('ember')) return;
+  const g = scene.make.graphics({ x: 0, y: 0 }, false);
+  g.fillStyle(0xffa040, 0.25).fillCircle(8, 8, 8);
+  g.fillStyle(0xffd080, 0.9).fillCircle(8, 8, 3);
+  g.generateTexture('ember', 16, 16);
+  g.destroy();
+}
+
+// Slow floating sparks; cheap (a handful of particles)
+function addEmbers(scene, count = 1) {
+  ensureEmberTexture(scene);
+  return scene.add.particles(0, 0, 'ember', {
+    x: { min: 0, max: SCREEN.width }, y: SCREEN.height + 10,
+    lifespan: { min: 7000, max: 12000 }, speedY: { min: -30, max: -12 }, speedX: { min: -10, max: 10 },
+    scale: { start: 0.55, end: 0 }, alpha: { start: 0.8, end: 0 },
+    quantity: count, frequency: 650, blendMode: 'ADD',
+  });
+}
+
+// Gentle torch-light breathing over the whole scene
+function addFlicker(scene, color = 0xff9a40, base = 0.05) {
+  const glow = scene.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, color, base)
+    .setBlendMode(Phaser.BlendModes.ADD);
+  scene.tweens.add({
+    targets: glow, alpha: base + 0.05, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+  });
+  return glow;
+}
+
+/** One background for every menu scene: kind = 'hall' (deck, shop, packs, ...), 'field' (battle) or 'menu'. */
+export function drawBackground(scene, kind = 'hall') {
+  const key = BG[kind];
+  if (!key || !scene.textures.exists(key)) return drawFallbackBackground(scene);
+  const layer = scene.add.container(0, 0);
+  layer.add(coverImage(scene, key));
+  layer.add(scene.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, BG_DIM[kind]));
+  layer.add(drawVignette(scene, kind === 'field' ? 0.55 : 0.7));
+  layer.setDepth(-1000);
+  if (kind === 'hall') { addFlicker(scene).setDepth(-999); addEmbers(scene).setDepth(-998); }
+  if (kind === 'field') addFlicker(scene, 0xffb060, 0.025).setDepth(-999);
+  return layer;
+}
+
+export function drawMenuBackground(scene) {
+  if (!scene.textures.exists(BG.menu)) return drawFallbackMenuBackground(scene);
+  const layer = drawBackground(scene, 'menu');
+  addEmbers(scene, 2).setDepth(-998);
+  return layer;
 }
