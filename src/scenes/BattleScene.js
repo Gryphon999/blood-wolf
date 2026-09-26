@@ -395,7 +395,7 @@ export class BattleScene extends Phaser.Scene {
     const shade = this.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, 0.72)
       .setInteractive();
     shade.on('pointerdown', () => this.closeZoom());
-    const cv = createCardView(this, card.def, { card }).setPosition(SCREEN.width / 2, 300).setScale(0.6);
+    const cv = createCardView(this, card.def, { card, zoom: 2.5 }).setPosition(SCREEN.width / 2, 300).setScale(0.25);
     const desc = this.add.text(SCREEN.width / 2, 505, cardDescription(card.def), {
       fontSize: '16px', color: '#e8dcc0', align: 'center', wordWrap: { width: 760 },
       backgroundColor: '#0d0b10', padding: { x: 12, y: 8 },
@@ -404,8 +404,8 @@ export class BattleScene extends Phaser.Scene {
       .setOrigin(0.5);
     layer.add([shade, cv, desc, hint]);
     this.zoomLayer = layer;
-    if (this.registry.get('reduceMotion')) cv.setScale(2.5);
-    else this.tweens.add({ targets: cv, scale: 2.5, duration: 160, ease: 'Back.Out' });
+    if (this.registry.get('reduceMotion')) cv.setScale(1);
+    else this.tweens.add({ targets: cv, scale: 1, duration: 160, ease: 'Back.Out' });
   }
 
   closeZoom() {
