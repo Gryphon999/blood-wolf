@@ -68,7 +68,7 @@ export function barNotes(theme, barIndex) {
 }
 
 // Audio files (placed in public/audio/) — used when available; procedural fallback otherwise
-const AUDIO_FILES = { battle: '/audio/battle.webm', menu: '/audio/menu.webm' };
+const AUDIO_FILES = { battle: './audio/battle.webm', menu: './audio/menu.webm' };
 let _audioEl = null;
 
 let bus = null;

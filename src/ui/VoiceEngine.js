@@ -104,7 +104,7 @@ const _audioCache = new Map();
 
 function getAudio(id) {
   if (!_audioCache.has(id)) {
-    _audioCache.set(id, new Audio(`/audio/voices/${id}.mp3`));
+    _audioCache.set(id, new Audio(`./audio/voices/${id}.mp3`));
   }
   return _audioCache.get(id);
 }

@@ -22,7 +22,7 @@ export function preloadCardAssets(scene) {
     'spy_scout',
   ];
   for (const key of jpgCards) {
-    scene.load.image(key, `/assets/cards/${key}.jpg`);
+    scene.load.image(key, `./assets/cards/${key}.jpg`);
   }
 
   const pngCards = [
@@ -32,11 +32,11 @@ export function preloadCardAssets(scene) {
     'blood_count', 'gargoyle', 'scorch_art',
   ];
   for (const key of pngCards) {
-    scene.load.image(key, `/assets/cards/${key}.png`);
+    scene.load.image(key, `./assets/cards/${key}.png`);
   }
 }
 
 export function preloadBattleAssets(scene) {
   preloadCardAssets(scene);
-  scene.load.image('battle_bg', '/assets/battle_bg.jpg');
+  scene.load.image('battle_bg', './assets/battle_bg.jpg');
 }
