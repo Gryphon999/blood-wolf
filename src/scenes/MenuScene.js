@@ -4,7 +4,7 @@ import {
   MENU_IDS, MENU_TARGETS, MENU_EXTRA_IDS, MENU_EXTRA_X, MENU_INFO_X, menuButtonY, MENU_CENTER_X,
 } from '../ui/menuLayout.js';
 import { SCREEN } from '../ui/layout.js';
-import { drawMenuBackground } from '../ui/background.js';
+import { drawMenuBackground, preloadBackgrounds } from '../ui/background.js';
 import { showChest } from '../sdk/yandex.js';
 import { getProfile, persist } from '../economy/session.js';
 import { grantChestReward } from '../economy/profile.js';
@@ -18,10 +18,19 @@ import { t } from '../i18n/index.js';
 import { sceneFadeIn, goTo } from '../ui/transitions.js';
 import { checkAchievements } from '../economy/achievements.js';
 import { toastAchievements } from '../ui/toast.js';
+import { FONT_TITLE } from '../ui/fonts.js';
+
+const MENU_ICONS = {
+  battle: 'sword', story: 'book', deck: 'deck', shop: 'coin', rank: 'crown', packs: 'packs', quests: 'scroll', settings: 'gear',
+};
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super('MenuScene');
+  }
+
+  preload() {
+    preloadBackgrounds(this);
   }
 
   create() {
@@ -29,15 +38,15 @@ export class MenuScene extends Phaser.Scene {
     sceneFadeIn(this);
 
     // Title with blood-red drop shadow
-    this.add.text(SCREEN.width / 2 + 3, 163, 'Blood Wolf', {
-      fontSize: '58px', color: '#6b0000',
+    this.add.text(SCREEN.width / 2 + 4, 164, 'Blood Wolf', {
+      fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '76px', color: '#5a0a08',
     }).setOrigin(0.5);
     this.add.text(SCREEN.width / 2, 160, 'Blood Wolf', {
-      fontSize: '58px', color: '#e8c060',
-      stroke: '#3a1000', strokeThickness: 4,
+      fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '76px', color: '#f0cf78',
+      stroke: '#2a0a02', strokeThickness: 6,
     }).setOrigin(0.5);
     this.add
-      .text(SCREEN.width / 2, 216, t('menu.subtitle'), { fontSize: '17px', color: '#8a7860' })
+      .text(SCREEN.width / 2, 222, t('menu.subtitle'), { fontFamily: FONT_TITLE, fontStyle: '600', fontSize: '22px', color: '#c9b48a', stroke: '#120a04', strokeThickness: 3 })
       .setOrigin(0.5);
 
     const profile = getProfile();
@@ -47,12 +56,14 @@ export class MenuScene extends Phaser.Scene {
 
     MENU_IDS.forEach((id, i) => {
       createButton(this, MENU_CENTER_X, menuButtonY(i), t(`menu.${id}`), {
+        icon: MENU_ICONS[id],
         onClick: () => goTo(this, MENU_TARGETS[id]),
       });
     });
     MENU_EXTRA_IDS.forEach((id, i) => {
       const badge = id === 'quests' && ready > 0 ? ` (${ready}!)` : id === 'packs' && profile.freePacks > 0 ? ` (${profile.freePacks})` : '';
       createButton(this, MENU_EXTRA_X, menuButtonY(i), t(`menu.${id}`) + badge, {
+        icon: MENU_ICONS[id],
         onClick: () => goTo(this, MENU_TARGETS[id]),
       });
     });
@@ -90,6 +101,7 @@ export class MenuScene extends Phaser.Scene {
     const wait = chestReadyIn(getProfile());
     const label = wait > 0 ? t('chest.wait', { min: Math.ceil(wait / 60000) }) : t('chest.open');
     this.chestButton = createButton(this, MENU_CENTER_X, 670, label, {
+      icon: 'chest',
       enabled: wait === 0 && !this.chestBusy,
       onClick: () => {
         if (this.chestBusy || chestReadyIn(getProfile()) > 0) return;
@@ -112,12 +124,13 @@ export class MenuScene extends Phaser.Scene {
     this.diffRoot?.destroy();
     this.diffRoot = this.add.container(0, 0);
     const profile = getProfile();
-    this.diffRoot.add(this.add.text(SCREEN.width - 380, 20, t('difficulty.label'), { fontSize: '14px', color: '#9a8a6a' }));
+    this.diffRoot.add(this.add.rectangle(SCREEN.width - 205, 40, 390, 58, 0x120e0a, 0.78).setStrokeStyle(1, 0x6a4d2a));
+    this.diffRoot.add(this.add.text(SCREEN.width - 392, 16, t('difficulty.label'), { fontFamily: FONT_TITLE, fontStyle: '600', fontSize: '15px', color: '#c9b48a' }));
     DIFFICULTIES.forEach((d, i) => {
       const active = (profile.difficulty ?? 'normal') === d;
       const label = `${t(`difficulty.${d}`)} ×${DIFFICULTY_MULT[d]}`;
-      const txt = this.add.text(SCREEN.width - 380 + i * 122, 42, label, {
-        fontSize: '14px', color: active ? '#ffd479' : '#6a5a40',
+      const txt = this.add.text(SCREEN.width - 392 + i * 128, 40, label, {
+        fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '17px', color: active ? '#ffd479' : '#a08a62',
         backgroundColor: active ? '#2b2233' : undefined, padding: { x: 4, y: 2 },
       }).setInteractive({ useHandCursor: true });
       txt.on('pointerdown', () => {

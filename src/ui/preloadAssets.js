@@ -1,4 +1,6 @@
+import { preloadBackgrounds } from './background.js';
 export function preloadCardAssets(scene) {
+  preloadBackgrounds(scene);
   const jpgCards = [
     // Starter deck art
     'knight', 'archer', 'merc', 'catapult', 'champion',

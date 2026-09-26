@@ -1,113 +1,152 @@
-import Phaser from 'phaser';
 import { BUTTON_W, BUTTON_H } from './menuLayout.js';
+import { FONT_TITLE } from './fonts.js';
+import { sfx } from './SoundEngine.js';
 
-// Draw wood + blood art onto a Phaser Graphics object.
-// The rect is centered at (0,0) to match how containers work.
-function drawWoodArt(g, w, h, enabled) {
-  const hw = w / 2, hh = h / 2;
+const GOLD = 0xe8c060;
 
-  // Wood base — dark oak gradient
-  if (enabled) {
-    g.fillGradientStyle(0x6b3a15, 0x5a2e0a, 0x4a2208, 0x3a1a05, 1);
-  } else {
-    g.fillGradientStyle(0x2e1a08, 0x251405, 0x1e1003, 0x180d02, 1);
+// Small engraved heraldic icons, drawn with vector strokes so they stay crisp at any render scale.
+const ICONS = {
+  sword(g, cx, cy) {
+    g.beginPath().moveTo(cx - 7, cy + 8).lineTo(cx + 7, cy - 8).strokePath();
+    g.beginPath().moveTo(cx - 6, cy - 1).lineTo(cx + 2, cy + 7).strokePath();
+    g.fillStyle(GOLD, 1).fillCircle(cx - 8, cy + 9, 1.8);
+  },
+  book(g, cx, cy) {
+    g.strokeRect(cx - 9, cy - 7, 8.5, 14).strokeRect(cx + 0.5, cy - 7, 8.5, 14);
+    g.beginPath().moveTo(cx - 6.5, cy - 3).lineTo(cx - 3, cy - 3).moveTo(cx + 3, cy - 3).lineTo(cx + 6.5, cy - 3).strokePath();
+  },
+  deck(g, cx, cy) {
+    g.strokeRect(cx - 8, cy - 6, 10, 14);
+    g.strokeRect(cx - 2, cy - 9, 10, 14);
+    g.fillStyle(GOLD, 1).fillCircle(cx + 3, cy - 2, 1.8);
+  },
+  coin(g, cx, cy) {
+    g.strokeCircle(cx, cy, 8.5).strokeCircle(cx, cy, 4.5);
+    g.beginPath().moveTo(cx, cy - 2).lineTo(cx, cy + 2).strokePath();
+  },
+  crown(g, cx, cy) {
+    g.beginPath().moveTo(cx - 9, cy + 6).lineTo(cx - 9, cy - 5).lineTo(cx - 4, cy + 0).lineTo(cx, cy - 8)
+      .lineTo(cx + 4, cy + 0).lineTo(cx + 9, cy - 5).lineTo(cx + 9, cy + 6).closePath().strokePath();
+    g.beginPath().moveTo(cx - 9, cy + 9).lineTo(cx + 9, cy + 9).strokePath();
+  },
+  packs(g, cx, cy) {
+    g.strokeRect(cx - 9, cy - 5, 13, 12);
+    g.strokeRect(cx - 5, cy - 8, 13, 12);
+    g.fillStyle(GOLD, 1).fillTriangle(cx + 2, cy - 6, cx + 6, cy - 2, cx - 2, cy - 2);
+  },
+  scroll(g, cx, cy) {
+    g.strokeRect(cx - 6, cy - 7, 12, 14);
+    g.strokeCircle(cx - 6, cy - 7, 2.2).strokeCircle(cx + 6, cy + 7, 2.2);
+    g.beginPath().moveTo(cx - 3, cy - 2).lineTo(cx + 3, cy - 2).moveTo(cx - 3, cy + 2).lineTo(cx + 3, cy + 2).strokePath();
+  },
+  gear(g, cx, cy) {
+    g.strokeCircle(cx, cy, 4.5);
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      g.beginPath().moveTo(cx + Math.cos(a) * 4.5, cy + Math.sin(a) * 4.5)
+        .lineTo(cx + Math.cos(a) * 8.5, cy + Math.sin(a) * 8.5).strokePath();
+    }
+  },
+  chest(g, cx, cy) {
+    g.strokeRect(cx - 9, cy - 1, 18, 9);
+    g.beginPath().moveTo(cx - 9, cy - 1).lineTo(cx - 7, cy - 7).lineTo(cx + 7, cy - 7).lineTo(cx + 9, cy - 1).strokePath();
+    g.fillStyle(GOLD, 1).fillRect(cx - 1.5, cy + 1, 3, 4);
+  },
+};
+
+// Oak plaque with iron bands and rivets. The rect is centred at (0,0) to match how containers work.
+export function drawPlaque(g, w, h, enabled) {
+  const hw = w / 2;
+  const hh = h / 2;
+  g.fillStyle(0x000000, 0.45).fillRoundedRect(-hw + 2, -hh + 4, w, h, 6);
+
+  // Iron frame
+  if (enabled) g.fillGradientStyle(0x57504a, 0x57504a, 0x201c17, 0x201c17, 1);
+  else g.fillGradientStyle(0x2b2824, 0x2b2824, 0x14120f, 0x14120f, 1);
+  g.fillRoundedRect(-hw, -hh, w, h, 6);
+
+  // Oak inlay with grain
+  const ix = -hw + 6;
+  const iy = -hh + 6;
+  const iw = w - 12;
+  const ih = h - 12;
+  if (enabled) g.fillGradientStyle(0x6a4322, 0x6a4322, 0x36200f, 0x36200f, 1);
+  else g.fillGradientStyle(0x2e2419, 0x2e2419, 0x1b140d, 0x1b140d, 1);
+  g.fillRoundedRect(ix, iy, iw, ih, 3);
+  for (let i = 0; i < 5; i++) {
+    const gy = iy + 6 + i * (ih / 5.4);
+    g.lineStyle(1, enabled ? 0x2a1608 : 0x150e08, 0.32);
+    g.beginPath().moveTo(ix + 6, gy).lineTo(ix + iw * 0.3, gy + (i % 2 ? 1 : -1))
+      .lineTo(ix + iw * 0.62, gy + (i % 2 ? -1 : 1)).lineTo(ix + iw - 6, gy).strokePath();
   }
-  g.fillRoundedRect(-hw, -hh, w, h, 5);
 
-  // Wood grain lines
-  const grains = [0x2a1005, 0x7a4522, 0x2a1005, 0x6a3818, 0x2a1005, 0x7a4020];
-  for (let i = 0; i < 6; i++) {
-    const gy = -hh + 7 + i * (h / 6.2);
-    const wave = i % 2 === 0 ? 1 : -1;
-    g.lineStyle(1, grains[i], 0.28 + (i % 3) * 0.07);
-    g.beginPath();
-    g.moveTo(-hw + 8, gy);
-    g.lineTo(-hw + w * 0.25, gy + wave);
-    g.lineTo(-hw + w * 0.55, gy - wave * 0.6);
-    g.lineTo(-hw + w * 0.78, gy + wave * 0.8);
-    g.lineTo(hw - 8, gy);
-    g.strokePath();
-  }
-
-  if (enabled) {
-    // Blood smear — left side
-    g.fillStyle(0x6b0000, 0.55);
-    g.fillTriangle(-hw + 16, -hh + 3, -hw + 62, -hh + 1, -hw + 48, hh - 3);
-    g.fillStyle(0x7a0000, 0.42);
-    g.fillCircle(-hw + 30, -1, 8);
-    g.fillCircle(-hw + 50, 5, 5);
-    g.fillStyle(0x880000, 0.35);
-    g.fillCircle(-hw + 20, 6, 4);
-    g.fillCircle(-hw + 42, -5, 3);
-    // Blood drip
-    g.fillStyle(0x7a0000, 0.85);
-    g.fillRect(-hw + 37, hh - 13, 3, 12);
-    g.fillCircle(-hw + 38.5, hh - 1, 4.5);
-    // Tiny satellite drop
-    g.fillCircle(-hw + 46, hh + 1, 2.5);
-  }
-
-  // Top-edge highlight
-  g.lineStyle(1, 0x9a6040, enabled ? 0.45 : 0.18);
-  g.beginPath(); g.moveTo(-hw + 5, -hh + 2); g.lineTo(hw - 5, -hh + 2); g.strokePath();
-
-  // Bottom-edge shadow
-  g.lineStyle(1, 0x120803, 0.85);
-  g.beginPath(); g.moveTo(-hw + 5, hh - 2); g.lineTo(hw - 5, hh - 2); g.strokePath();
-
-  // Corner nails
-  if (enabled) {
-    for (const [nx, ny] of [[-hw+11, -hh+9], [hw-11, -hh+9], [-hw+11, hh-9], [hw-11, hh-9]]) {
-      g.fillStyle(0xc8a060, 1); g.fillCircle(nx, ny, 5.5);
-      g.fillStyle(0x8a5e2a, 1); g.fillCircle(nx, ny, 3.8);
-      g.fillStyle(0x3a2010, 1); g.fillCircle(nx, ny, 1.8);
-      g.lineStyle(1, 0x4a3018, 0.65);
-      g.beginPath(); g.moveTo(nx - 2, ny); g.lineTo(nx + 2, ny); g.strokePath();
-      g.beginPath(); g.moveTo(nx, ny - 2); g.lineTo(nx, ny + 2); g.strokePath();
+  // Iron end-caps with rivets
+  const capW = 26;
+  for (const side of [-1, 1]) {
+    const cx = side < 0 ? -hw + 6 : hw - 6 - capW;
+    if (enabled) g.fillGradientStyle(0x6b645c, 0x6b645c, 0x2a2622, 0x2a2622, 1);
+    else g.fillGradientStyle(0x36322d, 0x36322d, 0x1a1815, 0x1a1815, 1);
+    g.fillRoundedRect(cx, -hh + 6, capW, h - 12, 3);
+    const rx = cx + capW / 2;
+    for (const ry of [-hh + 14, hh - 14]) {
+      g.fillStyle(0x151210, 1).fillCircle(rx, ry, 4);
+      g.fillStyle(enabled ? 0xb9b1a4 : 0x5a554e, 1).fillCircle(rx, ry - 0.5, 3);
+      g.fillStyle(0xffffff, enabled ? 0.5 : 0.15).fillCircle(rx - 1, ry - 1.5, 1);
     }
   }
 
-  // Outer dark frame
-  g.lineStyle(2, 0x1a0a02, 1);
-  g.strokeRoundedRect(-hw, -hh, w, h, 5);
-  // Inner subtle frame
-  g.lineStyle(1, 0x6a3a18, 0.28);
-  g.strokeRoundedRect(-hw + 2, -hh + 2, w - 4, h - 4, 4);
+  // Gold hairline and top highlight
+  g.lineStyle(1, GOLD, enabled ? 0.55 : 0.18).strokeRoundedRect(-hw + 4, -hh + 4, w - 8, h - 8, 4);
+  g.lineStyle(1, 0xffffff, enabled ? 0.18 : 0.05);
+  g.beginPath().moveTo(-hw + 8, -hh + 1.5).lineTo(hw - 8, -hh + 1.5).strokePath();
+  g.lineStyle(2, 0x0b0805, 1).strokeRoundedRect(-hw, -hh, w, h, 6);
 }
 
 export function createButton(scene, x, y, label, options = {}) {
-  const { enabled = true, onClick = () => {} } = options;
+  const { enabled = true, onClick = () => {}, icon = null } = options;
   const container = scene.add.container(x, y);
 
-  // Wood art layer
   const gfx = scene.add.graphics();
-  drawWoodArt(gfx, BUTTON_W, BUTTON_H, enabled);
+  drawPlaque(gfx, BUTTON_W, BUTTON_H, enabled);
   container.add(gfx);
 
-  // Hover highlight overlay (hidden until pointer enters)
+  // Medallion with the heraldic icon inside the left iron cap
+  const hasIcon = icon && ICONS[icon];
+  if (hasIcon) {
+    const ig = scene.add.graphics();
+    ig.lineStyle(1.5, GOLD, enabled ? 1 : 0.35);
+    ICONS[icon](ig, 0, 0);
+    ig.setPosition(-BUTTON_W / 2 + 6 + 13, 0).setScale(1.25);
+    container.add(ig);
+  }
+
+  // Torch-glow highlight, hidden until the pointer is over the button
   const hover = scene.add.graphics();
-  hover.fillStyle(0xffd470, 0.13);
-  hover.fillRoundedRect(-BUTTON_W / 2, -BUTTON_H / 2, BUTTON_W, BUTTON_H, 5);
+  hover.fillStyle(0xffb050, 0.2).fillRoundedRect(-BUTTON_W / 2 + 6, -BUTTON_H / 2 + 6, BUTTON_W - 12, BUTTON_H - 12, 3);
   hover.setAlpha(0);
   container.add(hover);
 
-  // Label
-  const textColor = enabled ? '#f0e4c0' : '#5a4530';
-  const txt = scene.add.text(0, 0, label, {
-    fontSize: '21px',
-    color: textColor,
-    stroke: enabled ? '#180800' : 'transparent',
-    strokeThickness: enabled ? 2 : 0,
+  const txt = scene.add.text(hasIcon ? 12 : 0, -1, label, {
+    fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '25px',
+    color: enabled ? '#f5e0a2' : '#6b5a3c',
+    stroke: enabled ? '#1a0d04' : 'transparent', strokeThickness: enabled ? 4 : 0,
   }).setOrigin(0.5);
   container.add(txt);
 
-  // Invisible hit rectangle on top
   if (enabled) {
     const hit = scene.add.rectangle(0, 0, BUTTON_W, BUTTON_H, 0x000000, 0);
     hit.setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', onClick);
-    hit.on('pointerover', () => hover.setAlpha(1));
-    hit.on('pointerout',  () => hover.setAlpha(0));
+    hit.on('pointerdown', () => { sfx.click(); onClick(); });
+    hit.on('pointerover', () => {
+      hover.setAlpha(1);
+      txt.setColor('#fff3c4');
+      scene.tweens.add({ targets: container, scaleX: 1.03, scaleY: 1.03, duration: 90 });
+    });
+    hit.on('pointerout', () => {
+      hover.setAlpha(0);
+      txt.setColor('#f5e0a2');
+      scene.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 90 });
+    });
     container.add(hit);
   }
 

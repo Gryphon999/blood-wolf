@@ -31,6 +31,10 @@ import { tutorialStep, isInfoStep, TUTORIAL_STEPS, TUTORIAL_ANCHOR_Y } from '../
 import { SHOP_CARDS } from '../data/shopCards.js';
 import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
+import { drawLane, drawScoreMedallion, drawNoMansLand } from '../ui/battleBoard.js';
+import { drawPlaque } from '../ui/Button.js';
+import { generateOpponent } from '../data/opponents.js';
+import { FONT_TITLE } from '../ui/fonts.js';
 import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadBattleAssets } from '../ui/preloadAssets.js';
 import { sfx } from '../ui/SoundEngine.js';
@@ -47,6 +51,8 @@ const ROW_ROLE_COLOR  = { melee: '#c06060', ranged: '#60a060', siege: '#6080c0' 
 const INSTANT_SPECIALS = new Set(['weather_frost', 'weather_fog', 'weather_rain', 'clear', 'scorch',
   'blessing_humans', 'order_ready', 'fog_frost_combo', 'bleed_all_enemies']);
 const TARGET_STROKE = 0xff6600;
+// Faction + leader of the previous arena opponent, so two fights in a row never face the same one
+let lastOpponentKey = null;
 
 // Left-click only: right-click is reserved for cancelling target selection
 function onLeftClick(obj, handler) {
@@ -67,13 +73,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(data) {
-    drawBackground(this);
+    drawBackground(this, 'field');
     sceneFadeIn(this, 'battle');
-    if (this.textures.exists('battle_bg')) {
-      this.add.image(SCREEN.width / 2, SCREEN.height / 2, 'battle_bg')
-        .setDisplaySize(SCREEN.width, SCREEN.height)
-        .setAlpha(0.18);
-    }
     ensureSparkTexture(this);
 
     this.storyIndex   = data?.storyIndex ?? null;
@@ -81,7 +82,15 @@ export class BattleScene extends Phaser.Scene {
     this.rewardCardId = data?.rewardCardId ?? null;
     this.isReplay     = data?.isReplay ?? false;
     this.returnScene  = this.storyIndex !== null ? 'StoryScene' : 'MenuScene';
-    const enemyDeck   = data?.enemyDeck ?? AI_DECK;
+    // Arena (no story node, no fixed deck): a fresh random opponent every fight
+    this.opponent = null;
+    let enemyDeck = data?.enemyDeck ?? AI_DECK;
+    if (this.storyIndex === null && !data?.enemyDeck) {
+      const profile = getProfile();
+      this.opponent = generateOpponent({ difficulty: profile.difficulty ?? 'normal', points: profile.rank?.points ?? 0, avoid: lastOpponentKey });
+      lastOpponentKey = this.opponent.key;
+      enemyDeck = this.opponent.deck;
+    }
     // An emptied or too-small deck falls back to the starter deck instead of an empty hand
     const playerDeck  = isDeckValid(getProfile()) ? buildDeckCards(getProfile()) : PLAYER_DECK;
     const pools = [
@@ -92,7 +101,7 @@ export class BattleScene extends Phaser.Scene {
     const enemyFaction = enemyDeck[0]?.faction ?? 'monsters';
     const leaders = [
       chosenLeader(getProfile(), playerFaction),
-      data?.enemyLeaderId !== undefined ? getLeader(data.enemyLeaderId) : randomLeader(enemyFaction),
+      data?.enemyLeaderId !== undefined ? getLeader(data.enemyLeaderId) : (this.opponent?.leader ?? randomLeader(enemyFaction)),
     ];
     this.revealed = null; // enemy cards shown by a peek ability
     this.difficulty = getProfile().difficulty ?? 'normal';
@@ -104,6 +113,7 @@ export class BattleScene extends Phaser.Scene {
       permanentWeather: data?.rules?.permanentWeather ?? [],
       bossUnits: data?.rules?.bossUnits ?? [],
     });
+    if (this.opponent) this.showOpponentBanner();
 
     this.selectedIndex  = null;
     this.pendingPlay    = null;  // { handIndex, row, targets } while choosing a Deploy target
@@ -298,6 +308,7 @@ export class BattleScene extends Phaser.Scene {
       () => { if (!this.busy) showInterstitial(() => this.scene.start(this.returnScene)); });
 
     // ── Board rows
+    drawNoMansLand(this, this.root, BOARD_CENTER_Y);
     this._deferredOrderBtns = [];
     for (const rowName of ROW_NAMES) {
       this.renderRow(opp, 'opponent', rowName);
@@ -335,11 +346,14 @@ export class BattleScene extends Phaser.Scene {
     this.renderGems(0, youInfo.x + youInfo.width + 22, HAND_Y + 61);
     // Big touch-friendly PASS button to the right of the player's rows (clear of the hand)
     const canPass = this.canAct();
-    const passBtn = this.add.rectangle(SCREEN.width - 80, rowY('player', 'siege'), 130, 60, canPass ? 0x3a1c1c : 0x1a1a1f)
-      .setStrokeStyle(2, canPass ? 0xffb3b3 : 0x3a3a3a);
+    const passPlate = this.add.graphics().setPosition(SCREEN.width - 80, rowY('player', 'siege'));
+    drawPlaque(passPlate, 130, 60, canPass);
+    this.root.add(passPlate);
+    const passBtn = this.add.rectangle(SCREEN.width - 80, rowY('player', 'siege'), 130, 60, 0x000000, 0.001);
     this.root.add(passBtn);
-    this.root.add(this.add.text(SCREEN.width - 80, rowY('player', 'siege'), t('battle.pass'), {
-      fontSize: '20px', color: canPass ? '#ffb3b3' : '#666666',
+    this.root.add(this.add.text(SCREEN.width - 80, rowY('player', 'siege') - 1, t('battle.pass'), {
+      fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '28px', color: canPass ? '#f5e0a2' : '#6b5a3c',
+      stroke: canPass ? '#1a0d04' : 'transparent', strokeThickness: canPass ? 4 : 0,
     }).setOrigin(0.5));
     onLeftClick(passBtn, () => this.onPass());
 
@@ -381,6 +395,29 @@ export class BattleScene extends Phaser.Scene {
       }
     });
     this.gemsLost[playerIdx] = lostNow;
+  }
+
+  /** Short pre-battle plate: who the random arena opponent is. */
+  showOpponentBanner() {
+    const opp = this.opponent;
+    const cx = SCREEN.width / 2;
+    const cy = 300;
+    const layer = this.add.container(0, 0).setDepth(2000).setAlpha(0);
+    const plate = this.add.graphics().setPosition(cx, cy);
+    drawPlaque(plate, 520, 110, true);
+    layer.add(plate);
+    layer.add(this.add.text(cx, cy - 32, t('opponent.title'), {
+      fontFamily: FONT_TITLE, fontStyle: '600', fontSize: '16px', color: '#c9b48a', stroke: '#120a04', strokeThickness: 3,
+    }).setOrigin(0.5));
+    layer.add(this.add.text(cx, cy - 4, t(`opponent.name.${opp.faction}.${opp.nameIndex}`), {
+      fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '30px', color: '#f5e0a2', stroke: '#1a0d04', strokeThickness: 4,
+    }).setOrigin(0.5));
+    layer.add(this.add.text(cx, cy + 30, t('opponent.line', {
+      faction: t(`opponent.faction.${opp.faction}`), leader: opp.leader ? t(`leader.${opp.leader.id}`) : '—',
+    }), { fontFamily: FONT_TITLE, fontStyle: '600', fontSize: '17px', color: '#e8d6a8', stroke: '#120a04', strokeThickness: 3 }).setOrigin(0.5));
+    const quick = this.registry.get('reduceMotion');
+    this.tweens.add({ targets: layer, alpha: 1, duration: quick ? 1 : 350 });
+    this.tweens.add({ targets: layer, alpha: 0, delay: 2300, duration: quick ? 1 : 500, onComplete: () => layer.destroy() });
   }
 
   // ─── Card zoom ────────────────────────────────────────────────────────────
@@ -551,15 +588,16 @@ export class BattleScene extends Phaser.Scene {
     const m = this.match;
     const targets = this.activeTargets();
 
-    const bg = this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, ROW_TINT[rowName] ?? 0x1c1a22)
-      .setStrokeStyle(1, 0x4a4436);
+    drawLane(this, this.root, y, rowName, sideName);
+    // Invisible hit area: also carries the target / valid-row highlight stroke
+    const bg = this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, 0x000000, 0.001);
     this.root.add(bg);
 
     if (m.weather.has(rowName)) {
       this.root.add(
         this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, WEATHER_OVERLAY[rowName], 0.24),
       );
-      this.addText(170, y - 10, WEATHER_LABEL[rowName] ?? '☁', '#aaddff', '18px');
+      this.addText(128, y - 12, WEATHER_LABEL[rowName] ?? '☁', '#aaddff', '22px');
     }
 
     side.board[rowName].forEach((card, i) => {
@@ -607,8 +645,8 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    this.addText(SCREEN.width - 300, y - 10, `[${rowPower(side.board, rowName, m.weather)}]`, '#ffd479');
-    this.addText(SCREEN.width - 295, y + 8, ROW_ROLE_LABEL[rowName], ROW_ROLE_COLOR[rowName], '11px');
+    drawScoreMedallion(this, this.root, SCREEN.width - 190, y, rowPower(side.board, rowName, m.weather),
+      t(`lane.${rowName}`), ROW_ROLE_COLOR[rowName]);
 
     if (targets && sideName === 'opponent' && targets.includes(rowName)) {
       bg.setStrokeStyle(3, TARGET_STROKE);
