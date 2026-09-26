@@ -28,7 +28,7 @@ export const PLAYER_DECK = [
   card('champion',  'Витязь',      'humans',   'hero',    'melee',  7, 'legendary', 11,{ art: 'champion', tags: ['knight'], resilience: true, deployEffect: 'boost', deployParam: 2 }),
   card('warhorn',   'Рог войны',   'humans',   'special', 'melee',  0, 'common',    4, { art: 'warhorn',  effect: 'horn' }),
   card('frost',     'Мороз',       'humans',   'special', 'melee',  0, 'rare',      3, { art: 'frost',    effect: 'weather_frost' }),
-  card('clear_sky', 'Ясное небо',  'humans',   'special', 'melee',  0, 'common',    2, { effect: 'clear' }),
+  card('clear_sky', 'Ясное небо',  'humans',   'special', 'melee',  0, 'common',    2, { art: 'clear_sky', effect: 'clear' }),
   card('medic',     'Медик',       'humans',   'unit',    'melee',  4, 'rare',      5, { art: 'medic',    tags: ['medic'], deployEffect: 'heal', deployParam: 4 }),
 ];
 
@@ -41,6 +41,6 @@ export const AI_DECK = [
   card('troll_a',  'Тролль',  'monsters', 'unit',    'siege',  6, 'rare',      5, { art: 'troll', tags: ['giant'], deployEffect: 'shield_self' }),
   card('troll_b',  'Тролль',  'monsters', 'unit',    'siege',  6, 'rare',      5, { art: 'troll', tags: ['giant'], deployEffect: 'shield_self' }),
   card('beast',    'Зверь',   'monsters', 'hero',    'melee',  8, 'legendary', 11,{ art: 'beast', tags: ['beast'], immune: true, deployEffect: 'damage', deployParam: 3 }),
-  card('blight',   'Порча',   'monsters', 'special', 'melee',  0, 'rare',      4, { effect: 'sign_damage' }),
-  card('fog',      'Туман',   'monsters', 'special', 'ranged', 0, 'common',    3, { effect: 'weather_fog' }),
+  card('blight',   'Порча',   'monsters', 'special', 'melee',  0, 'rare',      4, { art: 'blight', effect: 'sign_damage' }),
+  card('fog',      'Туман',   'monsters', 'special', 'ranged', 0, 'common',    3, { art: 'fog', effect: 'weather_fog' }),
 ];

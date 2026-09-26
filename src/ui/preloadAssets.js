@@ -2,7 +2,7 @@ export function preloadCardAssets(scene) {
   const jpgCards = [
     // Starter deck art
     'knight', 'archer', 'merc', 'catapult', 'champion',
-    'warhorn', 'frost', 'medic',
+    'warhorn', 'frost', 'medic', 'clear_sky', 'fog', 'blight',
     'ghoul', 'harpy', 'troll', 'beast',
     // Human shop cards
     'shield_knight', 'squire', 'banner', 'paladin',
