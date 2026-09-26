@@ -44,7 +44,7 @@ export class PackScene extends Phaser.Scene {
 
   button(x, y, str, color, size, onClick) {
     const o = this.add.text(x, y, str, {
-      fontSize: size, color, backgroundColor: '#2b2b33', padding: { x: 14, y: 8 },
+      fontSize: size, color, backgroundColor: '#33261a', padding: { x: 14, y: 8 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     o.on('pointerdown', () => { sfx.click(); onClick(); });
     this.root.add(o);
@@ -57,7 +57,7 @@ export class PackScene extends Phaser.Scene {
     this.text(20, 16, t('common.gold', { n: p.gold }), '#ffd479', '22px');
     this.text(SCREEN.width / 2, 30, t('pack.title'), '#d8c9a8', '26px').setOrigin(0.5);
     if (!this.cards) {
-      const back = this.text(SCREEN.width - 140, 16, t('common.back'), '#9fbfff', '20px').setInteractive({ useHandCursor: true });
+      const back = this.text(SCREEN.width - 140, 16, t('common.back'), '#e8c98a', '20px').setInteractive({ useHandCursor: true });
       back.on('pointerdown', () => this.scene.start('MenuScene'));
     }
     if (p.freePacks > 0) this.text(20, 48, t('pack.free', { n: p.freePacks }), '#9fe3d0', '16px');
@@ -166,6 +166,6 @@ export class PackScene extends Phaser.Scene {
       this.cards = null;
       this.open();
     });
-    this.button(SCREEN.width / 2 + 140, 600, t('common.back'), '#9fbfff', '20px', () => this.scene.start('MenuScene'));
+    this.button(SCREEN.width / 2 + 140, 600, t('common.back'), '#e8c98a', '20px', () => this.scene.start('MenuScene'));
   }
 }

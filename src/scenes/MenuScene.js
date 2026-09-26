@@ -82,7 +82,7 @@ export class MenuScene extends Phaser.Scene {
     const tier = tierOf(points);
     const x = MENU_INFO_X;
     const y = menuButtonY(0) - 20;
-    this.add.rectangle(x, y + 70, 260, 170, 0x1c1a22, 0.8).setStrokeStyle(1, 0x3a2e1e);
+    this.add.rectangle(x, y + 70, 260, 170, 0x1f1610, 0.8).setStrokeStyle(1, 0x3a2e1e);
     this.add.text(x, y, t('rank.short', { icon: tier.icon, name: t(`rank.${tier.id}`), n: points }), {
       fontSize: '17px', color: '#ffd479',
     }).setOrigin(0.5);

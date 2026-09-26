@@ -34,7 +34,7 @@ import { drawBackground } from '../ui/background.js';
 import { drawLane, drawScoreMedallion, drawNoMansLand } from '../ui/battleBoard.js';
 import { drawPlaque } from '../ui/Button.js';
 import { generateOpponent } from '../data/opponents.js';
-import { FONT_TITLE } from '../ui/fonts.js';
+import { FONT_TITLE, FONT_BODY } from '../ui/fonts.js';
 import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadBattleAssets } from '../ui/preloadAssets.js';
 import { sfx } from '../ui/SoundEngine.js';
@@ -304,7 +304,7 @@ export class BattleScene extends Phaser.Scene {
     this.renderGems(1, enemyInfo.x + enemyInfo.width + 22, 23);
     const status = m.winner !== null ? '' : m.current === 0 ? t('battle.yourTurn') : t('battle.aiTurn');
     this.addText(SCREEN.width / 2 - 40, 14, status, '#ffffff');
-    onLeftClick(this.addText(SCREEN.width - 110, 14, t('battle.back'), '#9fbfff'),
+    onLeftClick(this.addText(SCREEN.width - 110, 14, t('battle.back'), '#e8c98a'),
       () => { if (!this.busy) showInterstitial(() => this.scene.start(this.returnScene)); });
 
     // ── Board rows
@@ -380,7 +380,7 @@ export class BattleScene extends Phaser.Scene {
       const gx = x + i * 22;
       const fresh = state === 'lost' && i >= GEM_COUNT - lostNow && i < GEM_COUNT - this.gemsLost[playerIdx];
       const g = this.add.graphics({ x: gx, y });
-      const color = state === 'full' || fresh ? 0xffd479 : 0x2b2b33;
+      const color = state === 'full' || fresh ? 0xffd479 : 0x33261a;
       g.fillStyle(color, 1);
       g.lineStyle(1, state === 'full' ? 0xfff0c0 : 0x4a4436, 1);
       g.beginPath();
@@ -433,11 +433,13 @@ export class BattleScene extends Phaser.Scene {
       .setInteractive();
     shade.on('pointerdown', () => this.closeZoom());
     const cv = createCardView(this, card.def, { card, zoom: 2.5 }).setPosition(SCREEN.width / 2, 300).setScale(0.25);
-    const desc = this.add.text(SCREEN.width / 2, 505, cardDescription(card.def), {
-      fontSize: '16px', color: '#e8dcc0', align: 'center', wordWrap: { width: 760 },
-      backgroundColor: '#0d0b10', padding: { x: 12, y: 8 },
+    const descText = this.add.text(SCREEN.width / 2, 508, cardDescription(card.def), {
+      fontFamily: FONT_BODY, fontSize: '21px', color: '#f0e2bd', align: 'center', wordWrap: { width: 800 }, lineSpacing: 5,
     }).setOrigin(0.5, 0);
-    const hint = this.add.text(SCREEN.width / 2, SCREEN.height - 30, t('battle.zoomClose'), { fontSize: '13px', color: '#9a8a6a' })
+    const descPlate = this.add.rectangle(SCREEN.width / 2, 508 + descText.height / 2, Math.min(880, descText.width + 56), descText.height + 26, 0x140f0a, 0.96)
+      .setStrokeStyle(2, 0x8a6d3b);
+    const desc = this.add.container(0, 0, [descPlate, descText]);
+    const hint = this.add.text(SCREEN.width / 2, SCREEN.height - 24, t('battle.zoomClose'), { fontFamily: FONT_TITLE, fontStyle: '600', fontSize: '16px', color: '#b8a47c' })
       .setOrigin(0.5);
     layer.add([shade, cv, desc, hint]);
     this.zoomLayer = layer;
@@ -547,8 +549,8 @@ export class BattleScene extends Phaser.Scene {
     if (!leader) return;
     const used = this.match.players[playerIdx].leaderUsed;
     const ready = playerIdx === 0 && this.canAct() && canUseLeader(this.match, 0);
-    const disc = this.add.circle(x, y, 26, used ? 0x1a1a1f : 0x2b2233)
-      .setStrokeStyle(ready ? 3 : 2, ready ? 0xffd479 : used ? 0x3a3a3a : 0x8a6d3b);
+    const disc = this.add.circle(x, y, 26, used ? 0x1a1a1f : 0x2f2014)
+      .setStrokeStyle(ready ? 3 : 2, ready ? 0xffd479 : used ? 0x4a3a28 : 0x8a6d3b);
     this.root.add(disc);
     this.root.add(this.add.text(x, y, leader.icon ?? '♛', { fontSize: '24px' }).setOrigin(0.5).setAlpha(used ? 0.35 : 1));
     const name = t(`leader.${leader.id}`) + (used ? ` (${t('leader.used')})` : '');
@@ -819,7 +821,7 @@ export class BattleScene extends Phaser.Scene {
     );
 
     this.root.add(onLeftClick(
-      this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, t('common.back'), { fontSize: '24px', color: '#9fbfff' })
+      this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 60, t('common.back'), { fontSize: '24px', color: '#e8c98a' })
         .setOrigin(0.5),
       () => showInterstitial(() => this.scene.start(this.returnScene,
         this.storyIndex !== null && w === 0 ? { outroIndex: this.storyIndex } : undefined)),

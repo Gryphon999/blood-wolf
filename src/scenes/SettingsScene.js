@@ -38,7 +38,7 @@ export class SettingsScene extends Phaser.Scene {
   chip(x, y, text, active, onClick) {
     const o = this.add.text(x, y, text, {
       fontSize: '22px', color: active ? '#14100c' : '#e8dcc0',
-      backgroundColor: active ? '#ffd479' : '#2b2b33', padding: { x: 14, y: 8 },
+      backgroundColor: active ? '#ffd479' : '#33261a', padding: { x: 14, y: 8 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     o.on('pointerdown', onClick);
     this.root.add(o);
@@ -65,7 +65,7 @@ export class SettingsScene extends Phaser.Scene {
     const p = getProfile();
     const s = getSettings(p);
     this.root.add(this.add.text(SCREEN.width / 2, 60, t('settings.title'), { fontSize: '34px', color: '#ffd479' }).setOrigin(0.5));
-    const back = this.add.text(SCREEN.width - 140, 16, t('common.back'), { fontSize: '20px', color: '#9fbfff' })
+    const back = this.add.text(SCREEN.width - 140, 16, t('common.back'), { fontSize: '20px', color: '#e8c98a' })
       .setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => goTo(this, 'MenuScene'));
     this.root.add(back);

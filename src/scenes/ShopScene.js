@@ -53,7 +53,7 @@ export class ShopScene extends Phaser.Scene {
     // Header
     this.text(20, 16, t('common.gold', { n: p.gold }), '#ffd479', '22px');
     this.text(SCREEN.width / 2 - 60, 16, t('menu.shop'), '#d8c9a8', '22px');
-    const back = this.text(SCREEN.width - 120, 16, t('common.back'), '#9fbfff', '20px')
+    const back = this.text(SCREEN.width - 120, 16, t('common.back'), '#e8c98a', '20px')
       .setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('MenuScene'));
 
@@ -93,13 +93,13 @@ export class ShopScene extends Phaser.Scene {
     this.text(SCREEN.width / 2 - 60, navY, `${this.page + 1} / ${totalPages}`, '#7a6a4a', '18px');
 
     if (this.page > 0) {
-      const prev = this.text(SCREEN.width / 2 - 140, navY, t('common.prev'), '#9fbfff', '18px')
+      const prev = this.text(SCREEN.width / 2 - 140, navY, t('common.prev'), '#e8c98a', '18px')
         .setInteractive({ useHandCursor: true });
       prev.on('pointerdown', () => { this.page--; this.render(); });
     }
 
     if (this.page < totalPages - 1) {
-      const next = this.text(SCREEN.width / 2 + 60, navY, t('common.next'), '#9fbfff', '18px')
+      const next = this.text(SCREEN.width / 2 + 60, navY, t('common.next'), '#e8c98a', '18px')
         .setInteractive({ useHandCursor: true });
       next.on('pointerdown', () => { this.page++; this.render(); });
     }
