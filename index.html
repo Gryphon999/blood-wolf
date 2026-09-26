@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Blood Wolf</title>
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0b0d; }
+      body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      #game { width: 100vw; height: 100vh; height: 100dvh; }
+      #rotate-hint {
+        display: none; position: fixed; left: 0; right: 0; top: 0; padding: 10px 16px;
+        background: rgba(20, 16, 12, 0.92); color: #ffd479; font: 15px monospace; text-align: center; z-index: 10;
+      }
+      @media (orientation: portrait) and (max-width: 900px) {
+        #rotate-hint { display: block; }
+      }
+    </style>
+    <script src="https://yandex.ru/games/sdk/v2"></script>
+    <script type="module" crossorigin src="./assets/index-Dyw2_PZz.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BSUUaQ2S.css">
+  </head>
+  <body>
+    <div id="rotate-hint">⟳</div>
+    <div id="game"></div>
+  </body>
+</html>
