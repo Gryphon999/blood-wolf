@@ -58,7 +58,7 @@ const HUMAN_CARDS = [
   card('oath_brother_a', 'Брат по клятве',    'humans', 'unit',    'ranged', 3, 'common',    4,  { art: 'oath_brother', tags: ['archer'], bond: true }),
   card('oath_brother_b', 'Брат по клятве',    'humans', 'unit',    'ranged', 3, 'common',    4,  { art: 'oath_brother', tags: ['archer'], bond: true }),
   // Leader
-  card('king_raven',     'Король Рэйвен',     'humans', 'hero',    'melee',  5, 'legendary', 0,  { art: 'king_raven',     tags: ['leader', 'knight'], cost: 0, deployEffect: 'shield_self', hasOrder: true, orderEffect: 'boost_knights', orderParam: 1, chargeMax: 2 }),
+  card('king_raven',     'Король Рэйвен',     'humans', 'hero',    'melee',  5, 'legendary', 0,  { art: 'king_raven',     tags: ['leader', 'knight'], cost: 0, deployEffect: 'boost_all_faction', deployParam: 1, hasOrder: true, orderEffect: 'boost_knights', orderParam: 1, chargeMax: 2 }),
 ];
 
 // ── Monsters ─────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ const MONSTER_CARDS = [
   // Beasts
   card('wolf',           'Волк',              'monsters', 'unit',    'melee',  2, 'common',    3,  { art: 'wolf',           tags: ['beast', 'wolf'], deployEffect: 'wolf_pack' }),
   card('serpent',        'Серпент',           'monsters', 'unit',    'ranged', 3, 'common',    5,  { art: 'serpent',        tags: ['beast'], deployEffect: 'poison' }),
-  card('werewolf',       'Оборотень',         'monsters', 'unit',    'melee',  5, 'rare',      7,  { art: 'werewolf',       tags: ['beast'], deployEffect: 'werewolf_register' }),
+  card('werewolf',       'Оборотень',         'monsters', 'unit',    'melee',  5, 'rare',      7,  { art: 'werewolf',       tags: ['beast'], resilience: true, deployEffect: 'werewolf_register' }),
   card('harpy_hunter',   'Гарпия-охотница',  'monsters', 'unit',    'ranged', 4, 'rare',      5,  { art: 'harpy_hunter',   tags: ['beast'], deployEffect: 'boost_self', deployParam: 2 }),
   // Demons
   card('fire_demon',     'Демон Огня',        'monsters', 'unit',    'siege',  5, 'rare',      7,  { art: 'fire_demon',     tags: ['demon'], deployEffect: 'damage_row', deployParam: 2 }),
@@ -95,7 +95,7 @@ const MONSTER_CARDS = [
   card('gargoyle_a',     'Горгулья',          'monsters', 'unit',  'siege',  4, 'common',    4,  { art: 'gargoyle',     tags: ['demon'], bond: true }),
   card('gargoyle_b',     'Горгулья',          'monsters', 'unit',  'siege',  4, 'common',    4,  { art: 'gargoyle',     tags: ['demon'], bond: true }),
   // Leader
-  card('fang_darkness',  'Тьма Клыков',      'monsters', 'hero',    'melee',  6, 'legendary', 0,  { art: 'fang_darkness',  tags: ['leader'], cost: 0, deployEffect: 'shield_self', hasOrder: true, orderEffect: 'boost_all_faction', orderParam: 1, chargeMax: 2 }),
+  card('fang_darkness',  'Тьма Клыков',      'monsters', 'hero',    'melee',  6, 'legendary', 0,  { art: 'fang_darkness',  tags: ['leader'], cost: 0, deployEffect: 'damage_row', deployParam: 2, hasOrder: true, orderEffect: 'boost_all_faction', orderParam: 1, chargeMax: 2 }),
 ];
 
 export const SHOP_CARDS = [...HUMAN_CARDS, ...MONSTER_CARDS];

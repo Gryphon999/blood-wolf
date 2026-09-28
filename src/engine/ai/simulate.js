@@ -16,7 +16,6 @@ export function cloneMatch(match) {
       melee: p.board.melee.map(copyCard),
       ranged: p.board.ranged.map(copyCard),
       siege: p.board.siege.map(copyCard),
-      horns: new Set(p.board.horns),
     },
   }));
   return { ...match, players, weather: new Set(match.weather), events: [], rng: seededRng(7) };

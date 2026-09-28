@@ -32,7 +32,7 @@ describe('Board', () => {
 });
 
 describe('effectivePower', () => {
-  it('returns base power with no weather or horn', () => {
+  it('returns base power with no weather', () => {
     const board = createBoard();
     const card = createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 });
     expect(effectivePower(card, 'melee', board, new Set())).toBe(5);
@@ -44,23 +44,8 @@ describe('effectivePower', () => {
     expect(effectivePower(card, 'melee', board, new Set(['melee']))).toBe(1);
   });
 
-  it('horn doubles a non-hero', () => {
+  it('a hero ignores weather', () => {
     const board = createBoard();
-    board.horns.add('melee');
-    const card = createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 });
-    expect(effectivePower(card, 'melee', board, new Set())).toBe(10);
-  });
-
-  it('weather then horn yields 2', () => {
-    const board = createBoard();
-    board.horns.add('melee');
-    const card = createCard({ id: 'a', type: 'unit', row: 'melee', power: 5 });
-    expect(effectivePower(card, 'melee', board, new Set(['melee']))).toBe(2);
-  });
-
-  it('a hero ignores weather and horn', () => {
-    const board = createBoard();
-    board.horns.add('melee');
     const hero = createCard({ id: 'h', type: 'hero', row: 'melee', power: 7 });
     expect(effectivePower(hero, 'melee', board, new Set(['melee']))).toBe(7);
   });

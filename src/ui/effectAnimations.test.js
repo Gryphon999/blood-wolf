@@ -3,7 +3,7 @@ import { ANIMATIONS } from './effectAnimations.js';
 
 const ENGINE_EVENT_TYPES = [
   'play', 'damage', 'shieldBreak', 'heal', 'boost', 'shield', 'destroy',
-  'copyToHand', 'poison', 'bleed', 'rowDamage', 'control', 'draw', 'fizzle', 'armorBlock', 'cleanse',
+  'copyToHand', 'poison', 'bleed', 'rowDamage', 'control', 'draw', 'fizzle', 'armorBlock', 'cleanse', 'ordersReady',
 ];
 
 describe('ANIMATIONS', () => {
@@ -16,9 +16,10 @@ describe('ANIMATIONS', () => {
 
 describe('hitStyle', async () => {
   const { hitStyle } = await import('./effectAnimations.js');
-  it('arrows for ranged, lightning for siege and lightning effects, melee otherwise', () => {
+  it('arrows for ranged, stones for siege, lightning for lightning effects, melee otherwise', () => {
     expect(hitStyle({ row: 'ranged', deployEffect: 'damage' })).toBe('arrow');
-    expect(hitStyle({ row: 'siege', orderEffect: 'damage_lock' })).toBe('lightning');
+    expect(hitStyle({ row: 'siege', orderEffect: 'damage_lock' })).toBe('stone');
+    expect(hitStyle({ row: 'siege', deployEffect: 'row_damage' })).toBe('stone'); // the Catapult throws stones
     expect(hitStyle({ row: 'ranged', type: 'special', effect: 'lightning' })).toBe('lightning');
     expect(hitStyle({ row: 'melee', deployEffect: 'damage' })).toBe('melee');
     expect(hitStyle(null)).toBe('melee');

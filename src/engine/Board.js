@@ -1,7 +1,7 @@
 export const ROWS = ['melee', 'ranged', 'siege'];
 
 export function createBoard() {
-  return { melee: [], ranged: [], siege: [], horns: new Set() };
+  return { melee: [], ranged: [], siege: [] };
 }
 
 export function addUnit(board, row, card) {
@@ -23,9 +23,6 @@ export function effectivePower(card, row, board, weather) {
     // Bond: power × number of same-name bond cards in this row
     const kin = board[row].filter((c) => c.def.bond && c.def.name === card.def.name).length;
     power *= Math.max(1, kin);
-  }
-  if (board.horns.has(row)) {
-    power = power * 2;
   }
   return power;
 }

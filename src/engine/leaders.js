@@ -1,6 +1,6 @@
 import { ROWS, addUnit } from './Board.js';
 import { emit } from './events.js';
-import { boost, dealDamage } from './actions.js';
+import { boost, dealDamage, addBleed, applyPoison, damageRow, giveShield } from './actions.js';
 import { drawCards } from './draw.js';
 import { shuffle } from './rng.js';
 import { resetWeather } from './GwentMatch.js';
@@ -19,6 +19,34 @@ export function canUseLeader(match, playerIdx) {
 const ABILITIES = {
   clear_weather(match) {
     resetWeather(match);
+  },
+  // Clears the weather and rallies the whole army, so it is never a dead button on a clear day
+  rally(match, p, param) {
+    resetWeather(match);
+    allOnBoard(match.players[p].board).filter(nonHero).forEach((c) => boost(match, null, c, param));
+  },
+  bleed_all(match, p, param) {
+    allOnBoard(match.players[1 - p].board).forEach((c) => addBleed(match, null, c, param));
+  },
+  poison_weakest(match, p, param) {
+    allOnBoard(match.players[1 - p].board)
+      .filter((c) => nonHero(c) && !c.poisoned)
+      .sort((a, b) => a.power - b.power)
+      .slice(0, param)
+      .forEach((c) => applyPoison(match, null, c));
+  },
+  // Hits the enemy row that holds the most power
+  damage_row(match, p, param) {
+    const board = match.players[1 - p].board;
+    const sum = (row) => board[row].filter(nonHero).reduce((s, c) => s + c.power, 0);
+    const row = [...ROWS].sort((a, b) => sum(b) - sum(a))[0];
+    if (sum(row) > 0) damageRow(match, null, 1 - p, row, param);
+  },
+  damage_all(match, p, param) {
+    allOnBoard(match.players[1 - p].board).forEach((c) => dealDamage(match, null, c, param));
+  },
+  shield_all(match, p) {
+    allOnBoard(match.players[p].board).filter(nonHero).forEach((c) => giveShield(match, null, c));
   },
   boost_row(match, p, param) {
     const board = match.players[p].board;

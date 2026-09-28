@@ -38,9 +38,10 @@ function drawBack(scene, container, s, strokeColor) {
   container.add(g);
 }
 
-// options.card = live card instance (has .power, .shielded, etc.); options.zoom draws the whole card larger and crisp
+// options.card = live card instance (has .power, .shielded, etc.); options.zoom draws the whole card larger and crisp;
+// options.shownPower = what the card is worth right now on the board (Bond, weather), shown instead of its own power
 export function createCardView(scene, cardDef, options = {}) {
-  const { faceDown = false, selected = false, card = null, zoom = 1 } = options;
+  const { faceDown = false, selected = false, card = null, zoom = 1, shownPower = null } = options;
   const s = zoom;
   const W = CARD_W * s;
   const H = CARD_H * s;
@@ -123,7 +124,10 @@ export function createCardView(scene, cardDef, options = {}) {
     }
   }
   if (traits) {
-    container.add(scene.add.text(0, infoCy, traits, { fontSize: `${9.5 * s}px` }).setOrigin(0.5));
+    // Bottom-right corner of the art, clear of the row name and the status icons (bottom-left)
+    container.add(scene.add.text(winCx + winW / 2 - 3 * s, winCy + winH / 2 - 9 * s, traits, {
+      fontSize: `${11 * s}px`, stroke: '#000000', strokeThickness: 3 * s,
+    }).setOrigin(1, 0.5));
   }
   if (cardDef.golden) {
     container.add(scene.add.text(W / 2 - 6 * s, -H / 2 + 26 * s, '★', {
@@ -133,7 +137,7 @@ export function createCardView(scene, cardDef, options = {}) {
 
   // ── Power badge (top-left of the art) ─────────────────────────────────────
   if (cardDef.type !== 'special') {
-    const cur = card ? card.power : cardDef.power;
+    const cur = shownPower ?? (card ? card.power : cardDef.power);
     const base = cardDef.power;
     const bx = winCx - winW / 2 + (FACE.badge.r + 2) * s;
     const by = winCy - winH / 2 + (FACE.badge.r + 2) * s;

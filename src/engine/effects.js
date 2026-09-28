@@ -19,6 +19,19 @@ function strongest(units) {
   return units.length ? units.reduce((a, b) => (a.power >= b.power ? a : b)) : null;
 }
 
+// Puts a freshly created unit on the board and tells the UI about it (no Deploy effect)
+function summon(match, playerIdx, def, { power = null, flag = 'resurrect' } = {}) {
+  const board = match.players[playerIdx].board;
+  const row = ROWS.includes(def.row) ? def.row : 'melee';
+  const unit = createCard(def);
+  if (power !== null) unit.power = power;
+  board[row].push(unit);
+  emit(match, {
+    type: 'play', uid: unit.uid, def, player: playerIdx, row, index: board[row].length - 1, special: false, [flag]: true,
+  });
+  return unit;
+}
+
 // ── Deploy effects ────────────────────────────────────────────────────────────
 
 export function applyDeploy(match, card, playerIdx, target = null) {
@@ -76,25 +89,19 @@ export function applyDeploy(match, card, playerIdx, target = null) {
       break;
     case 'resurrect_one': {
       const grave = match.players[playerIdx].graveyard;
-      if (grave.length > 0) {
-        const dead = grave.pop();
-        own[dead.def.row].push(createCard(dead.def));
-      }
+      if (grave.length > 0) summon(match, playerIdx, grave.pop().def);
       break;
     }
     case 'resurrect_four_weak': {
       const grave = match.players[playerIdx].graveyard;
       const batch = grave.splice(Math.max(0, grave.length - 4), 4);
-      batch.forEach(dead => {
-        const revived = createCard(dead.def);
-        revived.power = 1;
-        own[dead.def.row].push(revived);
-      });
+      batch.forEach(dead => summon(match, playerIdx, dead.def, { power: 1 }));
       break;
     }
     case 'copy_enemy_graveyard': {
       const template = strongest(match.players[1 - playerIdx].graveyard);
-      if (template) own[template.def.row].push(createCard(template.def));
+      if (template) summon(match, playerIdx, template.def);
+      else emit(match, { type: 'fizzle', sourceUid: card.uid });
       break;
     }
     case 'wolf_pack': {
@@ -164,7 +171,9 @@ export function applyOrder(match, card, playerIdx, target = null) {
       allOnBoard(opp).forEach(c => dealDamage(match, card, c, orderParam));
       break;
     case 'poison_two':
+      // Already poisoned enemies are skipped, so a repeated Order keeps spreading the poison
       nonHeroes(opp)
+        .filter(u => !u.poisoned)
         .sort((a, b) => a.power - b.power)
         .slice(0, 2)
         .forEach(u => applyPoison(match, card, u));

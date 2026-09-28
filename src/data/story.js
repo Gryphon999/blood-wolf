@@ -75,17 +75,17 @@ const bossWyrm = [
 
 // Chapter 1 (the original five nodes)
 export const STORY_NODES = [
-  { id: 'bandits', name: 'Разбойники на тракте', enemyDeck: bandits, rewardGold: 40 },
-  { id: 'wolves', name: 'Стая в чаще', enemyDeck: wolves, rewardGold: 60 },
-  { id: 'undead', name: 'Проклятое кладбище', enemyDeck: undead, rewardGold: 80 },
-  { id: 'mercs', name: 'Наёмники тьмы', enemyDeck: darkMercs, rewardGold: 120 },
-  { id: 'boss', name: 'Босс: Древний змей', enemyDeck: bossWyrm, rewardGold: 250, rewardCardId: 'paladin', boss: true },
+  { id: 'bandits', name: 'Разбойники на тракте', enemyDeck: bandits, rewardGold: 40, enemyLeaderId: 'ataman_krag' },
+  { id: 'wolves', name: 'Стая в чаще', enemyDeck: wolves, rewardGold: 60, enemyLeaderId: 'pack_alpha' },
+  { id: 'undead', name: 'Проклятое кладбище', enemyDeck: undead, rewardGold: 80, enemyLeaderId: 'grave_keeper' },
+  { id: 'mercs', name: 'Наёмники тьмы', enemyDeck: darkMercs, rewardGold: 120, enemyLeaderId: 'black_knight' },
+  { id: 'boss', name: 'Босс: Древний змей', enemyDeck: bossWyrm, rewardGold: 250, rewardCardId: 'paladin', boss: true, enemyLeaderId: 'ancient_wyrm' },
 ];
 
 // ── Chapter 2: bosses with unique rules ──────────────────────────────────────
 // rules.permanentWeather: rows that stay under weather all match (Clear Sky cannot lift it)
 // rules.bossUnits: units standing on the enemy board at the start of every round
-// enemyLeaderId: the enemy's leader (other nodes have none)
+// enemyLeaderId: the enemy's leader (every node has one, see ENEMY_LEADERS)
 const shop = (id) => SHOP_CARDS.find((c) => c.id === id);
 
 const fogMarsh = [
@@ -125,10 +125,10 @@ export const CHAPTER_TWO_NODES = [
     enemyLeaderId: 'fog_witch', rules: { permanentWeather: ['ranged'] } },
   { id: 'bone_crypt', name: 'Костяной склеп', enemyDeck: boneCrypt, rewardGold: 180, enemyLeaderId: 'bone_lord' },
   { id: 'blood_court', name: 'Кровавый двор', enemyDeck: bloodCourt, rewardGold: 220, enemyLeaderId: 'brood_queen' },
-  { id: 'wolf_king', name: 'Босс: Король волков', enemyDeck: wolfKing, rewardGold: 280, boss: true,
+  { id: 'wolf_king', name: 'Босс: Король волков', enemyDeck: wolfKing, rewardGold: 280, boss: true, enemyLeaderId: 'wolf_king',
     rules: { bossUnits: [WOLF_KING] } },
   { id: 'blood_wolf', name: 'Финал: Кровавый Волк', enemyDeck: bloodWolf, rewardGold: 500, rewardCardId: 'order_healer',
-    boss: true, enemyLeaderId: 'brood_queen', rules: { permanentWeather: ['siege'], bossUnits: [BLOOD_WOLF] } },
+    boss: true, enemyLeaderId: 'blood_wolf', rules: { permanentWeather: ['siege'], bossUnits: [BLOOD_WOLF] } },
 ];
 
 // ── Chapter 3: Проклятие не снято ───────────────────────────────────────────
@@ -212,22 +212,22 @@ const lichEmperor = [
 ];
 
 export const CHAPTER_THREE_NODES = [
-  { id: 'frozen_keep', name: 'Замёрзший форт', enemyDeck: frozenKeep, rewardGold: 160,
+  { id: 'frozen_keep', name: 'Замёрзший форт', enemyDeck: frozenKeep, rewardGold: 160, enemyLeaderId: 'ice_warden',
     rules: { permanentWeather: ['melee'] } },
-  { id: 'shadow_thieves', name: 'Воры теней', enemyDeck: shadowThieves, rewardGold: 180 },
-  { id: 'plague_horde', name: 'Чумная орда', enemyDeck: plagueHorde, rewardGold: 200 },
-  { id: 'serpent_cult', name: 'Культ Змея', enemyDeck: serpentCult, rewardGold: 220,
+  { id: 'shadow_thieves', name: 'Воры теней', enemyDeck: shadowThieves, rewardGold: 180, enemyLeaderId: 'blade_ghost' },
+  { id: 'plague_horde', name: 'Чумная орда', enemyDeck: plagueHorde, rewardGold: 200, enemyLeaderId: 'plague_lord' },
+  { id: 'serpent_cult', name: 'Культ Змея', enemyDeck: serpentCult, rewardGold: 220, enemyLeaderId: 'serpent_priest',
     rules: { permanentWeather: ['ranged'] } },
-  { id: 'fallen_knight', name: 'Босс: Падший Рыцарь', enemyDeck: fallenKnight, rewardGold: 300,
+  { id: 'fallen_knight', name: 'Босс: Падший Рыцарь', enemyDeck: fallenKnight, rewardGold: 300, enemyLeaderId: 'fallen_knight',
     boss: true, rules: { bossUnits: [FALLEN_KNIGHT] } },
-  { id: 'blood_tide', name: 'Кровавый прилив', enemyDeck: bloodTide, rewardGold: 260, rewardCardId: 'blood_count' },
-  { id: 'storm_peak', name: 'Грозовой пик', enemyDeck: stormPeak, rewardGold: 280,
+  { id: 'blood_tide', name: 'Кровавый прилив', enemyDeck: bloodTide, rewardGold: 260, rewardCardId: 'blood_count', enemyLeaderId: 'crimson_count' },
+  { id: 'storm_peak', name: 'Грозовой пик', enemyDeck: stormPeak, rewardGold: 280, enemyLeaderId: 'storm_lord',
     rules: { permanentWeather: ['siege'] } },
-  { id: 'golem_army', name: 'Армия Големов', enemyDeck: golemArmy, rewardGold: 320 },
-  { id: 'chaos_gate', name: 'Врата Хаоса', enemyDeck: chaosGate, rewardGold: 360,
+  { id: 'golem_army', name: 'Армия Големов', enemyDeck: golemArmy, rewardGold: 320, enemyLeaderId: 'golem_emperor' },
+  { id: 'chaos_gate', name: 'Врата Хаоса', enemyDeck: chaosGate, rewardGold: 360, enemyLeaderId: 'rift_guardian',
     rules: { permanentWeather: ['melee', 'ranged'] } },
   { id: 'lich_emperor', name: 'Финал: Лич-Император', enemyDeck: lichEmperor, rewardGold: 700,
-    rewardCardId: 'lich', boss: true, rules: { permanentWeather: ['ranged'], bossUnits: [LICH_EMPEROR] } },
+    rewardCardId: 'lich', boss: true, enemyLeaderId: 'lich_emperor', rules: { permanentWeather: ['ranged'], bossUnits: [LICH_EMPEROR] } },
 ];
 
 // The full campaign shown in StoryScene
