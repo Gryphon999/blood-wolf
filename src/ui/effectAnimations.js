@@ -73,7 +73,50 @@ async function arrowShot(scene, queue, sx, sy, tx, ty) {
   arrow.destroy();
 }
 
-// Siege / lightning hit: a zigzag bolt from the top edge down to the target
+// Siege hit: a boulder lobbed in a high arc, tumbling, with dust and a thud on impact.
+// `burning` (demons and other fire throwers) adds a fiery glow and embers.
+async function stoneThrow(scene, queue, sx, sy, tx, ty, { burning = false } = {}) {
+  const stone = scene.add.container(sx, sy);
+  const g = scene.add.graphics();
+  if (burning) g.fillStyle(0xff7a1a, 0.45).fillCircle(0, 0, 15);
+  g.fillStyle(burning ? 0x5a2a12 : 0x6f6a62, 1);
+  g.beginPath();
+  g.moveTo(-9, -3); g.lineTo(-4, -9); g.lineTo(5, -8); g.lineTo(10, -1); g.lineTo(7, 7); g.lineTo(-3, 9); g.lineTo(-9, 4);
+  g.closePath();
+  g.fillPath();
+  g.lineStyle(1.5, 0x1c1a17, 1).strokePath();
+  g.fillStyle(burning ? 0xffb347 : 0x9a948a, 0.9).fillTriangle(-5, -6, 3, -6, -2, 0);
+  stone.add(g);
+  scene.animLayer.add(stone);
+
+  const dist = Math.hypot(tx - sx, ty - sy);
+  const lift = Math.min(190, 70 + dist * 0.28);
+  const flight = { t: 0 };
+  const calm = scene.registry?.get('reduceMotion');
+  let trailAt = 0;
+  await new Promise((resolve) => {
+    scene.tweens.add({
+      targets: flight, t: 1, duration: queue.dur(Math.min(620, 320 + dist * 0.45)), ease: 'Sine.InOut',
+      onUpdate: () => {
+        const { t } = flight;
+        stone.setPosition(sx + (tx - sx) * t, sy + (ty - sy) * t - Math.sin(Math.PI * t) * lift);
+        stone.setRotation(t * 7);
+        stone.setScale(1 + Math.sin(Math.PI * t) * 0.55); // grows as it rises toward the viewer
+        if (burning && !calm && t - trailAt > 0.12) {
+          trailAt = t;
+          burst(scene, stone.x, stone.y, 0xff8833, { count: 3 });
+        }
+      },
+      onComplete: () => resolve(),
+    });
+  });
+  stone.destroy();
+  burst(scene, tx, ty, burning ? 0xff6622 : 0x9a8f7c, { count: 16 });
+  burst(scene, tx, ty + 10, 0x4a4036, { count: 8 });
+  if (!calm) scene.cameras.main.shake(queue.dur(120), 0.004);
+}
+
+// Lightning hit: a zigzag bolt from the top edge down to the target
 async function lightningStrike(scene, queue, tx, ty) {
   const g = scene.make.graphics({ add: true });
   g.lineStyle(3, 0x99eeff, 0.9);
@@ -97,9 +140,20 @@ async function lightningStrike(scene, queue, tx, ty) {
 export function hitStyle(def) {
   if (!def) return 'melee';
   const effect = `${def.effect ?? ''} ${def.deployEffect ?? ''} ${def.orderEffect ?? ''}`;
-  if (def.row === 'siege' || /shock|lightning/.test(effect)) return 'lightning';
+  if (/shock|lightning/.test(effect)) return 'lightning';
+  if (def.row === 'siege') return 'stone';
   if (def.row === 'ranged') return 'arrow';
   return 'melee';
+}
+
+// Fire throwers hurl burning boulders
+export function isBurning(def) {
+  return Boolean(def?.tags?.includes('demon'));
+}
+
+// Middle of a side's siege row: where a sourceless bombardment is fired from
+function siegeOrigin(playerIdx) {
+  return { x: SCREEN.width / 2, y: rowY(sideOf(playerIdx), 'siege') };
 }
 
 async function shake(scene, queue, v) {
@@ -210,6 +264,15 @@ export const ANIMATIONS = {
     } else if (style === 'arrow') {
       const s = view(scene, ev.sourceUid);
       await arrowShot(scene, queue, s?.x ?? t.x - 100, s?.y ?? t.y, t.x, t.y);
+    } else if (ev.bombard != null) {
+      const from = siegeOrigin(ev.bombard);
+      sfx.cardSiege();
+      await stoneThrow(scene, queue, from.x, from.y, t.x, t.y);
+    } else if (style === 'stone') {
+      const s = view(scene, ev.sourceUid);
+      const from = s ?? siegeOrigin(t.y > BOARD_CENTER_Y ? 1 : 0);
+      sfx.cardSiege();
+      await stoneThrow(scene, queue, from.x, from.y, t.x, t.y, { burning: isBurning(src?.def) });
     } else if (style === 'lightning') {
       await lightningStrike(scene, queue, t.x, t.y);
     } else {
@@ -359,6 +422,25 @@ export const ANIMATIONS = {
     burst(scene, SCREEN.width / 2, y, 0xffd479, { count: 18 });
     await tweenP(scene, queue, { targets: banner, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });
     await waitP(scene, queue, 450);
+    await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 200 });
+  },
+
+  // Battle Order: a banner, and every own card with an Order flashes amber
+  async ordersReady(scene, ev, queue) {
+    sfx.order();
+    const y = ev.player === 0 ? BOARD_CENTER_Y + 50 : BOARD_CENTER_Y - 50;
+    const banner = scene.add.text(SCREEN.width / 2, y, tr('anim.ordersReady'), {
+      fontSize: '28px', color: '#ffcf6a', stroke: '#000000', strokeThickness: 5,
+    }).setOrigin(0.5).setAlpha(0);
+    scene.animLayer.add(banner);
+    for (const row of ['melee', 'ranged', 'siege']) {
+      for (const card of scene.match.players[ev.player].board[row]) {
+        const v = card.def.hasOrder ? view(scene, card.uid) : null;
+        if (v) burst(scene, v.x, v.y, 0xffaa00, { count: 10, rise: true });
+      }
+    }
+    await tweenP(scene, queue, { targets: banner, alpha: 1, duration: 200 });
+    await waitP(scene, queue, 500);
     await tweenP(scene, queue, { targets: banner, alpha: 0, duration: 200 });
   },
 

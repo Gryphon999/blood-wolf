@@ -9,7 +9,8 @@ import { t } from '../i18n/index.js';
 import { useLeader, canUseLeader } from '../engine/leaders.js';
 import { passiveOf } from '../engine/passives.js';
 import { chosenLeader, getLeader, randomLeader } from '../data/leaders.js';
-import { rowPower } from '../engine/Board.js';
+import { rowPower, effectivePower } from '../engine/Board.js';
+import { locateOnBoard } from '../engine/events.js';
 import { createCardView } from '../ui/CardView.js';
 import {
   SCREEN, ROW_NAMES, rowY, handCardX, HAND_Y, BOARD_CENTER_Y, boardCardX, BOARD_CARD_SCALE,
@@ -33,6 +34,7 @@ import { getCard } from '../data/cardCatalog.js';
 import { drawBackground } from '../ui/background.js';
 import { drawLane, drawScoreMedallion, drawNoMansLand } from '../ui/battleBoard.js';
 import { drawPlaque } from '../ui/Button.js';
+import { drawLeaderFigure, ensureLeaderArt } from '../ui/LeaderFigure.js';
 import { generateOpponent } from '../data/opponents.js';
 import { FONT_TITLE, FONT_BODY } from '../ui/fonts.js';
 import { sceneFadeIn } from '../ui/transitions.js';
@@ -51,6 +53,8 @@ const ROW_ROLE_COLOR  = { melee: '#c06060', ranged: '#60a060', siege: '#6080c0' 
 const INSTANT_SPECIALS = new Set(['weather_frost', 'weather_fog', 'weather_rain', 'clear', 'scorch',
   'blessing_humans', 'order_ready', 'fog_frost_combo', 'bleed_all_enemies']);
 const TARGET_STROKE = 0xff6600;
+const LEADER_X = 80;        // centre of the left column (the lanes start at x = 160)
+const SIDE_PANEL_X = 1136;  // right column: graveyards and revealed cards
 // Faction + leader of the previous arena opponent, so two fights in a row never face the same one
 let lastOpponentKey = null;
 
@@ -129,6 +133,9 @@ export class BattleScene extends Phaser.Scene {
     this.root      = this.add.container(0, 0);
     this.animLayer = this.add.container(0, 0); // above root, cleared after each action
     this.queue     = new AnimationQueue(ANIMATIONS, this);
+
+    // The two leaders' figures arrive a moment later; the carved stand-in shows until then
+    ensureLeaderArt(this, leaders, () => { if (!this.busy) this.render(); });
 
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (pointer) => {
@@ -319,23 +326,23 @@ export class BattleScene extends Phaser.Scene {
 
     // ── Weather + score
     const wLabel = t('battle.weather', { rows: m.weather.size ? [...m.weather].map((r) => t(`row.${r}`)).join(', ') : '—' });
-    this.addText(20, BOARD_CENTER_Y - 10, wLabel, '#9fe3d0');
+    this.addText(176, BOARD_CENTER_Y - 10, wLabel, '#9fe3d0');
 
     const totalYou = ROW_NAMES.reduce((s, r) => s + rowPower(player.board, r, m.weather), 0);
     const totalAi  = ROW_NAMES.reduce((s, r) => s + rowPower(opp.board,    r, m.weather), 0);
     const scoreCol = totalYou > totalAi ? '#7fff7f' : totalYou < totalAi ? '#ff9f9f' : '#ffd479';
     this.addText(SCREEN.width - 260, BOARD_CENTER_Y - 10, t('battle.score', { ai: totalAi, you: totalYou }), scoreCol);
 
-    // ── Graveyard panels (left column)
+    // ── Graveyard panels (right column, the left one belongs to the leaders)
     this.renderGraveyardPane(opp.graveyard,    44,  t('battle.ai'));
-    this.renderGraveyardPane(player.graveyard, 478, t('battle.you'));
+    this.renderGraveyardPane(player.graveyard, 340, t('battle.you'));
 
-    // ── Leaders
-    this.renderLeader(1, 60, 170);
-    this.renderLeader(0, 60, 596);
+    // ── Leaders: statuettes in the left column, the enemy above and yours below
+    this.renderLeader(1, LEADER_X, 138);
+    this.renderLeader(0, LEADER_X, 438);
     if (this.revealed?.length) {
-      this.addText(20, 206, t('leader.revealed'), '#dd88ff', '11px');
-      this.revealed.forEach((def, i) => this.addText(20, 220 + i * 13, cardName(def).slice(0, 16), '#c8a8e8', '11px'));
+      this.addText(SIDE_PANEL_X, 132, t('leader.revealed'), '#dd88ff', '11px');
+      this.revealed.forEach((def, i) => this.addText(SIDE_PANEL_X, 146 + i * 13, cardName(def).slice(0, 16), '#c8a8e8', '11px'));
     }
 
     // ── Hand
@@ -432,7 +439,10 @@ export class BattleScene extends Phaser.Scene {
     const shade = this.add.rectangle(SCREEN.width / 2, SCREEN.height / 2, SCREEN.width, SCREEN.height, 0x000000, 0.72)
       .setInteractive();
     shade.on('pointerdown', () => this.closeZoom());
-    const cv = createCardView(this, card.def, { card, zoom: 2.5 }).setPosition(SCREEN.width / 2, 300).setScale(0.25);
+    const loc = locateOnBoard(this.match, card);
+    const shownPower = loc
+      ? effectivePower(card, loc.row, this.match.players[loc.player].board, this.match.weather) : null;
+    const cv = createCardView(this, card.def, { card, zoom: 2.5, shownPower }).setPosition(SCREEN.width / 2, 300).setScale(0.25);
     const descText = this.add.text(SCREEN.width / 2, 508, cardDescription(card.def), {
       fontFamily: FONT_BODY, fontSize: '21px', color: '#f0e2bd', align: 'center', wordWrap: { width: 800 }, lineSpacing: 5,
     }).setOrigin(0.5, 0);
@@ -547,17 +557,11 @@ export class BattleScene extends Phaser.Scene {
   renderLeader(playerIdx, x, y) {
     const leader = this.match.leaders[playerIdx];
     if (!leader) return;
-    const used = this.match.players[playerIdx].leaderUsed;
+    const used = Boolean(this.match.players[playerIdx].leaderUsed);
     const ready = playerIdx === 0 && this.canAct() && canUseLeader(this.match, 0);
-    const disc = this.add.circle(x, y, 26, used ? 0x1a1a1f : 0x2f2014)
-      .setStrokeStyle(ready ? 3 : 2, ready ? 0xffd479 : used ? 0x4a3a28 : 0x8a6d3b);
-    this.root.add(disc);
-    this.root.add(this.add.text(x, y, leader.icon ?? '♛', { fontSize: '24px' }).setOrigin(0.5).setAlpha(used ? 0.35 : 1));
-    const name = t(`leader.${leader.id}`) + (used ? ` (${t('leader.used')})` : '');
-    this.root.add(this.add.text(x, y + 32, name, {
-      fontSize: '10px', color: used ? '#666666' : '#d8c9a8', align: 'center', wordWrap: { width: 110 },
-    }).setOrigin(0.5, 0));
-    disc.setInteractive({ useHandCursor: ready });
+    const disc = drawLeaderFigure(this, this.root, {
+      leader, x, y, side: playerIdx === 0 ? 'player' : 'opponent', used, ready,
+    });
     const passive = passiveOf(this.match, playerIdx);
     const passiveLine = passive
       ? `\n${t('passive.label', { name: t(`passive.${passive}`), desc: t(`passive.${passive}.desc`) })}` : '';
@@ -603,7 +607,8 @@ export class BattleScene extends Phaser.Scene {
     }
 
     side.board[rowName].forEach((card, i) => {
-      const cv = createCardView(this, card.def, { card });
+      // The badge shows what the card is worth right now (Bond, weather), not just its own power
+      const cv = createCardView(this, card.def, { card, shownPower: effectivePower(card, rowName, side.board, m.weather) });
       cv.setScale(BOARD_CARD_SCALE);
       cv.setPosition(boardCardX(i), y);
       this.viewsByUid.set(card.uid, cv);
@@ -677,9 +682,9 @@ export class BattleScene extends Phaser.Scene {
   // ─── Graveyard panel ──────────────────────────────────────────────────────
 
   renderGraveyardPane(graveyard, yBase, label) {
-    this.addText(6, yBase, `${label} ⚰${graveyard.length}`, '#6a5040', '12px');
+    this.addText(SIDE_PANEL_X, yBase, `${label} ⚰${graveyard.length}`, '#a08468', '12px');
     graveyard.slice(-4).reverse().forEach((card, i) => {
-      this.addText(6, yBase + 16 + i * 13, cardName(card.def).slice(0, 14), '#4a3828', '10px');
+      this.addText(SIDE_PANEL_X, yBase + 16 + i * 13, cardName(card.def).slice(0, 16), '#8a7258', '10px');
     });
   }
 

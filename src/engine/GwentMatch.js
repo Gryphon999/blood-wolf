@@ -74,6 +74,10 @@ function passTurn(match) {
   }
 }
 
+export const HORN_BOOST = 3;
+// Specials that do not end the turn
+const KEEPS_TURN = new Set(['order_ready']);
+
 const WEATHER_ROW = {
   weather_frost: 'melee',
   weather_fog: 'ranged',
@@ -94,8 +98,16 @@ function applyEffect(match, card, row, target) {
     return;
   }
   if (effect === 'horn') {
+    // War Horn: rallies one own row — cleanses Poison/Bleed and gives every card there +HORN_BOOST
     if (!ROWS.includes(row)) throw new Error(`Unknown row: ${row}`);
-    own.horns.add(row);
+    for (const c of own[row]) {
+      if (c.poisoned || c.bleedStacks > 0) {
+        c.poisoned = false;
+        c.bleedStacks = 0;
+        emit(match, { type: 'cleanse', sourceUid: card.uid, targetUid: c.uid });
+      }
+      boost(match, card, c, HORN_BOOST);
+    }
     return;
   }
   if (effect === 'sign_damage') {
@@ -114,9 +126,15 @@ function applyEffect(match, card, row, target) {
     return;
   }
   if (effect === 'order_ready') {
+    // Battle Order: every own Order is ready again, Charges are refilled, locks are lifted.
+    // The caster also keeps the turn (see keepsTurn in playCard), otherwise there would be nothing to gain.
     allOnBoard(own).forEach(c => {
-      if (c.def.hasOrder && c.def.chargeMax === 0) c.orderUsed = false;
+      if (!c.def.hasOrder) return;
+      c.orderUsed = false;
+      c.locked = false;
+      c.chargesLeft = c.def.chargeMax ?? 0;
     });
+    emit(match, { type: 'ordersReady', player: match.current });
     return;
   }
   if (effect === 'fog_frost_combo') {
@@ -206,7 +224,9 @@ export function playCard(match, cardIndex, row, { target } = {}) {
   const fizzled = targetKind(card, 'deploy') !== 'none' && chosen === null;
   player.hand.splice(cardIndex, 1);
   applyCard(match, card, row, chosen, fizzled);
-  if (!keepsTurnAfterPlay(match, match.current)) passTurn(match);
+  // Checked first so a free special does not spend the faction passive
+  const free = !fizzled && card.def.type === 'special' && KEEPS_TURN.has(card.def.effect);
+  if (!free && !keepsTurnAfterPlay(match, match.current)) passTurn(match);
   match.turn++;
 }
 
@@ -370,7 +390,7 @@ export function startTurn(match) {
         .reduce((weakest, c) => (!weakest || c.power < weakest.power ? c : weakest), null);
       if (target) {
         emit(match, { type: 'siegeBombard', player: match.current, targetRow: front });
-        dealDamage(match, null, target, 1);
+        dealDamage(match, null, target, 1, { bombard: match.current });
       }
     }
   }

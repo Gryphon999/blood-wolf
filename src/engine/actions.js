@@ -24,7 +24,8 @@ export function destroy(match, card, { exile = false } = {}) {
 }
 
 // status: 'poison' | 'bleed' | 'both' marks a status tick (for the animation)
-export function dealDamage(match, source, target, amount, { direct = false, status = null } = {}) {
+// bombard: index of the player whose siege row fired (a sourceless hit, for the animation)
+export function dealDamage(match, source, target, amount, { direct = false, status = null, bombard = null } = {}) {
   if (amount <= 0 || isHero(target)) return;
   let dmg = amount;
   if (!direct) {
@@ -47,6 +48,7 @@ export function dealDamage(match, source, target, amount, { direct = false, stat
     type: 'damage', sourceUid: uidOf(source), targetUid: target.uid,
     amount: dmg, powerAfter: Math.max(0, target.power),
     ...(status ? { status } : {}),
+    ...(bombard !== null ? { bombard } : {}),
   });
   const killed = target.power <= 0;
   if (killed) destroy(match, target);

@@ -263,8 +263,8 @@ describe('edge cases', () => {
   });
 });
 
-describe('commander horn in a match', () => {
-  it('doubles non-heroes in the caster row and ignores heroes', () => {
+describe('war horn in a match', () => {
+  it('gives +3 to every card of the chosen own row', () => {
     const u = { id: 'u', type: 'unit', row: 'melee', power: 4 };
     const hero = { id: 'h', type: 'hero', row: 'melee', power: 5 };
     const horn = { id: 'hr', type: 'special', effect: 'horn', row: 'melee', power: 0 };
@@ -274,8 +274,8 @@ describe('commander horn in a match', () => {
     playCard(match, 0, 'melee'); // p1 filler
     playCard(match, 0, 'melee'); // p0 hero(5)
     playCard(match, 0, 'melee'); // p1 filler
-    playCard(match, 0, 'melee'); // p0 horn -> doubles p0 melee
-    expect(totalPower(match.players[0].board, match.weather)).toBe(13); // 4*2 + 5
+    playCard(match, 0, 'melee'); // p0 horn -> rallies p0 melee
+    expect(totalPower(match.players[0].board, match.weather)).toBe(15); // (4+3) + (5+3)
   });
 });
 
