@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { getProfile } from '../economy/session.js';
 import { tierOf, nextTier, RANK_TIERS, WIN_POINTS, LOSS_POINTS } from '../economy/rank.js';
-import { fetchLeaderboard } from '../sdk/yandex.js';
+import { fetchLeaderboard } from '../sdk/platform.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
 import { sceneFadeIn } from '../ui/transitions.js';

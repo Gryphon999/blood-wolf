@@ -19,7 +19,7 @@ import { AI_DECK, PLAYER_DECK } from '../data/starterDecks.js';
 import { buildFactionPool } from '../data/factionPool.js';
 import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward, isDeckValid } from '../economy/profile.js';
-import { showChest, showInterstitial, recordWin } from '../sdk/yandex.js';
+import { showChest, showInterstitial, recordWin } from '../sdk/platform.js';
 import { rewardFor } from '../economy/rewards.js';
 import { newSummary, accumulate } from '../economy/matchSummary.js';
 import { recordMatch } from '../economy/progress.js';
