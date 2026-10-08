@@ -1,6 +1,6 @@
 import { loadProfile, saveProfile } from './profileStore.js';
 import { createProfile, normalizeProfile } from './profile.js';
-import { cloudSave } from '../sdk/yandex.js';
+import { cloudSave } from '../sdk/platform.js';
 
 let profile = null;
 

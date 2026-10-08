@@ -1,6 +1,6 @@
 import { getSettings, resolveLang } from '../economy/settings.js';
 import { setLang } from '../i18n/index.js';
-import { sdkLang } from '../sdk/yandex.js';
+import { sdkLang } from '../sdk/platform.js';
 import { setSfxVolume } from './SoundEngine.js';
 import { music } from './MusicEngine.js';
 import { setVoiceVolume } from './VoiceEngine.js';

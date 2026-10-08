@@ -5,7 +5,7 @@ import {
 } from '../ui/menuLayout.js';
 import { SCREEN } from '../ui/layout.js';
 import { drawMenuBackground, preloadBackgrounds } from '../ui/background.js';
-import { showChest } from '../sdk/yandex.js';
+import { showChest } from '../sdk/platform.js';
 import { getProfile, persist } from '../economy/session.js';
 import { grantChestReward } from '../economy/profile.js';
 import { SHOP_CARDS } from '../data/shopCards.js';
