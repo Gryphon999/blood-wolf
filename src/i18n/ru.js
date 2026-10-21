@@ -162,7 +162,7 @@ export const ru = {
   'rank.rules': 'Бои из меню «Бой»: победа +{easy}/+{normal}/+{hard} (лёгкий/норма/сложный), поражение −{loss}',
   'rank.board': 'Таблица лидеров',
   'rank.loading': 'Загрузка…',
-  'rank.offline': 'Таблица доступна в Яндекс Играх. Ваши очки: {n}',
+  'rank.offline': 'Общая таблица лидеров здесь пока недоступна. Ваши очки: {n}',
   'rank.short': '{icon} {name} · {n} очк.',
   'rank.delta': 'Ранг: {sign}{n}',
   'menu.subtitle': 'мрачная карточная дуэль',

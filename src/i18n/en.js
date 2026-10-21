@@ -162,7 +162,7 @@ export const en = {
   'rank.rules': 'Arena battles (menu «Battle»): win +{easy}/+{normal}/+{hard} (easy/normal/hard), loss −{loss}',
   'rank.board': 'Leaderboard',
   'rank.loading': 'Loading…',
-  'rank.offline': 'The leaderboard is available on Yandex Games. Your points: {n}',
+  'rank.offline': 'The shared leaderboard is not available here yet. Your points: {n}',
   'rank.short': '{icon} {name} · {n} pts',
   'rank.delta': 'Rank: {sign}{n}',
   'menu.subtitle': 'a grim card duel',
