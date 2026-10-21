@@ -12,6 +12,7 @@ import { attachCardTooltip } from '../ui/tooltip.js';
 import { onAchievements } from '../ui/toast.js';
 import { sfx } from '../ui/SoundEngine.js';
 import { t } from '../i18n/index.js';
+import { drawIcon } from '../ui/icons.js';
 
 const SLOT_Y = 360;
 const SLOT_STEP = 210;
@@ -74,7 +75,7 @@ export class PackScene extends Phaser.Scene {
   drawClosedPack() {
     const g = this.add.container(SCREEN.width / 2, SLOT_Y);
     g.add(this.add.rectangle(0, 0, 150, 210, 0x3a2a1a).setStrokeStyle(4, 0x8a6d3b));
-    g.add(this.add.text(0, -20, '🐺', { fontSize: '64px' }).setOrigin(0.5));
+    g.add(drawIcon(this, 'wolf', 0, -20, { size: 64, line: 2.2 }));
     g.add(this.add.text(0, 60, 'BLOOD WOLF', { fontSize: '16px', color: '#ffd479' }).setOrigin(0.5));
     this.root.add(g);
     this.tweens.add({ targets: g, y: SLOT_Y - 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });

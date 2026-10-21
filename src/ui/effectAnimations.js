@@ -3,6 +3,7 @@ import { floatText } from './FloatingText.js';
 import { sfx } from './SoundEngine.js';
 import { findCardByUid } from '../engine/events.js';
 import { t as tr } from '../i18n/index.js';
+import { iconBadge, iconLabel } from './icons.js';
 import {
   SCREEN, HAND_Y, BOARD_CENTER_Y, CARD_W, CARD_H,
   rowY, handCardX, boardCardX, BOARD_CARD_SCALE,
@@ -164,7 +165,7 @@ async function shake(scene, queue, v) {
 
 // A status icon that fades in and out over the card a couple of times
 function pulseIcon(scene, queue, t, icon, { dx = 0, pulses = 2 } = {}) {
-  const text = scene.add.text(t.x + dx, t.y - 8, icon, { fontSize: '30px' }).setOrigin(0.5).setAlpha(0);
+  const text = iconBadge(scene, icon, t.x + dx, t.y - 8, { size: 30 }).setAlpha(0);
   scene.animLayer.add(text);
   return tweenP(scene, queue, {
     targets: text, alpha: 1, scale: 1.25, duration: 180, yoyo: true, repeat: pulses - 1, ease: 'Sine.InOut',
@@ -176,7 +177,7 @@ function dropIcon(icon) {
   return async (scene, ev, queue) => {
     const t = view(scene, ev.targetUid);
     if (!t) return;
-    const text = scene.add.text(t.x, t.y - 70, icon, { fontSize: '26px' }).setOrigin(0.5);
+    const text = iconBadge(scene, icon, t.x, t.y - 70, { size: 26 });
     scene.animLayer.add(text);
     await tweenP(scene, queue, { targets: text, y: t.y, duration: 200, ease: 'Quad.In' });
     text.destroy();
@@ -184,7 +185,7 @@ function dropIcon(icon) {
   };
 }
 
-const STATUS_ICONS = { poison: ['☠'], bleed: ['🩸'], both: ['☠', '🩸'] };
+const STATUS_ICONS = { poison: ['skull'], bleed: ['blood'], both: ['skull', 'blood'] };
 
 // Face-down cards fly from the deck corner to their hand slots
 function dealToHand(scene, ev, queue) {
@@ -346,7 +347,7 @@ export const ANIMATIONS = {
     if (!t) return;
     sfx.order();
     const ring = scene.add.circle(t.x, t.y, 46, 0x66aaff, 0.25).setStrokeStyle(3, 0x99ccff).setScale(0.3);
-    scene.animLayer.add(ring); // stays until render() shows the 🛡 icon
+    scene.animLayer.add(ring); // stays until render() shows the shield icon
     await tweenP(scene, queue, { targets: ring, scale: 1, duration: 300, ease: 'Back.Out' });
   },
 
@@ -376,8 +377,8 @@ export const ANIMATIONS = {
     ghost.destroy();
   },
 
-  poison: dropIcon('☠'),
-  bleed: dropIcon('🩸'),
+  poison: dropIcon('skull'),
+  bleed: dropIcon('blood'),
 
   async rowDamage(scene, ev, queue) {
     const y = rowY(sideOf(ev.player), ev.row);
@@ -415,9 +416,9 @@ export const ANIMATIONS = {
     const leader = scene.match.leaders[ev.player];
     sfx.order();
     const y = ev.player === 0 ? BOARD_CENTER_Y + 60 : BOARD_CENTER_Y - 60;
-    const banner = scene.add.text(SCREEN.width / 2, y, `${leader?.icon ?? '♛'} ${tr(`leader.${ev.leaderId}`)}`, {
+    const banner = iconLabel(scene, SCREEN.width / 2, y, leader?.icon ?? 'crown', tr(`leader.${ev.leaderId}`), {
       fontSize: '34px', color: '#ffd479', stroke: '#000000', strokeThickness: 5,
-    }).setOrigin(0.5).setScale(0.5).setAlpha(0);
+    }, { origin: 0.5, size: 34, gap: 10 }).setScale(0.5).setAlpha(0);
     scene.animLayer.add(banner);
     burst(scene, SCREEN.width / 2, y, 0xffd479, { count: 18 });
     await tweenP(scene, queue, { targets: banner, scale: 1, alpha: 1, duration: 300, ease: 'Back.Out' });

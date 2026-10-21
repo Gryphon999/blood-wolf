@@ -19,6 +19,7 @@ import { sceneFadeIn, goTo } from '../ui/transitions.js';
 import { checkAchievements } from '../economy/achievements.js';
 import { toastAchievements } from '../ui/toast.js';
 import { FONT_TITLE } from '../ui/fonts.js';
+import { iconLabel } from '../ui/icons.js';
 
 const MENU_ICONS = {
   battle: 'sword', story: 'book', deck: 'deck', shop: 'coin', rank: 'crown', packs: 'packs', quests: 'scroll', settings: 'gear',
@@ -83,9 +84,9 @@ export class MenuScene extends Phaser.Scene {
     const x = MENU_INFO_X;
     const y = menuButtonY(0) - 20;
     this.add.rectangle(x, y + 70, 260, 170, 0x1f1610, 0.8).setStrokeStyle(1, 0x3a2e1e);
-    this.add.text(x, y, t('rank.short', { icon: tier.icon, name: t(`rank.${tier.id}`), n: points }), {
+    iconLabel(this, x, y, tier.icon, t('rank.short', { name: t(`rank.${tier.id}`), n: points }), {
       fontSize: '17px', color: '#ffd479',
-    }).setOrigin(0.5);
+    }, { origin: 0.5, color: tier.color });
     const s = profile.stats ?? {};
     const lines = [
       t('menu.gold', { n: profile.gold }),

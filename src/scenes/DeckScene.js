@@ -12,6 +12,7 @@ import { drawBackground } from '../ui/background.js';
 import { sceneFadeIn } from '../ui/transitions.js';
 import { preloadCardAssets } from '../ui/preloadAssets.js';
 import { t } from '../i18n/index.js';
+import { drawIcon } from '../ui/icons.js';
 import { FACTION_PASSIVE } from '../engine/passives.js';
 import { attachCardTooltip } from '../ui/tooltip.js';
 import { sfx } from '../ui/SoundEngine.js';
@@ -61,7 +62,8 @@ export class DeckScene extends Phaser.Scene {
     this.text(20, 78, t('leader.pick'), '#d8c9a8', '14px');
     leadersOf(faction).forEach((leader, i) => {
       const active = leader.id === current?.id;
-      this.button(250 + i * 220, 78, `${leader.icon} ${t(`leader.${leader.id}`)}`, active ? '#ffd479' : '#8a7a5a', '14px', () => {
+      this.root.add(drawIcon(this, leader.icon, 250 + i * 220 + 8, 87, { size: 16, color: active ? 0xffd479 : 0x8a7a5a }));
+      this.button(250 + i * 220 + 22, 78, t(`leader.${leader.id}`), active ? '#ffd479' : '#8a7a5a', '14px', () => {
         setLeader(p, faction, leader.id);
         persist();
         this.render();

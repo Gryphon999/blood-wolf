@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FONT_TITLE, FONT_BODY } from './fonts.js';
 import { t } from '../i18n/index.js';
+import { drawIcon } from './icons.js';
 
 // A leader shown as a statuette in a stone niche at the edge of the battlefield.
 // The figures are painted on black (public/assets/leaders/<art>.jpg, see scripts/prepare-leader-art.mjs) and drawn
@@ -93,7 +94,7 @@ export function drawLeaderFigure(scene, root, { leader, x, y, side, used, ready 
     const carved = scene.add.graphics();
     drawCarvedFigure(carved, x, base - 4, used ? 0x3a3630 : 0x6e6250, 1);
     root.add(carved);
-    root.add(scene.add.text(x, base - 92, leader.icon ?? '♛', { fontSize: '30px' }).setOrigin(0.5).setAlpha(used ? 0.35 : 0.95));
+    root.add(drawIcon(scene, leader.icon ?? 'crown', x, base - 92, { size: 30, alpha: used ? 0.35 : 0.95 }));
   }
 
   // ── Stone frame over the figure's edges

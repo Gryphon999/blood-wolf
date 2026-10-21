@@ -2,36 +2,36 @@
 // `art` is the figure shown in battle (public/assets/leaders/<art>.jpg); `icon` is the fallback glyph.
 // Faction leaders can be picked by the player and by random arena opponents.
 export const LEADERS = [
-  { id: 'marshal_godric',  faction: 'humans',   ability: 'rally',            param: 1, icon: '☀', art: 'marshal_godric' },
-  { id: 'queen_elina',     faction: 'humans',   ability: 'boost_row',        param: 2, icon: '📣', art: 'queen_elina' },
-  { id: 'grand_master',    faction: 'humans',   ability: 'draw_card',        param: 1, icon: '📜', art: 'grand_master' },
-  { id: 'brood_queen',     faction: 'monsters', ability: 'damage_strongest', param: 4, icon: '🩸', art: 'brood_queen' },
-  { id: 'bone_lord',       faction: 'monsters', ability: 'resurrect',        param: 1, icon: '💀', art: 'bone_lord' },
-  { id: 'fog_witch',       faction: 'monsters', ability: 'peek_enemy',       param: 3, icon: '👁', art: 'fog_witch' },
+  { id: 'marshal_godric',  faction: 'humans',   ability: 'rally',            param: 1, icon: 'sun', art: 'marshal_godric' },
+  { id: 'queen_elina',     faction: 'humans',   ability: 'boost_row',        param: 2, icon: 'horn', art: 'queen_elina' },
+  { id: 'grand_master',    faction: 'humans',   ability: 'draw_card',        param: 1, icon: 'scroll', art: 'grand_master' },
+  { id: 'brood_queen',     faction: 'monsters', ability: 'damage_strongest', param: 4, icon: 'blood', art: 'brood_queen' },
+  { id: 'bone_lord',       faction: 'monsters', ability: 'resurrect',        param: 1, icon: 'skull', art: 'bone_lord' },
+  { id: 'fog_witch',       faction: 'monsters', ability: 'peek_enemy',       param: 3, icon: 'eye', art: 'fog_witch' },
 ];
 
 // Campaign-only leaders: every story enemy is led by someone. Never offered to the player or the arena.
 export const ENEMY_LEADERS = [
   // Chapter I
-  { id: 'ataman_krag',     ability: 'boost_row',        param: 1, icon: '🗡', art: 'ataman_krag' },
-  { id: 'pack_alpha',      ability: 'boost_row',        param: 2, icon: '🐺', art: 'pack_alpha' },
-  { id: 'grave_keeper',    ability: 'resurrect',        param: 1, icon: '⚰', art: 'grave_keeper' },
-  { id: 'black_knight',    ability: 'damage_strongest', param: 3, icon: '🛡', art: 'black_knight' },
-  { id: 'ancient_wyrm',    ability: 'damage_row',       param: 2, icon: '🐉', art: 'ancient_wyrm' },
+  { id: 'ataman_krag',     ability: 'boost_row',        param: 1, icon: 'dagger', art: 'ataman_krag' },
+  { id: 'pack_alpha',      ability: 'boost_row',        param: 2, icon: 'wolf', art: 'pack_alpha' },
+  { id: 'grave_keeper',    ability: 'resurrect',        param: 1, icon: 'coffin', art: 'grave_keeper' },
+  { id: 'black_knight',    ability: 'damage_strongest', param: 3, icon: 'shield', art: 'black_knight' },
+  { id: 'ancient_wyrm',    ability: 'damage_row',       param: 2, icon: 'dragon', art: 'ancient_wyrm' },
   // Chapter II
-  { id: 'wolf_king',       ability: 'boost_row',        param: 3, icon: '👑', art: 'wolf_king' },
-  { id: 'blood_wolf',      ability: 'bleed_all',        param: 1, icon: '🩸', art: 'blood_wolf' },
+  { id: 'wolf_king',       ability: 'boost_row',        param: 3, icon: 'crown', art: 'wolf_king' },
+  { id: 'blood_wolf',      ability: 'bleed_all',        param: 1, icon: 'blood', art: 'blood_wolf' },
   // Chapter III
-  { id: 'ice_warden',      ability: 'shield_all',       param: 1, icon: '❄', art: 'ice_warden' },
-  { id: 'blade_ghost',     ability: 'draw_card',        param: 2, icon: '🗡', art: 'blade_ghost' },
-  { id: 'plague_lord',     ability: 'poison_weakest',   param: 3, icon: '☠', art: 'plague_lord' },
-  { id: 'serpent_priest',  ability: 'poison_weakest',   param: 2, icon: '🐍', art: 'serpent_priest' },
-  { id: 'fallen_knight',   ability: 'damage_strongest', param: 5, icon: '⚔', art: 'fallen_knight' },
-  { id: 'crimson_count',   ability: 'bleed_all',        param: 1, icon: '🦇', art: 'crimson_count' },
-  { id: 'storm_lord',      ability: 'damage_row',       param: 2, icon: '⚡', art: 'storm_lord' },
-  { id: 'golem_emperor',   ability: 'shield_all',       param: 1, icon: '🗿', art: 'golem_emperor' },
-  { id: 'rift_guardian',   ability: 'damage_all',       param: 1, icon: '🌀', art: 'rift_guardian' },
-  { id: 'lich_emperor',    ability: 'resurrect',        param: 1, icon: '💀', art: 'lich_emperor' },
+  { id: 'ice_warden',      ability: 'shield_all',       param: 1, icon: 'snow', art: 'ice_warden' },
+  { id: 'blade_ghost',     ability: 'draw_card',        param: 2, icon: 'dagger', art: 'blade_ghost' },
+  { id: 'plague_lord',     ability: 'poison_weakest',   param: 3, icon: 'skull', art: 'plague_lord' },
+  { id: 'serpent_priest',  ability: 'poison_weakest',   param: 2, icon: 'serpent', art: 'serpent_priest' },
+  { id: 'fallen_knight',   ability: 'damage_strongest', param: 5, icon: 'sword', art: 'fallen_knight' },
+  { id: 'crimson_count',   ability: 'bleed_all',        param: 1, icon: 'bat', art: 'crimson_count' },
+  { id: 'storm_lord',      ability: 'damage_row',       param: 2, icon: 'bolt', art: 'storm_lord' },
+  { id: 'golem_emperor',   ability: 'shield_all',       param: 1, icon: 'stone', art: 'golem_emperor' },
+  { id: 'rift_guardian',   ability: 'damage_all',       param: 1, icon: 'spiral', art: 'rift_guardian' },
+  { id: 'lich_emperor',    ability: 'resurrect',        param: 1, icon: 'skull', art: 'lich_emperor' },
 ].map((l) => ({ ...l, faction: 'monsters', enemyOnly: true }));
 
 export const ALL_LEADERS = [...LEADERS, ...ENEMY_LEADERS];

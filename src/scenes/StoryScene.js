@@ -9,6 +9,7 @@ import { sceneFadeIn, goTo } from '../ui/transitions.js';
 import { sfx } from '../ui/SoundEngine.js';
 import { t } from '../i18n/index.js';
 import { cardName } from '../ui/cardText.js';
+import { drawIcon } from '../ui/icons.js';
 
 const CHAPTER_SIZE = STORY_NODES.length; // 5
 // Chapters: [nodes, startIndex, colTitles]
@@ -92,20 +93,21 @@ export class StoryScene extends Phaser.Scene {
       // Cleared nodes can be replayed; locked nodes show but can't be clicked
       const playable = unlocked;
 
-      const mark = cleared ? '↩' : unlocked ? '▶' : '🔒';
+      const mark = cleared ? 'replay' : unlocked ? 'play' : 'lock';
       const color = cleared ? '#8fce8f' : playable ? '#ffd479' : '#666666';
       const stroke = playable && !cleared ? (node.boss ? 0xff6a4a : 0xffd479)
         : cleared ? 0x4a7a4a : 0x4a3a28;
       const bg = this.add.rectangle(x, y, BOX_W, 100, node.boss ? 0x241618 : 0x1f1610).setStrokeStyle(2, stroke);
       this.root.add(bg);
 
-      const numLabel = `${mark}  ${globalIdx + 1}. ${t(`story.${node.id}.name`)}`;
-      this.text(x - BOX_W / 2 + 14, y - 40, numLabel, color, '19px');
+      const numLabel = `${globalIdx + 1}. ${t(`story.${node.id}.name`)}`;
+      this.root.add(drawIcon(this, mark, x - BOX_W / 2 + 24, y - 28, { size: 16, color: Number.parseInt(color.slice(1), 16) }));
+      this.text(x - BOX_W / 2 + 40, y - 40, numLabel, color, '19px');
       const rewardKey = isReplay ? 'story.replayLabel'
         : node.rewardCardId ? 'story.rewardCard' : 'story.reward';
       const rewardVal = isReplay ? {} : { gold: node.rewardGold };
-      this.text(x - BOX_W / 2 + 14, y - 12, t(rewardKey, rewardVal), '#9a8a6a', '14px');
-      nodeRules(node).forEach((line, i) => this.text(x - BOX_W / 2 + 14, y + 8 + i * 16, line, '#c88a8a', '12px'));
+      this.text(x - BOX_W / 2 + 14, y - 13, t(rewardKey, rewardVal), '#9a8a6a', '15px');
+      nodeRules(node).forEach((line, i) => this.text(x - BOX_W / 2 + 14, y + 7 + i * 15, line, '#c88a8a', '13px'));
 
       if (playable) {
         bg.setInteractive({ useHandCursor: true });
@@ -162,7 +164,7 @@ export class StoryScene extends Phaser.Scene {
       speaker.setText(hasSpeaker ? who : '');
       body.setText(hasSpeaker ? rest.join(': ') : lines[i]);
       const last = i === lines.length - 1;
-      hint.setText(last ? (onDone ? t('story.fight') : '✓') : t('story.next'));
+      hint.setText(last ? (onDone ? t('story.fight') : t('story.close')) : t('story.next'));
     };
     shade.on('pointerdown', () => {
       sfx.click();

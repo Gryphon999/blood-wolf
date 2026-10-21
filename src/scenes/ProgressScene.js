@@ -9,6 +9,7 @@ import { sceneFadeIn } from '../ui/transitions.js';
 import { onAchievements } from '../ui/toast.js';
 import { sfx } from '../ui/SoundEngine.js';
 import { t } from '../i18n/index.js';
+import { drawIcon } from '../ui/icons.js';
 
 // Daily quests (left) and achievements (right)
 export class ProgressScene extends Phaser.Scene {
@@ -48,7 +49,8 @@ export class ProgressScene extends Phaser.Scene {
       this.root.add(this.add.rectangle(290, y, 500, 92, 0x1f1610).setStrokeStyle(2, done ? 0xffd479 : 0x4a3a28));
       this.text(56, y - 34, t(`quest.${q.id}`, { n: q.target }), '#e8dcc0', '17px');
       const reward = q.reward.packs ? t('quest.reward.packs') : t('quest.reward.gold', { n: q.reward.gold });
-      this.text(56, y - 8, `🎁 ${reward}`, '#9fe3d0', '14px');
+      this.root.add(drawIcon(this, 'chest', 64, y + 1, { size: 16, color: 0x9fe3d0 }));
+      this.text(78, y - 8, reward, '#9fe3d0', '14px');
       // progress bar
       this.root.add(this.add.rectangle(56 + 150, y + 22, 300, 10, 0x33261a).setOrigin(0.5));
       const w = Math.max(2, 300 * (q.progress / q.target));
@@ -83,7 +85,7 @@ export class ProgressScene extends Phaser.Scene {
       const unlocked = Boolean(got[a.id]);
       this.root.add(this.add.rectangle(x + 100, y + 44, 205, 100, unlocked ? 0x2f2014 : 0x16100b)
         .setStrokeStyle(2, unlocked ? 0xffd479 : 0x2a2a2a));
-      this.text(x + 8, y + 4, a.icon, '#ffffff', '28px').setAlpha(unlocked ? 1 : 0.3);
+      this.root.add(drawIcon(this, a.icon, x + 24, y + 22, { size: 28, alpha: unlocked ? 1 : 0.3 }));
       this.text(x + 50, y + 8, t(`ach.${a.id}`), unlocked ? '#ffd479' : '#777777', '14px');
       this.root.add(this.add.text(x + 8, y + 46, t(`ach.${a.id}.desc`), {
         fontSize: '12px', color: unlocked ? '#c8b88a' : '#666666', wordWrap: { width: 190 },

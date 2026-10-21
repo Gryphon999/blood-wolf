@@ -39,7 +39,10 @@ const game = new Phaser.Game({
 
 applySettings(game, getProfile());
 // Test/screenshot hook: open the game with ?debug to reach the Phaser instance from scripts
-if (new URLSearchParams(location.search).has('debug')) window.__game = game;
+if (new URLSearchParams(location.search).has('debug')) {
+  window.__game = game;
+  import('./ui/icons.js').then((m) => { window.__icons = m; });
+}
 const rotateHint = document.getElementById('rotate-hint');
 if (rotateHint) rotateHint.textContent = t('app.rotate');
 // Re-fit when the phone rotates or the browser chrome resizes the viewport

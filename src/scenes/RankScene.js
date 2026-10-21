@@ -6,6 +6,7 @@ import { SCREEN } from '../ui/layout.js';
 import { drawBackground } from '../ui/background.js';
 import { sceneFadeIn } from '../ui/transitions.js';
 import { t } from '../i18n/index.js';
+import { iconLabel } from '../ui/icons.js';
 
 export class RankScene extends Phaser.Scene {
   constructor() {
@@ -26,18 +27,22 @@ export class RankScene extends Phaser.Scene {
     back.on('pointerdown', () => this.scene.start('MenuScene'));
 
     this.add.text(cx, 50, t('rank.title'), { fontSize: '30px', color: '#d8c9a8' }).setOrigin(0.5);
-    this.add.text(cx, 120, `${tier.icon} ${t(`rank.${tier.id}`)}`, { fontSize: '40px', color: '#ffd479' }).setOrigin(0.5);
+    iconLabel(this, cx, 120, tier.icon, t(`rank.${tier.id}`), { fontSize: '40px', color: '#ffd479' }, { origin: 0.5, color: tier.color, size: 38, gap: 12 });
     this.add.text(cx, 168, t('rank.points', { n: points, best: p.rank?.best ?? 0 }), { fontSize: '18px', color: '#c8b88a' }).setOrigin(0.5);
     if (next) {
       const span = next.min - tier.min;
       this.add.rectangle(cx, 200, 400, 12, 0x33261a);
       this.add.rectangle(cx - 200, 200, 400 * ((points - tier.min) / span), 12, 0xffd479).setOrigin(0, 0.5);
-      this.add.text(cx, 222, t('rank.next', { icon: next.icon, name: t(`rank.${next.id}`), n: next.min - points }), { fontSize: '14px', color: '#9a8a6a' }).setOrigin(0.5);
+      iconLabel(this, cx, 224, next.icon, t('rank.next', { name: t(`rank.${next.id}`), n: next.min - points }), { fontSize: '16px', color: '#9a8a6a' }, { origin: 0.5, color: next.color });
     }
     this.add.text(cx, 252, t('rank.rules', { easy: WIN_POINTS.easy, normal: WIN_POINTS.normal, hard: WIN_POINTS.hard, loss: LOSS_POINTS }), {
-      fontSize: '13px', color: '#6a5a40', align: 'center',
+      fontSize: '16px', color: '#8a7a5a', align: 'center',
     }).setOrigin(0.5);
-    this.add.text(cx, 276, RANK_TIERS.map((r) => `${r.icon} ${r.min}`).join('   '), { fontSize: '13px', color: '#6a5a40' }).setOrigin(0.5);
+    // Tier ladder: icon + threshold for every rank, centred as one row
+    const step = 110;
+    RANK_TIERS.forEach((r, i) => {
+      iconLabel(this, cx + (i - (RANK_TIERS.length - 1) / 2) * step, 282, r.icon, String(r.min), { fontSize: '16px', color: '#8a7a5a' }, { origin: 0.5, color: r.color });
+    });
 
     this.add.text(cx, 320, t('rank.board'), { fontSize: '22px', color: '#d8c9a8' }).setOrigin(0.5);
     const status = this.add.text(cx, 360, t('rank.loading'), { fontSize: '16px', color: '#9a8a6a' }).setOrigin(0.5);
@@ -51,7 +56,8 @@ export class RankScene extends Phaser.Scene {
       entries.slice(0, 12).forEach((e, i) => {
         this.add.text(cx - 220, 360 + i * 26, `${e.rank}.`, { fontSize: '16px', color: e.isMe ? '#ffd479' : '#9a8a6a' });
         this.add.text(cx - 170, 360 + i * 26, e.name, { fontSize: '16px', color: e.isMe ? '#ffd479' : '#d8c9a8' });
-        this.add.text(cx + 170, 360 + i * 26, `${tierOf(e.score).icon} ${e.score}`, { fontSize: '16px', color: '#c8b88a' });
+        const rt = tierOf(e.score);
+        iconLabel(this, cx + 170, 360 + i * 26 + 9, rt.icon, String(e.score), { fontSize: '16px', color: '#c8b88a' }, { color: rt.color });
       });
     });
   }

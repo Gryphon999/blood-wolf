@@ -18,6 +18,7 @@ import {
 import { AI_DECK, PLAYER_DECK } from '../data/starterDecks.js';
 import { buildFactionPool } from '../data/factionPool.js';
 import { storyAi } from '../data/story.js';
+import { iconBadge, iconLabel } from '../ui/icons.js';
 import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward, isDeckValid } from '../economy/profile.js';
 import { showChest, showInterstitial, recordWin } from '../sdk/platform.js';
@@ -47,8 +48,7 @@ import { ANIMATIONS, ensureSparkTexture } from '../ui/effectAnimations.js';
 
 const ROW_TINT = { melee: 0x261a1a, ranged: 0x1a2620, siege: 0x1a1f2a };
 const WEATHER_OVERLAY = { melee: 0x4488ee, ranged: 0x88aacc, siege: 0x224488 };
-const WEATHER_LABEL   = { melee: '❄', ranged: '🌫', siege: '🌧' };
-const ROW_ROLE_LABEL  = { melee: '⚔ Натиск', ranged: '🏹 Охота', siege: '💣 Осада' };
+const WEATHER_ICON    = { melee: 'snow', ranged: 'fog', siege: 'rain' };
 const ROW_ROLE_COLOR  = { melee: '#c06060', ranged: '#60a060', siege: '#6080c0' };
 // Specials that affect the whole board: one click on the card plays them
 const INSTANT_SPECIALS = new Set(['weather_frost', 'weather_fog', 'weather_rain', 'clear', 'scorch',
@@ -185,7 +185,7 @@ export class BattleScene extends Phaser.Scene {
       const cv = createCardView(this, card.def, { selected: picked });
       cv.setScale(1).setPosition(x0 + i * step, 340 + (picked ? -24 : 0));
       if (picked) {
-        cv.add(this.add.text(0, 0, '↻', { fontSize: '48px', color: '#ff9f9f', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5));
+        cv.add(iconBadge(this, 'replay', 0, 0, { size: 44, color: 0xff9f9f }));
       }
       onLeftClick(cv.list[0], () => {
         if (picked) this.mulliganPicks.delete(i);
@@ -344,8 +344,8 @@ export class BattleScene extends Phaser.Scene {
     this.renderLeader(1, LEADER_X, 138);
     this.renderLeader(0, LEADER_X, 438);
     if (this.revealed?.length) {
-      this.addText(SIDE_PANEL_X, 132, t('leader.revealed'), '#dd88ff', '11px');
-      this.revealed.forEach((def, i) => this.addText(SIDE_PANEL_X, 146 + i * 13, cardName(def).slice(0, 16), '#c8a8e8', '11px'));
+      this.addText(SIDE_PANEL_X, 132, t('leader.revealed'), '#dd88ff', '12px');
+      this.revealed.forEach((def, i) => this.addText(SIDE_PANEL_X, 148 + i * 15, cardName(def).slice(0, 16), '#c8a8e8', '12px'));
     }
 
     // ── Hand
@@ -606,7 +606,8 @@ export class BattleScene extends Phaser.Scene {
       this.root.add(
         this.add.rectangle(SCREEN.width / 2, y, SCREEN.width - 320, 78, WEATHER_OVERLAY[rowName], 0.24),
       );
-      this.addText(128, y - 12, WEATHER_LABEL[rowName] ?? '☁', '#aaddff', '22px');
+      // Weather badge just left of the row's score medallion (the leader column covers the lane's left end)
+      this.root.add(iconBadge(this, WEATHER_ICON[rowName] ?? 'cloud', SCREEN.width - 240, y, { size: 30, color: 0xaaddff }));
     }
 
     side.board[rowName].forEach((card, i) => {
@@ -636,9 +637,7 @@ export class BattleScene extends Phaser.Scene {
 
       if (sideName === 'player' && this.canAct() && this.selectedIndex === null && this.orderReady(card)
           && (targetKind(card, 'order') === 'none' || getValidTargets(this.match, 0, card, 'order').length > 0)) {
-        const obtn = this.add.text(boardCardX(i), y + 50, '⚡', {
-          fontSize: '14px', color: '#ffdd44', stroke: '#000', strokeThickness: 2,
-        }).setOrigin(0.5);
+        const obtn = iconBadge(this, 'bolt', boardCardX(i), y + 50, { size: 18, color: 0xffdd44 }).setSize(22, 22);
         onLeftClick(obtn, () => this.onOrderButtonClick(rowName, i));
         // Defer adding until after all rows so it renders above row backgrounds
         this._deferredOrderBtns.push(obtn);
@@ -685,9 +684,9 @@ export class BattleScene extends Phaser.Scene {
   // ─── Graveyard panel ──────────────────────────────────────────────────────
 
   renderGraveyardPane(graveyard, yBase, label) {
-    this.addText(SIDE_PANEL_X, yBase, `${label} ⚰${graveyard.length}`, '#a08468', '12px');
+    this.root.add(iconLabel(this, SIDE_PANEL_X, yBase + 8, 'coffin', `${label} ${graveyard.length}`, { fontSize: '14px', color: '#a08468' }, { color: 0xa08468, size: 13, gap: 4 }));
     graveyard.slice(-4).reverse().forEach((card, i) => {
-      this.addText(SIDE_PANEL_X, yBase + 16 + i * 13, cardName(card.def).slice(0, 16), '#8a7258', '10px');
+      this.addText(SIDE_PANEL_X, yBase + 18 + i * 15, cardName(card.def).slice(0, 16), '#8a7258', '12px');
     });
   }
 
@@ -837,8 +836,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (w === 0 && !this.chestClaimed) {
       this.root.add(onLeftClick(
-        this.add.text(SCREEN.width / 2, SCREEN.height / 2 + 100, t('chest.open'), { fontSize: '22px', color: '#ffd479' })
-          .setOrigin(0.5),
+        iconLabel(this, SCREEN.width / 2, SCREEN.height / 2 + 100, 'chest', t('chest.open'), { fontSize: '22px', color: '#ffd479' }, { origin: 0.5 }),
         () => {
           if (this.chestClaimed) return; // one chest per battle, even on fast double clicks
           this.chestClaimed = true;

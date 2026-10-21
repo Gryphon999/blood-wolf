@@ -1,11 +1,11 @@
 // Arena rank: points for wins/losses, tiers for display, synced to the Yandex leaderboard.
 export const RANK_TIERS = [
-  { id: 'bronze', min: 0, icon: '🥉' },
-  { id: 'silver', min: 300, icon: '🥈' },
-  { id: 'gold', min: 700, icon: '🥇' },
-  { id: 'platinum', min: 1200, icon: '💠' },
-  { id: 'diamond', min: 2000, icon: '💎' },
-  { id: 'legend', min: 3000, icon: '🐺' },
+  { id: 'bronze', min: 0, icon: 'medal', color: 0xc07a45 },
+  { id: 'silver', min: 300, icon: 'medal', color: 0xc9ccd2 },
+  { id: 'gold', min: 700, icon: 'medal', color: 0xf0c548 },
+  { id: 'platinum', min: 1200, icon: 'gem', color: 0x8fd6e0 },
+  { id: 'diamond', min: 2000, icon: 'gem', color: 0xb5e2ff },
+  { id: 'legend', min: 3000, icon: 'wolf', color: 0xe05a4a },
 ];
 
 export const WIN_POINTS = { easy: 15, normal: 25, hard: 35 };

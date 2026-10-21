@@ -1,58 +1,9 @@
 import { BUTTON_W, BUTTON_H } from './menuLayout.js';
 import { FONT_TITLE } from './fonts.js';
 import { sfx } from './SoundEngine.js';
+import { drawIcon, hasIcon } from './icons.js';
 
 const GOLD = 0xe8c060;
-
-// Small engraved heraldic icons, drawn with vector strokes so they stay crisp at any render scale.
-const ICONS = {
-  sword(g, cx, cy) {
-    g.beginPath().moveTo(cx - 7, cy + 8).lineTo(cx + 7, cy - 8).strokePath();
-    g.beginPath().moveTo(cx - 6, cy - 1).lineTo(cx + 2, cy + 7).strokePath();
-    g.fillStyle(GOLD, 1).fillCircle(cx - 8, cy + 9, 1.8);
-  },
-  book(g, cx, cy) {
-    g.strokeRect(cx - 9, cy - 7, 8.5, 14).strokeRect(cx + 0.5, cy - 7, 8.5, 14);
-    g.beginPath().moveTo(cx - 6.5, cy - 3).lineTo(cx - 3, cy - 3).moveTo(cx + 3, cy - 3).lineTo(cx + 6.5, cy - 3).strokePath();
-  },
-  deck(g, cx, cy) {
-    g.strokeRect(cx - 8, cy - 6, 10, 14);
-    g.strokeRect(cx - 2, cy - 9, 10, 14);
-    g.fillStyle(GOLD, 1).fillCircle(cx + 3, cy - 2, 1.8);
-  },
-  coin(g, cx, cy) {
-    g.strokeCircle(cx, cy, 8.5).strokeCircle(cx, cy, 4.5);
-    g.beginPath().moveTo(cx, cy - 2).lineTo(cx, cy + 2).strokePath();
-  },
-  crown(g, cx, cy) {
-    g.beginPath().moveTo(cx - 9, cy + 6).lineTo(cx - 9, cy - 5).lineTo(cx - 4, cy + 0).lineTo(cx, cy - 8)
-      .lineTo(cx + 4, cy + 0).lineTo(cx + 9, cy - 5).lineTo(cx + 9, cy + 6).closePath().strokePath();
-    g.beginPath().moveTo(cx - 9, cy + 9).lineTo(cx + 9, cy + 9).strokePath();
-  },
-  packs(g, cx, cy) {
-    g.strokeRect(cx - 9, cy - 5, 13, 12);
-    g.strokeRect(cx - 5, cy - 8, 13, 12);
-    g.fillStyle(GOLD, 1).fillTriangle(cx + 2, cy - 6, cx + 6, cy - 2, cx - 2, cy - 2);
-  },
-  scroll(g, cx, cy) {
-    g.strokeRect(cx - 6, cy - 7, 12, 14);
-    g.strokeCircle(cx - 6, cy - 7, 2.2).strokeCircle(cx + 6, cy + 7, 2.2);
-    g.beginPath().moveTo(cx - 3, cy - 2).lineTo(cx + 3, cy - 2).moveTo(cx - 3, cy + 2).lineTo(cx + 3, cy + 2).strokePath();
-  },
-  gear(g, cx, cy) {
-    g.strokeCircle(cx, cy, 4.5);
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4;
-      g.beginPath().moveTo(cx + Math.cos(a) * 4.5, cy + Math.sin(a) * 4.5)
-        .lineTo(cx + Math.cos(a) * 8.5, cy + Math.sin(a) * 8.5).strokePath();
-    }
-  },
-  chest(g, cx, cy) {
-    g.strokeRect(cx - 9, cy - 1, 18, 9);
-    g.beginPath().moveTo(cx - 9, cy - 1).lineTo(cx - 7, cy - 7).lineTo(cx + 7, cy - 7).lineTo(cx + 9, cy - 1).strokePath();
-    g.fillStyle(GOLD, 1).fillRect(cx - 1.5, cy + 1, 3, 4);
-  },
-};
 
 // Oak plaque with iron bands and rivets. The rect is centred at (0,0) to match how containers work.
 export function drawPlaque(g, w, h, enabled) {
@@ -111,13 +62,9 @@ export function createButton(scene, x, y, label, options = {}) {
   container.add(gfx);
 
   // Medallion with the heraldic icon inside the left iron cap
-  const hasIcon = icon && ICONS[icon];
-  if (hasIcon) {
-    const ig = scene.add.graphics();
-    ig.lineStyle(1.5, GOLD, enabled ? 1 : 0.35);
-    ICONS[icon](ig, 0, 0);
-    ig.setPosition(-BUTTON_W / 2 + 6 + 13, 0).setScale(1.25);
-    container.add(ig);
+  const withIcon = icon && hasIcon(icon);
+  if (withIcon) {
+    container.add(drawIcon(scene, icon, -BUTTON_W / 2 + 6 + 13, 0, { size: 25, alpha: enabled ? 1 : 0.35, line: 1.9 }));
   }
 
   // Torch-glow highlight, hidden until the pointer is over the button
@@ -126,7 +73,7 @@ export function createButton(scene, x, y, label, options = {}) {
   hover.setAlpha(0);
   container.add(hover);
 
-  const txt = scene.add.text(hasIcon ? 12 : 0, -1, label, {
+  const txt = scene.add.text(withIcon ? 12 : 0, -1, label, {
     fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '25px',
     color: enabled ? '#f5e0a2' : '#6b5a3c',
     stroke: enabled ? '#1a0d04' : 'transparent', strokeThickness: enabled ? 4 : 0,

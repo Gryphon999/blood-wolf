@@ -5,20 +5,22 @@ import { t } from '../i18n/index.js';
 import { ensureCardArt } from './CardArtGenerator.js';
 import { FACE, coverCrop, fitFontSize } from './cardLayout.js';
 import { FONT_TITLE, FONT_BODY } from './fonts.js';
+import { drawIcon, iconBadge } from './icons.js';
 
+// Vector icon keys (src/ui/icons.js) for card traits and rows
 const TRAIT_ICONS = [
-  ['spy', '🕵'], ['muster', '📯'], ['bond', '🔗'], ['berserker', '🪓'], ['ambush', '🌲'], ['vampirism', '🦇'],
+  ['spy', 'spy'], ['muster', 'horn'], ['bond', 'chain'], ['berserker', 'axe'], ['ambush', 'tree'], ['vampirism', 'bat'],
 ];
-const ROW_ICONS = { melee: '⚔', ranged: '🏹', siege: '⚙' };
+const ROW_ICONS = { melee: 'sword', ranged: 'bow', siege: 'siege' };
 
 export function traitIcons(def) {
-  return TRAIT_ICONS.filter(([key]) => def[key]).map(([, icon]) => icon).join('');
+  return TRAIT_ICONS.filter(([key]) => def[key]).map(([, icon]) => icon);
 }
 
 function fallbackGlyph(def) {
   const trait = TRAIT_ICONS.find(([key]) => def[key]);
   if (trait) return trait[1];
-  return def.faction === 'monsters' ? '☠' : '⚔';
+  return def.faction === 'monsters' ? 'skull' : 'sword';
 }
 
 function powerColor(def, cur, base) {
@@ -94,7 +96,7 @@ export function createCardView(scene, cardDef, options = {}) {
     img.setScale(c.scale).setCrop(c.cropX, c.cropY, c.cropW, c.cropH);
     container.add(img);
   } else if (cardDef.type !== 'special') {
-    container.add(scene.add.text(winCx, winCy, fallbackGlyph(cardDef), { fontSize: `${40 * s}px` }).setOrigin(0.5).setAlpha(0.55));
+    container.add(drawIcon(scene, fallbackGlyph(cardDef), winCx, winCy, { size: 40 * s, alpha: 0.55 }));
   }
   const frame = scene.add.graphics();
   frame.lineStyle(1.5 * s, 0x8a6d3b, 0.9).strokeRect(winCx - winW / 2, winCy - winH / 2, winW, winH);
@@ -114,7 +116,9 @@ export function createCardView(scene, cardDef, options = {}) {
       fontFamily: FONT_TITLE, fontStyle: '700', fontSize: `${11 * s}px`, color: '#9fe3d0',
     }).setOrigin(0.5));
   } else {
-    container.add(scene.add.text(-plateW / 2 + 6 * s, infoCy, `${ROW_ICONS[cardDef.row] ?? ''} ${t(`row.${cardDef.row}`)}`, {
+    const rowIcon = ROW_ICONS[cardDef.row];
+    if (rowIcon) container.add(drawIcon(scene, rowIcon, -plateW / 2 + 11 * s, infoCy, { size: 9.5 * s, color: 0xd8c79a, line: 1.2 * s }));
+    container.add(scene.add.text(-plateW / 2 + (rowIcon ? 18 : 6) * s, infoCy, t(`row.${cardDef.row}`), {
       fontFamily: FONT_BODY, fontSize: `${8.5 * s}px`, color: '#d8c79a',
     }).setOrigin(0, 0.5));
     if (cardDef.prov) {
@@ -123,11 +127,11 @@ export function createCardView(scene, cardDef, options = {}) {
       }).setOrigin(1, 0.5));
     }
   }
-  if (traits) {
+  if (traits.length) {
     // Bottom-right corner of the art, clear of the row name and the status icons (bottom-left)
-    container.add(scene.add.text(winCx + winW / 2 - 3 * s, winCy + winH / 2 - 9 * s, traits, {
-      fontSize: `${11 * s}px`, stroke: '#000000', strokeThickness: 3 * s,
-    }).setOrigin(1, 0.5));
+    traits.forEach((key, i) => {
+      container.add(iconBadge(scene, key, winCx + winW / 2 - 9 * s - i * 14 * s, winCy + winH / 2 - 9 * s, { size: 13 * s }));
+    });
   }
   if (cardDef.golden) {
     container.add(scene.add.text(W / 2 - 6 * s, -H / 2 + 26 * s, '★', {
@@ -157,16 +161,22 @@ export function createCardView(scene, cardDef, options = {}) {
       // Status effect icons along the bottom edge of the art window
       let ix = winCx - winW / 2 + 4 * s;
       const iy = winCy + winH / 2 - 8 * s;
-      const icon = (txt, col = '#ffffff') => {
-        container.add(scene.add.text(ix, iy, txt, { fontSize: `${10 * s}px`, color: col, stroke: '#000000', strokeThickness: 2 * s }).setOrigin(0, 0.5));
+      const icon = (key, count = 0) => {
+        container.add(iconBadge(scene, key, ix + 6 * s, iy, { size: 12 * s }));
         ix += 14 * s;
+        if (count) {
+          container.add(scene.add.text(ix - 3 * s, iy, String(count), {
+            fontFamily: FONT_BODY, fontStyle: '700', fontSize: `${9 * s}px`, color: '#ffffff', stroke: '#000000', strokeThickness: 2 * s,
+          }).setOrigin(0, 0.5));
+          ix += 7 * s;
+        }
       };
-      if (card.shielded)        icon('🛡');
-      if (card.locked)          icon('🔒');
-      if (card.poisoned)        icon('☠', '#44ff88');
-      if (card.bleedStacks > 0) icon(`🩸${card.bleedStacks}`);
-      if (card.controlled)      icon('👁', '#dd44ff');
-      if (card.spy)             icon('🕵', '#dd88ff');
+      if (card.shielded)        icon('shield');
+      if (card.locked)          icon('lock');
+      if (card.poisoned)        icon('skull');
+      if (card.bleedStacks > 0) icon('blood', card.bleedStacks);
+      if (card.controlled)      icon('eye');
+      if (card.spy)             icon('spy');
 
       // Order ready: amber indicator in the top-right corner of the art
       const hasOrderReady = card.def.hasOrder && !card.orderUsed && !card.locked
@@ -175,7 +185,7 @@ export function createCardView(scene, cardDef, options = {}) {
         const ox = winCx + winW / 2 - 9 * s;
         const oy = winCy - winH / 2 + 9 * s;
         container.add(scene.add.rectangle(ox, oy, 16 * s, 14 * s, 0xbb6600).setStrokeStyle(1 * s, 0xffaa00));
-        container.add(scene.add.text(ox, oy, '⚡', { fontSize: `${9 * s}px` }).setOrigin(0.5));
+        container.add(drawIcon(scene, 'bolt', ox, oy, { size: 10 * s, color: 0xffe9a0 }));
       }
     }
   }
