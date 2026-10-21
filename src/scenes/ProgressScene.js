@@ -72,7 +72,7 @@ export class ProgressScene extends Phaser.Scene {
         this.root.add(btn);
       }
     });
-    this.text(56, 510, t('quest.reset'), '#6a5a40', '13px');
+    this.text(56, 510, t('quest.reset'), '#9a8a6a', '15px');
 
     // ── Achievements
     const got = p.achievements ?? {};
@@ -88,9 +88,9 @@ export class ProgressScene extends Phaser.Scene {
       this.root.add(drawIcon(this, a.icon, x + 24, y + 22, { size: 28, alpha: unlocked ? 1 : 0.3 }));
       this.text(x + 50, y + 8, t(`ach.${a.id}`), unlocked ? '#ffd479' : '#777777', '14px');
       this.root.add(this.add.text(x + 8, y + 46, t(`ach.${a.id}.desc`), {
-        fontSize: '12px', color: unlocked ? '#c8b88a' : '#666666', wordWrap: { width: 190 },
+        fontSize: '13px', color: unlocked ? '#c8b88a' : '#8a8a8a', wordWrap: { width: 190 },
       }));
-      this.text(x + 8, y + 78, `+${a.reward}`, unlocked ? '#9fe3d0' : '#555555', '12px');
+      this.text(x + 8, y + 78, `+${a.reward}`, unlocked ? '#9fe3d0' : '#7a7a7a', '14px');
     });
   }
 }

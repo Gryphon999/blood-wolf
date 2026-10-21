@@ -70,7 +70,7 @@ export function drawScoreMedallion(scene, root, x, y, score, label, color) {
     fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '26px', color: '#ffe3a0', stroke: '#1a0d04', strokeThickness: 3,
   }).setOrigin(0.5));
   root.add(scene.add.text(x, y + 30, label, {
-    fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '13px', color, stroke: '#0c0906', strokeThickness: 3,
+    fontFamily: FONT_TITLE, fontStyle: '700', fontSize: '14px', color, stroke: '#0c0906', strokeThickness: 3,
   }).setOrigin(0.5));
 }
 

@@ -39,11 +39,16 @@ export function showCardTooltip(scene, def, { y = SCREEN.height - 70 } = {}) {
   hideCardTooltip(scene);
   const w = SCREEN.width - 120;
   const box = scene.add.container(0, 0).setDepth(900);
-  box.add(scene.add.rectangle(SCREEN.width / 2, y, w, 64, 0x0d0b10, 0.94).setStrokeStyle(1, 0x8a6d3b));
-  box.add(scene.add.text(SCREEN.width / 2, y - 22, cardName(def), { fontSize: '15px', color: '#ffd479' }).setOrigin(0.5));
-  box.add(scene.add.text(SCREEN.width / 2, y - 4, cardDescription(def), {
-    fontSize: '13px', color: '#c8b88a', align: 'center', wordWrap: { width: w - 24 },
-  }).setOrigin(0.5, 0));
+  // Text sized for comfortable reading (VK checklist: 40+ players); the frame grows with the description
+  const desc = scene.add.text(SCREEN.width / 2, y - 6, cardDescription(def), {
+    fontSize: '16px', color: '#d8c8a0', align: 'center', wordWrap: { width: w - 24 },
+  }).setOrigin(0.5, 0);
+  const h = Math.max(64, desc.height + 40);
+  const top = Math.min(y - 32, SCREEN.height - 4 - h);
+  desc.setY(top + 26);
+  box.add(scene.add.rectangle(SCREEN.width / 2, top + h / 2, w, h, 0x0d0b10, 0.94).setStrokeStyle(1, 0x8a6d3b));
+  box.add(scene.add.text(SCREEN.width / 2, top + 13, cardName(def), { fontSize: '17px', color: '#ffd479' }).setOrigin(0.5));
+  box.add(desc);
   scene.cardTooltip = box;
 }
 

@@ -125,7 +125,7 @@ export function drawLeaderFigure(scene, root, { leader, x, y, side, used, ready 
   const state = used ? t('leader.used') : ready ? t('leader.ready') : null;
   if (state) {
     root.add(scene.add.text(x, base + plaque + 8, state, {
-      fontFamily: FONT_BODY, fontStyle: ready ? '700' : '400', fontSize: '12px',
+      fontFamily: FONT_BODY, fontStyle: ready ? '700' : '400', fontSize: '14px',
       color: used ? '#7a7264' : '#ffd479', stroke: '#0c0906', strokeThickness: 3,
     }).setOrigin(0.5));
   }

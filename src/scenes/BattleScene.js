@@ -344,8 +344,8 @@ export class BattleScene extends Phaser.Scene {
     this.renderLeader(1, LEADER_X, 138);
     this.renderLeader(0, LEADER_X, 438);
     if (this.revealed?.length) {
-      this.addText(SIDE_PANEL_X, 132, t('leader.revealed'), '#dd88ff', '12px');
-      this.revealed.forEach((def, i) => this.addText(SIDE_PANEL_X, 148 + i * 15, cardName(def).slice(0, 16), '#c8a8e8', '12px'));
+      this.addText(SIDE_PANEL_X, 132, t('leader.revealed'), '#dd88ff', '13px');
+      this.revealed.forEach((def, i) => this.addText(SIDE_PANEL_X, 148 + i * 15, cardName(def).slice(0, 16), '#c8a8e8', '13px'));
     }
 
     // ── Hand
@@ -501,7 +501,7 @@ export class BattleScene extends Phaser.Scene {
       }));
     }
     this.root.add(onLeftClick(this.add.text(SCREEN.width / 2 + 400, y + 22, t('tutorial.skip'), {
-      fontSize: '12px', color: '#9a8a6a',
+      fontSize: '14px', color: '#b0a080',
     }).setOrigin(0.5), () => this.finishTutorial()));
     if (step === 'hand') {
       const arrow = this.add.text(SCREEN.width / 2, HAND_Y - 90, '▼', { fontSize: '30px', color: '#9fe3d0' }).setOrigin(0.5);
@@ -686,7 +686,7 @@ export class BattleScene extends Phaser.Scene {
   renderGraveyardPane(graveyard, yBase, label) {
     this.root.add(iconLabel(this, SIDE_PANEL_X, yBase + 8, 'coffin', `${label} ${graveyard.length}`, { fontSize: '14px', color: '#a08468' }, { color: 0xa08468, size: 13, gap: 4 }));
     graveyard.slice(-4).reverse().forEach((card, i) => {
-      this.addText(SIDE_PANEL_X, yBase + 18 + i * 15, cardName(card.def).slice(0, 16), '#8a7258', '12px');
+      this.addText(SIDE_PANEL_X, yBase + 18 + i * 15, cardName(card.def).slice(0, 16), '#a08a70', '13px');
     });
   }
 

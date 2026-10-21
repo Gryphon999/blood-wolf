@@ -69,10 +69,10 @@ export class DeckScene extends Phaser.Scene {
         this.render();
       });
     });
-    if (current) this.text(250, 100, t(`leader.${current.id}.desc`), '#9fe3d0', '12px');
+    if (current) this.text(250, 100, t(`leader.${current.id}.desc`), '#9fe3d0', '14px');
     const passive = FACTION_PASSIVE[faction];
     if (passive) {
-      this.text(20, 120, t('passive.label', { name: t(`passive.${passive}`), desc: t(`passive.${passive}.desc`) }), '#c8a8e8', '12px');
+      this.text(20, 120, t('passive.label', { name: t(`passive.${passive}`), desc: t(`passive.${passive}.desc`) }), '#c8a8e8', '14px');
     }
   }
 
@@ -121,21 +121,21 @@ export class DeckScene extends Phaser.Scene {
     this.root.add(cv);
 
     const labelY = y + 82;
-    if ((owned.count ?? 1) > 1) this.text(x + 34, labelY, `×${owned.count}`, '#d8c9a8', '13px');
+    if ((owned.count ?? 1) > 1) this.text(x + 34, labelY, `×${owned.count}`, '#d8c9a8', '14px');
     if (def.type === 'unit') {
-      this.text(x - 50, labelY, t('deck.level', { n: level }), '#9a8a6a', '13px');
+      this.text(x - 50, labelY, t('deck.level', { n: level }), '#9a8a6a', '14px');
       if (canUpgrade(p, id)) {
-        this.button(x + 2, labelY, `↑ ${upgradeCost(level)}`, '#9fe3d0', '13px', () => {
+        this.button(x + 2, labelY, `↑ ${upgradeCost(level)}`, '#9fe3d0', '14px', () => {
           upgradeCard(p, id);
           persist();
           this.render();
         });
       } else if (level >= 3) {
-        this.text(x + 8, labelY, t('deck.max'), '#666666', '13px');
+        this.text(x + 8, labelY, t('deck.max'), '#8a8a8a', '14px');
       }
     }
     if (canMakeGolden(p, id)) {
-      this.button(x - 50, labelY + 18, t('deck.golden', { n: GOLDEN_COPIES }), '#ffd700', '13px', () => {
+      this.button(x - 50, labelY + 18, t('deck.golden', { n: GOLDEN_COPIES }), '#ffd700', '14px', () => {
         makeGolden(p, id);
         sfx.roundWin();
         onAchievements(this, p);
