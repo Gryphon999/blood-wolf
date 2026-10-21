@@ -5,7 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Blood Wolf</title>
     <style>
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0b0d; }
+      html { background: #0b0b0d; }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+      /* Letterbox fill (VK moderation): the menu art, blurred, instead of black bars. The game loads it anyway. */
+      body::before { content: ''; position: fixed; inset: -40px; z-index: -1;
+        background: radial-gradient(ellipse at center, rgba(11,11,13,.25) 0%, rgba(11,11,13,.75) 80%),
+          url('./assets/bg/bg_menu.jpg') center / cover no-repeat, #1a1410;
+        filter: blur(18px) saturate(1.1); }
+      #game canvas { box-shadow: 0 0 48px 8px rgba(0,0,0,.7); }
       body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
       #game { width: 100vw; height: 100vh; height: 100dvh; }
       #rotate-hint {
@@ -18,11 +25,12 @@
     </style>
     <!-- Yandex Games SDK, served by Yandex next to the game; missing (404) on itch.io, VK and GitHub Pages, which is fine -->
     <script src="/sdk.js"></script>
-    <script type="module" crossorigin src="./assets/index-CU8zBLJU.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BSUUaQ2S.css">
+    <script type="module" crossorigin src="./assets/index-CJM4vhuv.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/icons-D3p8zmAL.js">
+    <link rel="stylesheet" crossorigin href="./assets/icons-BSUUaQ2S.css">
   </head>
   <body>
-    <div id="rotate-hint">⟳</div>
+    <div id="rotate-hint"></div>
     <div id="game"></div>
   </body>
 </html>
