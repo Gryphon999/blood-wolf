@@ -4,7 +4,7 @@ import {
 } from '../engine/GwentMatch.js';
 import { drainEvents } from '../engine/events.js';
 import { getValidTargets, targetKind } from '../engine/targeting.js';
-import { chooseMove, chooseMulligan } from '../engine/ai/OpponentAI.js';
+import { chooseMove, chooseMulligan, usesMulligan } from '../engine/ai/OpponentAI.js';
 import { t } from '../i18n/index.js';
 import { useLeader, canUseLeader } from '../engine/leaders.js';
 import { passiveOf } from '../engine/passives.js';
@@ -17,6 +17,7 @@ import {
 } from '../ui/layout.js';
 import { AI_DECK, PLAYER_DECK } from '../data/starterDecks.js';
 import { buildFactionPool } from '../data/factionPool.js';
+import { storyAi } from '../data/story.js';
 import { getProfile, persist } from '../economy/session.js';
 import { buildDeckCards, addGold, clearNode, grantCard, grantChestReward, isDeckValid } from '../economy/profile.js';
 import { showChest, showInterstitial, recordWin } from '../sdk/platform.js';
@@ -109,6 +110,8 @@ export class BattleScene extends Phaser.Scene {
     ];
     this.revealed = null; // enemy cards shown by a peek ability
     this.difficulty = getProfile().difficulty ?? 'normal';
+    // Story missions follow the campaign's difficulty curve; the menu setting shifts it one step.
+    this.aiLevel = this.storyIndex !== null ? storyAi(this.storyIndex, this.difficulty) : this.difficulty;
     this.chestClaimed = false;
     this.summary = newSummary();
     this.tutorial = !getProfile().tutorialDone && this.storyIndex === null ? { seen: new Set() } : null;
@@ -152,7 +155,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     // Mulligan: the AI swaps silently, the player gets a picker before the first move
-    mulligan(this.match, 1, chooseMulligan(this.match, 1));
+    if (usesMulligan(this.aiLevel)) mulligan(this.match, 1, chooseMulligan(this.match, 1));
     drainEvents(this.match);
     this.mulliganPicks = canMulligan(this.match, 0) ? new Set() : null;
     this.render();
@@ -273,7 +276,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.match.winner !== null || this.match.current !== 1) return;
     this.time.delayedCall(400, () => this.act(() => {
       try {
-        const move = chooseMove(this.match, 1, this.difficulty);
+        const move = chooseMove(this.match, 1, this.aiLevel);
         if (move.type === 'pass') {
           pass(this.match);
           sfx.pass();

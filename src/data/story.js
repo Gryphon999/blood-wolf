@@ -232,3 +232,76 @@ export const CHAPTER_THREE_NODES = [
 
 // The full campaign shown in StoryScene
 export const CAMPAIGN_NODES = [...STORY_NODES, ...CHAPTER_TWO_NODES, ...CHAPTER_THREE_NODES];
+
+// Difficulty curve (VK moderation 4.1.6.4): each chapter starts easy and climbs to its boss.
+// ai = the enemy's AI on the default 'normal' setting; power = added to every non-hero enemy unit;
+// heroes = added to enemy heroes and boss units (only the finals need it).
+// Tuned with: node scripts/story-curve.js (novice player win rate per mission).
+export const STORY_TUNING = {
+  // Chapter I: plain units, then one new mechanic per fight
+  bandits: { ai: 'easy', power: 0 },
+  wolves: { ai: 'easy', power: 0 },
+  undead: { ai: 'easy', power: 1 },
+  mercs: { ai: 'normal', power: -1 },
+  boss: { ai: 'normal', power: -1 },
+  // Chapter II
+  fog_marsh: { ai: 'easy', power: -3 },
+  bone_crypt: { ai: 'normal', power: -2 },
+  blood_court: { ai: 'normal', power: -3 },
+  wolf_king: { ai: 'normal', power: -2 },
+  blood_wolf: { ai: 'hard', power: -3, heroes: -6 },
+  // Chapter III
+  frozen_keep: { ai: 'easy', power: -3 },
+  shadow_thieves: { ai: 'normal', power: -2 },
+  plague_horde: { ai: 'normal', power: -1 },
+  serpent_cult: { ai: 'normal', power: -1 },
+  fallen_knight: { ai: 'hard', power: -4 },
+  blood_tide: { ai: 'normal', power: -2 },
+  storm_peak: { ai: 'normal', power: 2 },
+  golem_army: { ai: 'normal', power: -3 },
+  chaos_gate: { ai: 'hard', power: -2 },
+  lich_emperor: { ai: 'hard', power: -3, heroes: -6 },
+};
+
+const AI_STEPS = ['easy', 'normal', 'hard'];
+
+/** Enemy AI for a campaign node; the menu difficulty shifts it one step down ('easy') or up ('hard'). */
+export function storyAi(index, difficulty = 'normal') {
+  const base = AI_STEPS.indexOf(STORY_TUNING[CAMPAIGN_NODES[index]?.id]?.ai ?? 'normal');
+  const shift = difficulty === 'easy' ? -1 : difficulty === 'hard' ? 1 : 0;
+  return AI_STEPS[Math.max(0, Math.min(AI_STEPS.length - 1, base + shift))];
+}
+
+/** The node's enemy deck with its power tuning applied. */
+export function storyDeck(node) {
+  const { power = 0, heroes = 0 } = STORY_TUNING[node.id] ?? {};
+  if (!power && !heroes) return node.enemyDeck;
+  return node.enemyDeck.map((c) => {
+    if (c.type === 'unit' && power) return { ...c, power: Math.max(1, c.power + power) };
+    if (c.type === 'hero' && heroes) return { ...c, power: Math.max(1, c.power + heroes) };
+    return c;
+  });
+}
+
+/** The node's battle rules; boss units take the hero tuning. */
+export function storyRules(node) {
+  const heroes = STORY_TUNING[node.id]?.heroes ?? 0;
+  if (!node.rules || !heroes || !node.rules.bossUnits) return node.rules ?? null;
+  return { ...node.rules, bossUnits: node.rules.bossUnits.map((c) => ({ ...c, power: Math.max(1, c.power + heroes) })) };
+}
+
+/** Mechanics of a node's enemy that no earlier node had: the battle intro introduces them one by one. */
+export function newMechanics(index) {
+  const mechanicsOf = (node) => {
+    const keys = new Set();
+    for (const card of node.enemyDeck) {
+      if (card.type === 'hero') keys.add('hero');
+      if (typeof card.effect === 'string') keys.add(card.effect);
+    }
+    if (node.rules?.permanentWeather?.length) keys.add('rule_weather');
+    if (node.rules?.bossUnits?.length) keys.add('rule_boss');
+    return keys;
+  };
+  const seen = new Set(CAMPAIGN_NODES.slice(0, index).flatMap((n) => [...mechanicsOf(n)]));
+  return [...mechanicsOf(CAMPAIGN_NODES[index])].filter((k) => !seen.has(k));
+}

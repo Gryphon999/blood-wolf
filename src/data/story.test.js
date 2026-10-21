@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { STORY_NODES } from './story.js';
+import {
+  STORY_NODES, CHAPTER_TWO_NODES, CAMPAIGN_NODES, STORY_TUNING, storyAi, storyDeck, storyRules, newMechanics,
+} from './story.js';
 
 describe('story nodes', () => {
   it('has five campaign nodes', () => {
@@ -52,5 +54,62 @@ describe('campaign (chapters 1-3)', async () => {
       expect(ru[`story.${node.id}.intro`], node.id).toBeTypeOf('string');
     }
     expect(CHAPTER_THREE_NODES[CHAPTER_THREE_NODES.length - 1].boss).toBe(true);
+  });
+});
+
+describe('story difficulty curve', () => {
+  it('tunes every campaign node', () => {
+    for (const node of CAMPAIGN_NODES) expect(STORY_TUNING[node.id], node.id).toBeDefined();
+  });
+
+  it('opens each chapter with the easy AI', () => {
+    const firsts = [0, STORY_NODES.length, STORY_NODES.length + CHAPTER_TWO_NODES.length];
+    for (const i of firsts) expect(storyAi(i)).toBe('easy');
+  });
+
+  it('shifts the AI one step with the menu difficulty, clamped', () => {
+    expect(storyAi(0, 'easy')).toBe('easy');
+    expect(storyAi(0, 'hard')).toBe('normal');
+    const last = CAMPAIGN_NODES.length - 1;
+    expect(storyAi(last, 'hard')).toBe('hard');
+    expect(storyAi(last, 'easy')).toBe('normal');
+  });
+
+  it('applies the power tuning to units and heroes, never below 1', () => {
+    const node = CAMPAIGN_NODES.find((n) => n.id === 'blood_wolf');
+    const { power, heroes } = STORY_TUNING.blood_wolf;
+    storyDeck(node).forEach((card, i) => {
+      const printed = node.enemyDeck[i];
+      if (printed.type === 'unit') expect(card.power).toBe(Math.max(1, printed.power + power));
+      else if (printed.type === 'hero') expect(card.power).toBe(Math.max(1, printed.power + heroes));
+      else expect(card).toBe(printed);
+    });
+    expect(node.enemyDeck.some((c) => c.power !== storyDeck(node)[node.enemyDeck.indexOf(c)].power)).toBe(true);
+  });
+
+  it('leaves untuned decks and rules untouched', () => {
+    const node = CAMPAIGN_NODES.find((n) => n.id === 'bandits');
+    expect(storyDeck(node)).toBe(node.enemyDeck);
+    expect(storyRules(node)).toBe(node.rules ?? null);
+  });
+
+  it('weakens boss units with the hero tuning', () => {
+    const node = CAMPAIGN_NODES.find((n) => n.id === 'lich_emperor');
+    const boss = node.rules.bossUnits[0];
+    expect(storyRules(node).bossUnits[0].power).toBe(Math.max(1, boss.power + STORY_TUNING.lich_emperor.heroes));
+  });
+});
+
+describe('new mechanics per node', () => {
+  it('introduces nothing in the first fight and the War Horn in the second', () => {
+    expect(newMechanics(0)).toEqual([]);
+    expect(newMechanics(1)).toEqual(['horn']);
+  });
+
+  it('introduces each mechanic once, and every one has a hint text', async () => {
+    const { ru } = await import('../i18n/ru.js');
+    const all = CAMPAIGN_NODES.flatMap((_, i) => newMechanics(i));
+    expect(new Set(all).size).toBe(all.length);
+    for (const key of all) expect(ru[`story.new.${key}`], key).toBeTruthy();
   });
 });

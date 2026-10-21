@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CAMPAIGN_NODES, STORY_NODES, CHAPTER_TWO_NODES, CHAPTER_THREE_NODES } from '../data/story.js';
+import { CAMPAIGN_NODES, STORY_NODES, CHAPTER_TWO_NODES, CHAPTER_THREE_NODES, storyDeck, storyRules, newMechanics } from '../data/story.js';
 import { getLeader } from '../data/leaders.js';
 import { getProfile } from '../economy/session.js';
 import { isNodeUnlocked, isNodeCleared } from '../economy/profile.js';
@@ -111,7 +111,10 @@ export class StoryScene extends Phaser.Scene {
         bg.setInteractive({ useHandCursor: true });
         bg.on('pointerdown', () => {
           sfx.click();
-          this.showDialogue(t(`story.${node.id}.intro`), () => this.startBattle(node, globalIdx, isReplay));
+          // After the story lines, one line per mechanic this enemy brings for the first time
+          const lessons = newMechanics(globalIdx).map((k) => `${t('story.new.title')}: ${t(`story.new.${k}`)}`);
+          const script = [t(`story.${node.id}.intro`), ...lessons].join('\n');
+          this.showDialogue(script, () => this.startBattle(node, globalIdx, isReplay), lessons.length);
         });
       }
     });
@@ -119,18 +122,19 @@ export class StoryScene extends Phaser.Scene {
 
   startBattle(node, index, isReplay = false) {
     goTo(this, 'BattleScene', {
-      enemyDeck: node.enemyDeck,
+      enemyDeck: storyDeck(node),
       storyIndex: index,
       rewardGold: node.rewardGold,
       rewardCardId: node.rewardCardId ?? null,
       enemyLeaderId: node.enemyLeaderId ?? null,
-      rules: node.rules ?? null,
+      rules: storyRules(node),
       isReplay,
     });
   }
 
-  // Lines are "Speaker: text"; click advances; onDone = null just closes
-  showDialogue(script, onDone) {
+  // Lines are "Speaker: text"; click advances; onDone = null just closes.
+  // Skip jumps past the story but stops at the last `keep` lines (the new-mechanic hints).
+  showDialogue(script, onDone, keep = 0) {
     const lines = script.split('\n').filter(Boolean);
     let i = 0;
     const layer = this.add.container(0, 0).setDepth(500);
@@ -165,7 +169,10 @@ export class StoryScene extends Phaser.Scene {
       if (i >= lines.length - 1) finish();
       else { i++; show(); }
     });
-    skip.on('pointerdown', finish);
+    skip.on('pointerdown', () => {
+      const firstKept = lines.length - keep;
+      if (keep > 0 && i < firstKept) { i = firstKept; show(); } else finish();
+    });
     if (lines.length === 0) finish();
     else show();
   }
